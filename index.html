@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alim Kitabhane - Электронная библиотека</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Полноэкранный баннер с книгой -->
+    <main class="hero-section">
+        <div class="hero-background">
+            <img src="Mockup.jpg" alt="Книга на фоне" class="background-image">
+            <div class="hero-overlay"></div>
+        </div>
+        
+        <div class="hero-content">
+            <div class="book-presentation">
+                <div class="book-info-main">
+                    <h1 class="main-title">Алим Мидат — исторический роман о крымскотатарском наследии</h1>
+                    <p class="main-description">Погружение в эпоху, язык и судьбы. Читайте онлайн после мгновенной оплаты.</p>
+                    
+                    <div class="action-buttons">
+                        <button class="btn-primary" id="purchaseBtn">
+                            <i class="fas fa-shopping-cart"></i>
+                            Купить и читать
+                        </button>
+                        <button class="btn-secondary" id="readSampleBtn">
+                            <i class="fas fa-eye"></i>
+                            Читать фрагмент
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Навигационная панель -->
+        <header class="header-overlay">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <i class="fas fa-book-open"></i>
+                        <span>Alim Kitabhane</span>
+                    </div>
+                    <div class="header-actions">
+                        <button class="auth-btn register-btn" id="registerBtn">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Зарегистрироваться</span>
+                        </button>
+                        <button class="auth-btn login-btn" id="loginBtn">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Войти</span>
+                        </button>
+                        <button class="profile-btn" id="profileBtn" style="display: none;">
+                            <i class="fas fa-user"></i>
+                            <span>Личный кабинет</span>
+                        </button>
+                        <button class="auth-btn logout-btn" id="logoutBtn" style="display: none;">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Выйти</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+    </main>
+
+    <!-- Дополнительная информация о книге -->
+    <section class="book-details-section">
+        <div class="details-content">
+            <div class="book-specs">
+                <h2>О книге</h2>
+                
+                <div class="specs-grid">
+                    <div class="spec-item">
+                        <span class="spec-label">Автор:</span>
+                        <span class="spec-value">Алим Мидат</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Жанр:</span>
+                        <span class="spec-value">Исторический роман</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Страниц:</span>
+                        <span class="spec-value">520</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Язык:</span>
+                        <span class="spec-value">Крымскотатарский</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Год издания:</span>
+                        <span class="spec-value">2024</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Цена:</span>
+                        <span class="spec-value price-highlight">299 ₽</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="book-description">
+                <h3>Описание</h3>
+                <p>Эпический роман, охватывающий несколько поколений крымскотатарской семьи. От золотого века Крымского ханства до современных дней. История о том, как сохранить свою идентичность в меняющемся мире.</p>
+                
+                <p>Автор мастерски переплетает личные судьбы героев с великими историческими событиями, создавая полотно, которое отражает дух и культуру крымскотатарского народа.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Модальное окно регистрации -->
+    <div id="registerModal" class="modal auth-modal">
+        <div class="modal-content auth-content">
+            <span class="close" id="closeRegisterBtn">&times;</span>
+            <div class="auth-header">
+                <h2>Регистрация</h2>
+                <p>Создайте аккаунт для покупки и чтения книг</p>
+            </div>
+            <form class="auth-form" id="registerForm">
+                <div class="form-group">
+                    <label for="regName">Имя</label>
+                    <input type="text" id="regName" required placeholder="Введите ваше имя">
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">Email</label>
+                    <input type="email" id="regEmail" required placeholder="Введите ваш email">
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Пароль</label>
+                    <input type="password" id="regPassword" required placeholder="Придумайте пароль">
+                </div>
+                <div class="form-group">
+                    <label for="regPasswordConfirm">Подтвердите пароль</label>
+                    <input type="password" id="regPasswordConfirm" required placeholder="Повторите пароль">
+                </div>
+                <button type="submit" class="auth-submit-btn">
+                    <i class="fas fa-user-plus"></i>
+                    Зарегистрироваться
+                </button>
+                <p class="auth-switch">
+                    Уже есть аккаунт? <a href="#" id="switchToLoginBtn">Войдите</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно входа -->
+    <div id="loginModal" class="modal auth-modal">
+        <div class="modal-content auth-content">
+            <span class="close" id="closeLoginBtn">&times;</span>
+            <div class="auth-header">
+                <h2>Вход</h2>
+                <p>Войдите в свой аккаунт</p>
+            </div>
+            <form class="auth-form" id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" required placeholder="Введите ваш email">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Пароль</label>
+                    <input type="password" id="loginPassword" required placeholder="Введите пароль">
+                </div>
+                <button type="submit" class="auth-submit-btn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Войти
+                </button>
+                <p class="auth-switch">
+                    Нет аккаунта? <a href="#" id="switchToRegisterBtn">Зарегистрируйтесь</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно личного кабинета -->
+    <div id="profileModal" class="modal profile-modal">
+        <div class="modal-content profile-content">
+            <span class="close" id="closeProfileBtn">&times;</span>
+            <div class="profile-header">
+                <h2>Личный кабинет</h2>
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <h3 id="userName">Имя пользователя</h3>
+                        <p id="userEmail">email@example.com</p>
+                    </div>
+                </div>
+            </div>
+            <div class="profile-content-section">
+                <h3>Моя библиотека</h3>
+                <div id="userLibrary" class="user-library">
+                    <p class="empty-library">У вас пока нет купленных книг</p>
+                </div>
+            </div>
+            <div class="profile-actions">
+                <button class="logout-btn" id="profileLogoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Выйти
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно с деталями книги -->
+    <div id="bookModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeBookDetailsBtn">&times;</span>
+            <div class="modal-book-details">
+                <div class="modal-book-cover">
+                    <div class="large-cover-placeholder">
+                        <i class="fas fa-bow-arrow"></i>
+                    </div>
+                </div>
+                <div class="modal-book-info">
+                    <h2>Алим Мидат</h2>
+                    <p class="author">Хаджи Гирай (Тарихий роман)</p>
+                    <div class="rating-detail">
+                        <div class="stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <span>4.8 (234 отзыва)</span>
+                    </div>
+                    <p class="description">
+                        Исторический роман о крымскотатарском наследии. Эпическая сага, 
+                        охватывающая несколько поколений крымскотатарской семьи. 
+                        От золотого века Крымского ханства до современных дней.
+                    </p>
+                    <div class="book-specs">
+                        <div class="spec">
+                            <span class="spec-label">Жанр:</span>
+                            <span>Исторический роман</span>
+                        </div>
+                        <div class="spec">
+                            <span class="spec-label">Страниц:</span>
+                            <span>520</span>
+                        </div>
+                        <div class="spec">
+                            <span class="spec-label">Язык:</span>
+                            <span>Крымскотатарский</span>
+                        </div>
+                        <div class="spec">
+                            <span class="spec-label">Год:</span>
+                            <span>2024</span>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="buy-btn-large" id="purchaseBtn2">
+                            <i class="fas fa-shopping-cart"></i>
+                            Купить за 299 ₽
+                        </button>
+                        <button class="read-sample-btn" id="readSampleBtn2">
+                            <i class="fas fa-eye"></i>
+                            Читать отрывок
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
