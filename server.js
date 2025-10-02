@@ -14,6 +14,9 @@ const usersRoutes = require('./routes/users');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Доверяем прокси (nginx)
+app.set('trust proxy', true);
+
 // Middleware безопасности
 app.use(helmet({
     contentSecurityPolicy: {
