@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const { pool } = require('../config/database');
 const { generateTokens, authenticateToken } = require('../middleware/auth');
+const telegramService = require('../services/telegram');
 
 const router = express.Router();
 
@@ -83,6 +84,12 @@ router.post('/register', registerValidation, async (req, res) => {
             sameSite: 'strict',
             maxAge: 30 * 24 * 60 * 60 * 1000 // 30 дней
         });
+
+        // Отправляем уведомление в Telegram
+        telegramService.notifyNewRegistration({
+            name: user.name,
+            email: user.email
+        }).catch(err => console.error('Ошибка отправки уведомления:', err));
 
         res.status(201).json({
             message: 'Пользователь успешно зарегистрирован',

@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { body, validationResult } = require('express-validator');
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const telegramService = require('../services/telegram');
 
 const router = express.Router();
 
@@ -238,6 +239,24 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
                     'UPDATE purchases SET status = $1, completed_at = CURRENT_TIMESTAMP WHERE id = $2',
                     ['completed', purchase.id]
                 );
+
+                // Получаем данные пользователя и книги для уведомления
+                const userQuery = await pool.query('SELECT name, email FROM users WHERE id = $1', [purchase.user_id]);
+                const bookQuery = await pool.query('SELECT title FROM books WHERE id = $1', [purchase.book_id]);
+                
+                if (userQuery.rows.length > 0 && bookQuery.rows.length > 0) {
+                    const user = userQuery.rows[0];
+                    const book = bookQuery.rows[0];
+                    
+                    // Отправляем уведомление в Telegram
+                    telegramService.notifyNewPurchase({
+                        userName: user.name,
+                        userEmail: user.email,
+                        bookTitle: book.title,
+                        amount: payment.amount.value,
+                        paymentId: payment.id
+                    }).catch(err => console.error('Ошибка отправки уведомления:', err));
+                }
 
                 console.log(`✅ Платеж ${payment.id} успешно завершен`);
             }
