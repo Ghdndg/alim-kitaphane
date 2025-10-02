@@ -1,22 +1,34 @@
 const axios = require('axios');
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-
 class TelegramService {
     constructor() {
-        this.baseUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+        // Переменные читаются динамически при каждом вызове
+    }
+
+    getToken() {
+        return process.env.TELEGRAM_BOT_TOKEN;
+    }
+
+    getChatId() {
+        return process.env.TELEGRAM_CHAT_ID;
+    }
+
+    getBaseUrl() {
+        return `https://api.telegram.org/bot${this.getToken()}`;
     }
 
     async sendMessage(text) {
         try {
-            if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+            const token = this.getToken();
+            const chatId = this.getChatId();
+
+            if (!token || !chatId) {
                 console.log('Telegram not configured, skipping notification');
                 return;
             }
 
-            const response = await axios.post(`${this.baseUrl}/sendMessage`, {
-                chat_id: TELEGRAM_CHAT_ID,
+            const response = await axios.post(`${this.getBaseUrl()}/sendMessage`, {
+                chat_id: chatId,
                 text: text,
                 parse_mode: 'HTML'
             });
@@ -29,7 +41,10 @@ class TelegramService {
 
     async sendDocument(filePath, caption = '') {
         try {
-            if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+            const token = this.getToken();
+            const chatId = this.getChatId();
+
+            if (!token || !chatId) {
                 console.log('Telegram not configured, skipping backup');
                 return;
             }
@@ -38,13 +53,13 @@ class TelegramService {
             const fs = require('fs');
             const form = new FormData();
             
-            form.append('chat_id', TELEGRAM_CHAT_ID);
+            form.append('chat_id', chatId);
             form.append('document', fs.createReadStream(filePath));
             if (caption) {
                 form.append('caption', caption);
             }
 
-            const response = await axios.post(`${this.baseUrl}/sendDocument`, form, {
+            const response = await axios.post(`${this.getBaseUrl()}/sendDocument`, form, {
                 headers: form.getHeaders()
             });
 
