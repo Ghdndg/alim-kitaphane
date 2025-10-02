@@ -14,8 +14,8 @@ const usersRoutes = require('./routes/users');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Доверяем прокси (nginx)
-app.set('trust proxy', true);
+// Доверяем прокси (nginx) - указываем количество прокси
+app.set('trust proxy', 1);
 
 // Middleware безопасности
 app.use(helmet({
@@ -36,7 +36,12 @@ const limiter = rateLimit({
     max: 100, // лимит 100 запросов с IP за 15 минут
     message: {
         error: 'Слишком много запросов с этого IP, попробуйте позже.'
-    }
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Используем X-Forwarded-For из nginx
+    skipFailedRequests: false,
+    skipSuccessfulRequests: false
 });
 
 const authLimiter = rateLimit({
@@ -44,7 +49,10 @@ const authLimiter = rateLimit({
     max: 5, // лимит 5 попыток входа за 15 минут
     message: {
         error: 'Слишком много попыток входа, попробуйте позже.'
-    }
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipFailedRequests: false
 });
 
 app.use(limiter);
