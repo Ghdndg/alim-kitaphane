@@ -38,7 +38,44 @@ const query = async (text, params = []) => {
             .replace(/TEXT\[\]/gi, 'TEXT')  // Массивы в JSON
             .replace(/CURRENT_DATETIME/gi, 'CURRENT_TIMESTAMP');
 
-        if (text.toLowerCase().includes('select') || text.toLowerCase().includes('returning')) {
+        // Обработка INSERT с RETURNING для SQLite
+        const hasReturning = /RETURNING\s+(.+)$/i.test(text);
+        const isInsert = /INSERT\s+INTO/i.test(text);
+        
+        if (isInsert && hasReturning) {
+            // Извлекаем поля из RETURNING
+            const returningMatch = text.match(/RETURNING\s+(.+)$/i);
+            const returningFields = returningMatch ? returningMatch[1].trim() : '*';
+            
+            // Убираем RETURNING из запроса
+            sqliteQuery = sqliteQuery.replace(/\s+RETURNING\s+.+$/i, '');
+            
+            // Выполняем INSERT
+            db.run(sqliteQuery, params, function(err) {
+                const duration = Date.now() - start;
+                if (err) {
+                    console.error('❌ SQLite Error:', { text: sqliteQuery, duration, error: err.message });
+                    reject(err);
+                } else {
+                    // Получаем вставленную запись
+                    const insertedId = this.lastID;
+                    const selectQuery = `SELECT ${returningFields} FROM ${text.match(/INSERT\s+INTO\s+(\w+)/i)[1]} WHERE id = ?`;
+                    
+                    db.all(selectQuery, [insertedId], (selectErr, rows) => {
+                        if (selectErr) {
+                            console.error('❌ SQLite Error:', { text: selectQuery, duration, error: selectErr.message });
+                            reject(selectErr);
+                        } else {
+                            console.log('🔍 SQLite Query:', { text: sqliteQuery, duration, rows: rows.length });
+                            resolve({ rows, rowCount: rows.length });
+                        }
+                    });
+                }
+            });
+            return;
+        }
+
+        if (text.toLowerCase().includes('select')) {
             db.all(sqliteQuery, params, (err, rows) => {
                 const duration = Date.now() - start;
                 if (err) {
@@ -68,7 +105,13 @@ const query = async (text, params = []) => {
     });
 };
 
+// Создаем объект pool для совместимости с PostgreSQL API
+const pool = {
+    query: query
+};
+
 module.exports = {
     db,
-    query
+    query,
+    pool
 };
