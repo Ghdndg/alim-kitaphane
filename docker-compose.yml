@@ -5,6 +5,8 @@ services:
   app:
     build: .
     container_name: krym-chitalka-app
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       DB_TYPE: sqlite
@@ -14,6 +16,8 @@ services:
       YUKASSA_SECRET_KEY: ${YUKASSA_SECRET_KEY}
       PORT: 3000
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
     ports:
       - "3000:3000"
     restart: unless-stopped
