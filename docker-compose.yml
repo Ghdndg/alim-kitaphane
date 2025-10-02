@@ -21,7 +21,7 @@ services:
       - krym-network
     volumes:
       - ./uploads:/app/uploads
-      - sqlite_data:/app/database
+      - ./database:/app/database
 
   # Nginx для продакшена
   nginx:
@@ -38,9 +38,6 @@ services:
     restart: unless-stopped
     networks:
       - krym-network
-
-volumes:
-  sqlite_data:
 
 networks:
   krym-network:
