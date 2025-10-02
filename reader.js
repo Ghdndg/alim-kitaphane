@@ -284,7 +284,15 @@ function initializeReaderProtection() {
     let devtools = { open: false };
     const threshold = 160;
     
+    // Проверяем, не мобильное ли устройство
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
     function detectDevTools() {
+        // Отключаем проверку DevTools на мобильных устройствах
+        if (isMobile) {
+            return;
+        }
+        
         if (window.outerHeight - window.innerHeight > threshold || 
             window.outerWidth - window.innerWidth > threshold) {
             if (!devtools.open) {
@@ -310,7 +318,10 @@ function initializeReaderProtection() {
         }
     }
     
-    setInterval(detectDevTools, 500);
+    // Запускаем проверку только на десктопе
+    if (!isMobile) {
+        setInterval(detectDevTools, 500);
+    }
 }
 
 function previousPage() {
