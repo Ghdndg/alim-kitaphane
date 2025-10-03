@@ -1,9 +1,8 @@
 // Глобальные переменные
-const api = new ApiClient();
 let currentUser = null;
 let userLibrary = [];
 let purchasedBooks = new Set();
-let registeredUsers = new Map(); // Хранилище пользователей (для обратной совместимости)
+let registeredUsers = new Map(); // Хранилище пользователей
 
 // Данные книги (в реальном проекте это будет поступать с сервера)
 const bookData = {
@@ -799,41 +798,47 @@ async function handleRegister(event) {
         return;
     }
     
-    console.log('Starting registration for:', email);
-    
     try {
-        // Регистрация через API
-        const response = await api.register({
-            name: name,
-            email: email,
-            password: password
+        // Отправляем запрос на бэкенд
+        const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name, email, password })
         });
         
-        console.log('Registration response:', response);
+        const data = await response.json();
         
-        if (response.user) {
-            currentUser = response.user;
-            purchasedBooks = new Set(response.user.library || []);
-            updateAuthInterface();
-            
-            console.log('User registered successfully:', currentUser);
-            showNotification('Регистрация прошла успешно!', 'success');
-            closeRegisterModal();
-            
-            // Очищаем форму
-            document.getElementById('regName').value = '';
-            document.getElementById('regEmail').value = '';
-            document.getElementById('regPassword').value = '';
-            document.getElementById('regPasswordConfirm').value = '';
-            
-            // Если есть купленные книги, переходим в читалку
-            if (purchasedBooks.size > 0) {
-                window.location.href = 'reader.html';
-            }
-        } else {
-            console.error('No user in response:', response);
-            showNotification('Ошибка: сервер не вернул данные пользователя', 'error');
+        if (!response.ok) {
+            throw new Error(data.error || 'Ошибка регистрации');
         }
+        
+        // Сохраняем токен
+        localStorage.setItem('accessToken', data.accessToken);
+        
+        // Сохраняем данные пользователя локально
+        currentUser = {
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            library: data.user.library || []
+        };
+        
+        localStorage.setItem('currentUser', JSON.stringify(email));
+        registeredUsers.set(email, currentUser);
+        saveUsersToStorage();
+        
+        showNotification('Регистрация прошла успешно!', 'success');
+        closeRegisterModal();
+        updateAuthInterface();
+        
+        // Очищаем форму
+        document.getElementById('regName').value = '';
+        document.getElementById('regEmail').value = '';
+        document.getElementById('regPassword').value = '';
+        document.getElementById('regPasswordConfirm').value = '';
+        
     } catch (error) {
         console.error('Registration error:', error);
         showNotification(error.message || 'Ошибка при регистрации', 'error');
@@ -847,35 +852,56 @@ async function handleLogin(event) {
     const password = document.getElementById('loginPassword').value;
     
     try {
-        // Вход через API
-        const response = await api.login({
-            email: email,
-            password: password
+        // Отправляем запрос на бэкенд
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
         });
         
-        if (response.user) {
-            currentUser = response.user;
-            purchasedBooks = new Set(response.user.library || []);
-            
-            updateAuthInterface();
-            closeLoginModal();
-            showNotification(`Добро пожаловать, ${response.user.name}!`, 'success');
-            
-            // Очищаем форму
-            document.getElementById('loginEmail').value = '';
-            document.getElementById('loginPassword').value = '';
-            
-            // Переходим в ридер после входа
-            setTimeout(() => {
-                if (purchasedBooks.size > 0) {
-                    // Если есть купленные книги, переходим в ридер
-                    window.location.href = 'reader.html';
-                } else {
-                    // Если нет купленных книг, показываем сообщение
-                    showNotification('У вас пока нет купленных книг. Приобретите книгу для чтения.', 'info');
-                }
-            }, 1000);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Ошибка входа');
         }
+        
+        // Сохраняем токен
+        localStorage.setItem('accessToken', data.accessToken);
+        
+        // Сохраняем данные пользователя локально
+        currentUser = {
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            library: data.user.library || []
+        };
+        
+        localStorage.setItem('currentUser', JSON.stringify(email));
+        registeredUsers.set(email, currentUser);
+        purchasedBooks = new Set(currentUser.library);
+        saveUsersToStorage();
+        
+        updateAuthInterface();
+        closeLoginModal();
+        showNotification(`Добро пожаловать, ${currentUser.name}!`, 'success');
+        
+        // Очищаем форму
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginPassword').value = '';
+        
+        // Переходим в ридер после входа
+        setTimeout(() => {
+            if (currentUser.library.length > 0) {
+                // Если есть купленные книги, переходим в ридер
+                window.location.href = 'reader.html';
+            } else {
+                // Если нет купленных книг, показываем сообщение
+                showNotification('У вас пока нет купленных книг. Приобретите книгу для чтения.', 'info');
+            }
+        }, 1000);
+        
     } catch (error) {
         console.error('Login error:', error);
         showNotification(error.message || 'Ошибка при входе', 'error');
