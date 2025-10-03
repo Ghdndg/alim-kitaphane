@@ -60,18 +60,10 @@ class ApiClient {
 
     // Обработка ответа
     async handleResponse(response) {
-        let data;
-        try {
-            data = await response.json();
-        } catch (e) {
-            console.error('Failed to parse JSON response:', e);
-            throw new Error('Ошибка обработки ответа сервера');
-        }
+        const data = await response.json();
         
         if (!response.ok) {
-            const errorMessage = data.error || data.message || `HTTP ${response.status}`;
-            console.error('API Error:', errorMessage, data);
-            throw new Error(errorMessage);
+            throw new Error(data.error || `HTTP ${response.status}`);
         }
         
         return data;

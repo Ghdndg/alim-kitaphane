@@ -799,6 +799,8 @@ async function handleRegister(event) {
     }
     
     try {
+        console.log('🔵 Отправка запроса регистрации на бэкенд:', { name, email });
+        
         // Отправляем запрос на бэкенд
         const response = await fetch('/api/auth/register', {
             method: 'POST',
@@ -808,7 +810,10 @@ async function handleRegister(event) {
             body: JSON.stringify({ name, email, password })
         });
         
+        console.log('📥 Ответ от сервера:', response.status, response.statusText);
+        
         const data = await response.json();
+        console.log('📦 Данные от сервера:', data);
         
         if (!response.ok) {
             throw new Error(data.error || 'Ошибка регистрации');
@@ -852,6 +857,8 @@ async function handleLogin(event) {
     const password = document.getElementById('loginPassword').value;
     
     try {
+        console.log('🔵 Отправка запроса входа на бэкенд:', { email });
+        
         // Отправляем запрос на бэкенд
         const response = await fetch('/api/auth/login', {
             method: 'POST',
@@ -861,7 +868,10 @@ async function handleLogin(event) {
             body: JSON.stringify({ email, password })
         });
         
+        console.log('📥 Ответ от сервера:', response.status, response.statusText);
+        
         const data = await response.json();
+        console.log('📦 Данные от сервера:', data);
         
         if (!response.ok) {
             throw new Error(data.error || 'Ошибка входа');
