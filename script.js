@@ -799,6 +799,8 @@ async function handleRegister(event) {
         return;
     }
     
+    console.log('Starting registration for:', email);
+    
     try {
         // Регистрация через API
         const response = await api.register({
@@ -807,11 +809,14 @@ async function handleRegister(event) {
             password: password
         });
         
+        console.log('Registration response:', response);
+        
         if (response.user) {
             currentUser = response.user;
             purchasedBooks = new Set(response.user.library || []);
             updateAuthInterface();
             
+            console.log('User registered successfully:', currentUser);
             showNotification('Регистрация прошла успешно!', 'success');
             closeRegisterModal();
             
@@ -825,6 +830,9 @@ async function handleRegister(event) {
             if (purchasedBooks.size > 0) {
                 window.location.href = 'reader.html';
             }
+        } else {
+            console.error('No user in response:', response);
+            showNotification('Ошибка: сервер не вернул данные пользователя', 'error');
         }
     } catch (error) {
         console.error('Registration error:', error);
