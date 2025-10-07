@@ -1317,3 +1317,67 @@ body.modal-open {
         padding: 0.875rem;
     }
 }
+
+/* Футер с реквизитами */
+.site-footer {
+    background: #2c3e50;
+    color: #ecf0f1;
+    padding: 2rem 0 1rem;
+    margin-top: auto;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    text-align: center;
+}
+
+.footer-requisites {
+    margin-bottom: 1.5rem;
+}
+
+.footer-requisites h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: #ecf0f1;
+}
+
+.requisites-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    color: #bdc3c7;
+}
+
+.requisites-info p {
+    margin: 0.25rem 0;
+}
+
+.requisites-info strong {
+    color: #ecf0f1;
+    font-weight: 500;
+}
+
+.footer-copyright {
+    padding-top: 1rem;
+    border-top: 1px solid rgba(236, 240, 241, 0.1);
+    font-size: 0.875rem;
+    color: #95a5a6;
+}
+
+@media (max-width: 768px) {
+    .site-footer {
+        padding: 1.5rem 0 0.75rem;
+    }
+    
+    .footer-requisites h3 {
+        font-size: 1rem;
+    }
+    
+    .requisites-info {
+        font-size: 0.875rem;
+    }
+}
