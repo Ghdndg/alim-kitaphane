@@ -341,6 +341,14 @@ function showPaymentModal() {
                     </div>
                 </div>
             </div>
+            <div class="terms-agreement" style="margin: 1.5rem 0; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                <label style="display: flex; align-items: start; gap: 0.75rem; cursor: pointer;">
+                    <input type="checkbox" id="agreeTerms" style="margin-top: 0.25rem; cursor: pointer; width: 18px; height: 18px;">
+                    <span style="font-size: 0.9rem; color: #2c3e50; line-height: 1.5;">
+                        Я согласен с <a href="terms.html" target="_blank" style="color: #3498db; text-decoration: underline;">Пользовательским соглашением и Публичной офертой</a> и даю согласие на обработку персональных данных
+                    </span>
+                </label>
+            </div>
             <button class="pay-button yukassa-pay" id="yuKassaPayBtn">
                 <i class="fas fa-shield-alt"></i>
                 Оплатить через ЮKassa ${bookData.price} ₽
@@ -1033,6 +1041,13 @@ function completePurchase() {
 async function processYuKassaPayment() {
     if (!currentUser) {
         showNotification('Необходимо войти в аккаунт для покупки', 'info');
+        return;
+    }
+
+    // Проверяем согласие с условиями
+    const agreeTermsCheckbox = document.getElementById('agreeTerms');
+    if (!agreeTermsCheckbox || !agreeTermsCheckbox.checked) {
+        showNotification('Необходимо согласиться с Пользовательским соглашением', 'error');
         return;
     }
 
