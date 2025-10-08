@@ -332,7 +332,7 @@ function showPaymentModal() {
                         <i class="fas fa-credit-card"></i>
                         <span>ЮKassa</span>
                     </div>
-                    <p class="yukassa-description">Безопасная оплата картой онлайн</p>
+                    <p class="yukassa-description">Безопасная оплата онлайн</p>
                 </div>
             </div>
             <div class="terms-agreement" style="margin: 1.5rem 0; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
