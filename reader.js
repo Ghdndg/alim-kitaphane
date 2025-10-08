@@ -1,3 +1,45 @@
+// Проверка доступа к книге при загрузке
+(async function checkAccess() {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const accessToken = localStorage.getItem('accessToken');
+    
+    // Проверяем авторизацию
+    if (!currentUser.email || !accessToken) {
+        alert('Для чтения книги необходимо войти в аккаунт');
+        window.location.href = '/index.html';
+        return;
+    }
+    
+    // Проверяем покупку книги
+    try {
+        const response = await fetch('/api/users/library', {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
+        
+        if (response.ok) {
+            const library = await response.json();
+            const bookId = 1; // ID книги Хаджи Гирай
+            
+            if (!library.books || !library.books.some(book => book.id === bookId)) {
+                alert('Вы не приобрели эту книгу. Пожалуйста, купите книгу для доступа к чтению.');
+                window.location.href = '/index.html';
+                return;
+            }
+        } else {
+            alert('Ошибка проверки доступа к книге');
+            window.location.href = '/index.html';
+            return;
+        }
+    } catch (error) {
+        console.error('Access check error:', error);
+        alert('Не удалось проверить доступ к книге');
+        window.location.href = '/index.html';
+        return;
+    }
+})();
+
 // Глобальные переменные
 let currentPage = 1;
 let totalPages = 52;
