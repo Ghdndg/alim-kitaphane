@@ -1,0 +1,68 @@
+docker compose ps проверить че запущено
+
+   docker compose build --no-cache
+   docker compose up -d запустить собрать
+
+
+   docker compose down всё стопануть
+
+docker compose run --rm app sh в контейнер запрыгнуть
+
+  node server.js запустить чет руками
+
+
+exit выпрыгнуть из контейнера
+
+__________________________________________________________________
+
+
+
+то что решало проблемы: 
+
+то есть если я например сделаю изменения в index.html мне локально нужно сделать    git add index.html
+   git commit -m "Описание изменений"
+   git push и на сервере cd /opt/alim-kitabhane && git pull && docker compose up -d --build?
+
+______________________________________________________________________________________
+
+удалить дребедятину:
+cd /opt/alim-kitabhane
+rm -rf node_modules
+echo "node_modules" > .dockerignore
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+
+_______________________________________________________________________________________
+
+Быстрая команда для обновления на сервере:
+Можете создать алиас или просто запоминать последовательность:
+cd /opt/alim-kitabhane && git pull && docker compose up -d --build
+Одна команда сделает всё: подтянет изменения, пересоберёт контейнер и перезапустит приложение. 
+
+
+__________________________________________________________________________________________________
+Исправим nginx:
+1. Посмотрите логи nginx:
+docker logs --tail=50 krym-chitalka-nginx
+Скорее всего, будет ошибка типа cannot load certificate "/etc/nginx/ssl/cert.pem".
+2. Создайте SSL-сертификаты заново:
+mkdir -p ssl
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout ssl/key.pem -out ssl/cert.pem \
+  -subj "/C=RU/ST=Crimea/L=Simferopol/O=KrymChitalka/CN=5.129.247.160"
+3. Перезапустите nginx:
+docker compose restart nginx
+4. Проверьте статус:
+docker compose ps
+Теперь оба контейнера должны быть в статусе Up.
+
+# Посмотрите права на папку и файл базы данных
+ls -la database/
+
+# Дайте права на запись
+chmod 777 database/
+chmod 666 database/krym_chitalka.db
+
+# Или измените владельца
+chown -R 1001:1001 database/
