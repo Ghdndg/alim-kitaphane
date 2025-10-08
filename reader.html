@@ -7,6 +7,30 @@
     <link rel="stylesheet" href="reader.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Проверка доступа к книге -->
+    <script>
+        (function() {
+            // Проверяем авторизацию
+            const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+            
+            if (!currentUser || !currentUser.email) {
+                alert('Пожалуйста, войдите в аккаунт для чтения книги');
+                window.location.href = '/index.html';
+                return;
+            }
+            
+            // Проверяем покупку книги (ID книги = 1)
+            const users = JSON.parse(localStorage.getItem('registeredUsers') || '{}');
+            const userLibrary = users[currentUser.email]?.library || [];
+            
+            if (!userLibrary.includes(1)) {
+                alert('Вы еще не приобрели эту книгу. Пожалуйста, оформите покупку.');
+                window.location.href = '/index.html';
+                return;
+            }
+        })();
+    </script>
 </head>
 <body>
     <!-- Заголовок ридера -->
