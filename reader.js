@@ -19,10 +19,10 @@
         });
         
         if (response.ok) {
-            const library = await response.json();
+            const data = await response.json();
             const bookId = 1; // ID книги Хаджи Гирай
             
-            if (!library.books || !library.books.some(book => book.id === bookId)) {
+            if (!data.library || data.library.length === 0 || !data.library.some(book => book.id === bookId)) {
                 alert('Вы не приобрели эту книгу. Пожалуйста, купите книгу для доступа к чтению.');
                 window.location.href = '/index.html';
                 return;
