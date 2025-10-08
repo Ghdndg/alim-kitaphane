@@ -217,7 +217,7 @@ router.get('/status/:paymentId', authenticateToken, async (req, res) => {
 });
 
 // Webhook от ЮKassa
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/webhook', async (req, res) => {
     try {
         // Проверяем подпись webhook (если настроена)
         const signature = req.headers['yookassa-webhook-signature'];
@@ -227,7 +227,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         //     return res.status(400).json({ error: 'Invalid signature' });
         // }
 
-        const event = JSON.parse(req.body);
+        const event = req.body; // Уже распарсено через express.json()
         
         if (event.event === 'payment.succeeded') {
             const payment = event.object;
