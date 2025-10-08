@@ -70,6 +70,13 @@ router.post('/create', authenticateToken, createPaymentValidation, async (req, r
             return res.status(409).json({ error: 'Книга уже куплена' });
         }
 
+        // Удаляем старые незавершённые попытки покупки (pending/failed)
+        await pool.query(
+            `DELETE FROM purchases 
+             WHERE user_id = $1 AND book_id = $2 AND status IN ($3, $4)`,
+            [userId, bookId, 'pending', 'failed']
+        );
+
         // Создаем запись о покупке
         const paymentId = uuidv4();
         const amount = parseFloat(book.price);
