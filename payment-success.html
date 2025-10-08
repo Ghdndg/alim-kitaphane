@@ -251,14 +251,16 @@
                             if (!users[currentUser.email].library) {
                                 users[currentUser.email].library = [];
                             }
-                            if (!users[currentUser.email].library.includes(1)) {
-                                users[currentUser.email].library.push(1);
+                            // Добавляем ID книги из ответа API
+                            const bookId = paymentData.book ? paymentData.book.id : 1;
+                            if (!users[currentUser.email].library.includes(bookId)) {
+                                users[currentUser.email].library.push(bookId);
                             }
                             localStorage.setItem('registeredUsers', JSON.stringify(users));
                             
                             // Обновляем текущего пользователя
                             currentUser.library = users[currentUser.email].library;
-                            localStorage.setItem('currentUser', JSON.stringify(currentUser.email));
+                            localStorage.setItem('currentUser', JSON.stringify(currentUser));
                         }
                     }
                     
