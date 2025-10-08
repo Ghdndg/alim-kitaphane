@@ -332,13 +332,7 @@ function showPaymentModal() {
                         <i class="fas fa-credit-card"></i>
                         <span>ЮKassa</span>
                     </div>
-                    <p class="yukassa-description">Безопасная оплата через ЮKassa. Принимаем карты всех банков.</p>
-                    <div class="accepted-cards">
-                        <i class="fab fa-cc-visa"></i>
-                        <i class="fab fa-cc-mastercard"></i>
-                        <i class="fab fa-cc-amex"></i>
-                        <i class="fas fa-mobile-alt"></i>
-                    </div>
+                    <p class="yukassa-description">Безопасная оплата картой онлайн</p>
                 </div>
             </div>
             <div class="terms-agreement" style="margin: 1.5rem 0; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
