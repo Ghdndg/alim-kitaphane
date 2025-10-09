@@ -216,6 +216,9 @@ document.addEventListener('DOMContentLoaded', function() {
     applySettings();
     initializeReaderProtection(); // Защита читалки
     
+    // Инициализация всех кнопок
+    initializeButtons();
+    
     // Добавляем обработчик для сохранения настроек при изменении семейства шрифтов
     const fontFamilySelect = document.getElementById('fontFamily');
     if (fontFamilySelect) {
@@ -224,6 +227,81 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Функция инициализации всех кнопок
+function initializeButtons() {
+    // Кнопка назад
+    const backBtn = document.querySelector('.back-btn');
+    if (backBtn) backBtn.addEventListener('click', goBack);
+    
+    // Кнопка настроек
+    const settingsBtn = document.querySelector('.settings-btn');
+    if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
+    
+    // Кнопка закладки
+    const bookmarkBtn = document.querySelector('.bookmark-btn');
+    if (bookmarkBtn) bookmarkBtn.addEventListener('click', toggleBookmark);
+    
+    // Кнопка меню содержания
+    const menuBtn = document.querySelector('.menu-btn');
+    if (menuBtn) menuBtn.addEventListener('click', openTableOfContents);
+    
+    // Кнопка выхода
+    const logoutBtn = document.querySelector('.logout-btn');
+    if (logoutBtn) logoutBtn.addEventListener('click', handleReaderLogout);
+    
+    // Кнопки навигации
+    const prevBtn = document.querySelector('.prev-btn');
+    if (prevBtn) prevBtn.addEventListener('click', previousPage);
+    
+    const nextBtn = document.querySelector('.next-btn');
+    if (nextBtn) nextBtn.addEventListener('click', nextPage);
+    
+    // Кнопка закрытия сайдбара
+    const closeSidebarBtn = document.querySelector('.close-sidebar');
+    if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
+    
+    // Кнопка закрытия модалки настроек
+    const closeModalBtn = document.querySelector('.close-modal');
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeSettings);
+    
+    // Кнопки изменения размера шрифта
+    const fontSizeBtns = document.querySelectorAll('.font-size-controls button');
+    if (fontSizeBtns.length >= 2) {
+        fontSizeBtns[0].addEventListener('click', () => changeFontSize(-1));
+        fontSizeBtns[1].addEventListener('click', () => changeFontSize(1));
+    }
+    
+    // Кнопки тем
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            setTheme(this.getAttribute('data-theme'));
+        });
+    });
+    
+    // Кнопки ширины текста
+    document.querySelectorAll('.width-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            setTextWidth(this.getAttribute('data-width'));
+        });
+    });
+    
+    // Кнопки межстрочного интервала
+    document.querySelectorAll('.lh-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            setLineHeight(parseFloat(this.getAttribute('data-height')));
+        });
+    });
+    
+    // Элементы содержания
+    document.querySelectorAll('.toc-item').forEach((item, index) => {
+        item.addEventListener('click', function() {
+            goToChapter(index);
+        });
+    });
+    
+    console.log('✅ All buttons initialized');
+}
 
 // Функции навигации
 function goBack() {
