@@ -208,7 +208,7 @@ body {
     /* Контент может быть любой высоты - сдвигается вертикально */
     min-height: 100%;
     width: 100%;
-    padding: 1rem 0; /* Вертикальный padding для красоты */
+    padding: 0.5rem 0; /* Минимальный вертикальный padding */
     transform: translateY(0);
     transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
     /* Дополнительная защита от копирования */
@@ -708,7 +708,7 @@ body {
     }
     
     .text-content {
-        padding: 0.5rem 0;
+        padding: 0.35rem 0;
     }
     
     .chapter-title {
@@ -803,7 +803,7 @@ body {
 @media (max-width: 480px) {
     .text-content {
         font-size: 14px;
-        padding: 0.35rem 0;
+        padding: 0.25rem 0;
     }
     
     .text-block {

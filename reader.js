@@ -507,9 +507,9 @@ function calculatePageDimensions() {
     const totalPadding = paddingTop + paddingBottom;
     
     // Высота видимой области для текста минус padding
-    // Также вычитаем небольшую коррекцию (~1 строка) для более плавного перелистывания
+    // Вычитаем полную строку текста чтобы текст не заходил под кнопки
     const lineHeight = parseFloat(textContentStyle.lineHeight) || 24;
-    pageHeight = viewportHeight - headerHeight - navHeight - totalPadding - (lineHeight * 0.1);
+    pageHeight = viewportHeight - headerHeight - navHeight - totalPadding - lineHeight;
     
     console.log('📏 Calculating page dimensions:', {
         viewportHeight,
