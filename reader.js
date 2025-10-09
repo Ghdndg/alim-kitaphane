@@ -66,9 +66,12 @@
     }
 })();
 
-// Глобальные переменные
-let currentPage = 1;
-let totalPages = 1;
+// Глобальные переменные для постраничной навигации
+let currentScrollOffset = 0; // Текущее смещение в пикселях
+let pageHeight = 0; // Высота одной "страницы" (видимой области)
+let totalContentHeight = 0; // Общая высота контента
+let currentPage = 1; // Текущая страница (рассчитывается)
+let totalPages = 1; // Общее количество страниц (рассчитывается)
 let currentChapter = 0;
 let isBookmarked = false;
 let readingSettings = {
@@ -78,10 +81,6 @@ let readingSettings = {
     textWidth: 'medium',
     lineHeight: 1.6
 };
-
-// Переменные для динамической пагинации
-let pageHeight = 0;
-let contentHeight = 0;
 
 // Данные книги (главы)
 const chapters = [
@@ -218,6 +217,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Инициализация всех кнопок
     initializeButtons();
     
+    // Загружаем весь контент книги
+    loadAllContent();
+    
+    // Пересчитываем размеры при изменении размера окна
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            calculatePageDimensions();
+            applyContentTransform();
+        }, 250);
+    });
+    
     // Добавляем обработчик для сохранения настроек при изменении семейства шрифтов
     const fontFamilySelect = document.getElementById('fontFamily');
     if (fontFamilySelect) {
@@ -225,30 +237,6 @@ document.addEventListener('DOMContentLoaded', function() {
             changeFontFamily(this.value);
         });
     }
-    
-    // Инициализируем динамическую пагинацию
-    setTimeout(() => {
-        calculateTotalPages();
-        updatePageNumbers();
-        updateProgressBar();
-        updateNavigationButtons();
-    }, 100);
-    
-    // Обработчик скролла для обновления номера страницы
-    const textContent = document.getElementById('textContent');
-    if (textContent) {
-        textContent.addEventListener('scroll', updateCurrentPageFromScroll);
-    }
-    
-    // Пересчитываем страницы при изменении размера окна
-    window.addEventListener('resize', () => {
-        setTimeout(() => {
-            calculateTotalPages();
-            updatePageNumbers();
-            updateProgressBar();
-            updateNavigationButtons();
-        }, 100);
-    });
 });
 
 // Функция инициализации всех кнопок
@@ -498,61 +486,88 @@ function initializeReaderProtection() {
     }
 }
 
-// Вычисление количества страниц
-function calculateTotalPages() {
+// Рассчитываем размеры страницы
+function calculatePageDimensions() {
+    const container = document.querySelector('.reader-container');
     const textContent = document.getElementById('textContent');
-    if (!textContent) return 1;
     
-    pageHeight = textContent.clientHeight;
-    contentHeight = textContent.scrollHeight;
+    if (!container || !textContent) return;
     
-    if (pageHeight === 0) return 1;
-    totalPages = Math.ceil(contentHeight / pageHeight);
-    return totalPages;
+    // Высота видимой области
+    pageHeight = container.clientHeight;
+    
+    // Общая высота контента
+    totalContentHeight = textContent.scrollHeight;
+    
+    // Количество страниц = высота контента / высота экрана (округляем вверх)
+    totalPages = Math.ceil(totalContentHeight / pageHeight);
+    
+    // Текущая страница на основе текущего offset
+    currentPage = Math.floor(currentScrollOffset / pageHeight) + 1;
+    
+    console.log('Page dimensions:', {
+        pageHeight,
+        totalContentHeight,
+        totalPages,
+        currentPage,
+        currentScrollOffset
+    });
 }
 
-// Обновление текущей страницы на основе скролла
-function updateCurrentPageFromScroll() {
-    const textContent = document.getElementById('textContent');
-    if (!textContent || pageHeight === 0) return;
-    
-    const scrollTop = textContent.scrollTop;
-    currentPage = Math.floor(scrollTop / pageHeight) + 1;
-    
-    updatePageNumbers();
-    updateProgressBar();
-    updateNavigationButtons();
-}
-
-function previousPage() {
+// Применяем трансформацию к контенту
+function applyContentTransform() {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    if (currentPage > 1) {
-        currentPage--;
-        const scrollPosition = (currentPage - 1) * pageHeight;
-        textContent.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+    // Ограничиваем offset чтобы не выйти за пределы
+    const maxOffset = totalContentHeight - pageHeight;
+    currentScrollOffset = Math.max(0, Math.min(currentScrollOffset, maxOffset));
+    
+    // Применяем transform
+    textContent.style.transform = `translateY(-${currentScrollOffset}px)`;
+    
+    // Обновляем номер страницы
+    currentPage = Math.floor(currentScrollOffset / pageHeight) + 1;
+    
+    updateProgressBar();
+    updatePageNumbers();
+    updateNavigationButtons();
+    saveReadingProgress();
+}
+
+function previousPage() {
+    if (currentScrollOffset > 0) {
+        // Добавляем класс для анимации
+        const textContent = document.getElementById('textContent');
+        textContent.classList.add('page-turning');
         
-        updatePageNumbers();
-        updateProgressBar();
-        updateNavigationButtons();
-        saveReadingProgress();
+        // Сдвигаем на одну страницу вверх
+        currentScrollOffset = Math.max(0, currentScrollOffset - pageHeight);
+        applyContentTransform();
+        
+        // Убираем класс анимации
+        setTimeout(() => {
+            textContent.classList.remove('page-turning');
+        }, 600);
     }
 }
 
 function nextPage() {
-    const textContent = document.getElementById('textContent');
-    if (!textContent) return;
+    const maxOffset = totalContentHeight - pageHeight;
     
-    if (currentPage < totalPages) {
-        currentPage++;
-        const scrollPosition = (currentPage - 1) * pageHeight;
-        textContent.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+    if (currentScrollOffset < maxOffset) {
+        // Добавляем класс для анимации
+        const textContent = document.getElementById('textContent');
+        textContent.classList.add('page-turning');
         
-        updatePageNumbers();
-        updateProgressBar();
-        updateNavigationButtons();
-        saveReadingProgress();
+        // Сдвигаем на одну страницу вниз
+        currentScrollOffset = Math.min(maxOffset, currentScrollOffset + pageHeight);
+        applyContentTransform();
+        
+        // Убираем класс анимации
+        setTimeout(() => {
+            textContent.classList.remove('page-turning');
+        }, 600);
     }
 }
 
@@ -560,15 +575,12 @@ function updateNavigationButtons() {
     const prevBtn = document.querySelector('.prev-btn');
     const nextBtn = document.querySelector('.next-btn');
     
-    if (prevBtn) prevBtn.disabled = currentPage === 1;
-    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages;
 }
 
 function scrollToTop() {
-    const textContent = document.getElementById('textContent');
-    if (textContent) {
-        textContent.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // Функции оглавления
@@ -598,15 +610,30 @@ function closeSidebar() {
 
 function goToChapter(chapterIndex) {
     currentChapter = chapterIndex;
-    currentPage = getChapterStartPage(chapterIndex);
-    updateContent();
+    
+    // Находим все заголовки глав в контенте
+    const textContent = document.getElementById('textContent');
+    const chapterTitles = textContent.querySelectorAll('.chapter-title, .section-title');
+    
+    if (chapterTitles[chapterIndex]) {
+        // Получаем позицию заголовка главы относительно контейнера
+        const chapterElement = chapterTitles[chapterIndex];
+        const offsetTop = chapterElement.offsetTop;
+        
+        // Устанавливаем scroll offset на позицию главы
+        currentScrollOffset = offsetTop;
+        
+        // Добавляем анимацию
+        textContent.classList.add('page-turning');
+        applyContentTransform();
+        
+        setTimeout(() => {
+            textContent.classList.remove('page-turning');
+        }, 600);
+    }
+    
     updateActiveChapter();
-    updateProgressBar();
-    updatePageNumbers();
-    updateNavigationButtons();
-    saveReadingProgress();
     closeSidebar();
-    scrollToTop();
 }
 
 function getChapterStartPage(chapterIndex) {
@@ -621,15 +648,25 @@ function updateActiveChapter() {
     });
 }
 
-function updateContent() {
+// Загружаем весь контент книги сразу
+function loadAllContent() {
     const textContent = document.getElementById('textContent');
-    const chapterIndex = getCurrentChapterByPage(currentPage);
     
-    if (chapterIndex !== -1 && chapters[chapterIndex]) {
-        textContent.innerHTML = chapters[chapterIndex].content;
-        currentChapter = chapterIndex;
+    // Объединяем весь контент всех глав
+    const allContent = chapters.map(chapter => chapter.content).join('');
+    textContent.innerHTML = allContent;
+    
+    // После загрузки контента пересчитываем размеры
+    setTimeout(() => {
+        calculatePageDimensions();
+        applyContentTransform();
         updateActiveChapter();
-    }
+    }, 100);
+}
+
+function updateContent() {
+    // Функция для обратной совместимости
+    loadAllContent();
 }
 
 function getCurrentChapterByPage(page) {
@@ -721,12 +758,11 @@ function changeFontSize(delta) {
     document.getElementById('fontSizeDisplay').textContent = readingSettings.fontSize + 'px';
     applySettings();
     saveSettings();
-    // Пересчитываем страницы после изменения размера шрифта
+    
+    // Пересчитываем размеры после изменения шрифта
     setTimeout(() => {
-        calculateTotalPages();
-        updatePageNumbers();
-        updateProgressBar();
-        updateNavigationButtons();
+        calculatePageDimensions();
+        applyContentTransform();
     }, 100);
 }
 
@@ -734,12 +770,11 @@ function changeFontFamily(family) {
     readingSettings.fontFamily = family;
     applySettings();
     saveSettings();
-    // Пересчитываем страницы после изменения шрифта
+    
+    // Пересчитываем размеры после изменения шрифта
     setTimeout(() => {
-        calculateTotalPages();
-        updatePageNumbers();
-        updateProgressBar();
-        updateNavigationButtons();
+        calculatePageDimensions();
+        applyContentTransform();
     }, 100);
 }
 
@@ -767,12 +802,11 @@ function setTextWidth(width) {
     
     applySettings();
     saveSettings();
-    // Пересчитываем страницы после изменения ширины
+    
+    // Пересчитываем размеры после изменения ширины
     setTimeout(() => {
-        calculateTotalPages();
-        updatePageNumbers();
-        updateProgressBar();
-        updateNavigationButtons();
+        calculatePageDimensions();
+        applyContentTransform();
     }, 100);
 }
 
@@ -787,12 +821,11 @@ function setLineHeight(height) {
     
     applySettings();
     saveSettings();
-    // Пересчитываем страницы после изменения интервала
+    
+    // Пересчитываем размеры после изменения межстрочного интервала
     setTimeout(() => {
-        calculateTotalPages();
-        updatePageNumbers();
-        updateProgressBar();
-        updateNavigationButtons();
+        calculatePageDimensions();
+        applyContentTransform();
     }, 100);
 }
 
@@ -872,6 +905,7 @@ function saveSettings() {
 // Сохранение прогресса чтения
 function saveReadingProgress() {
     const progressData = {
+        currentScrollOffset: currentScrollOffset,
         currentPage: currentPage,
         currentChapter: currentChapter,
         lastReadTime: new Date().toISOString()
@@ -884,13 +918,9 @@ function loadReadingProgress() {
     const saved = localStorage.getItem('readingProgress');
     if (saved) {
         const progressData = JSON.parse(saved);
+        currentScrollOffset = progressData.currentScrollOffset || 0;
         currentPage = progressData.currentPage || 1;
         currentChapter = progressData.currentChapter || 0;
-        
-        // Обновляем контент и интерфейс
-        updateContent();
-        updateProgressBar();
-        updatePageNumbers();
     }
 }
 
