@@ -488,25 +488,21 @@ function initializeReaderProtection() {
 
 // Рассчитываем размеры страницы
 function calculatePageDimensions() {
-    const container = document.querySelector('.reader-container');
+    const wrapper = document.querySelector('.text-content-wrapper');
     const textContent = document.getElementById('textContent');
     
-    if (!container || !textContent) return;
+    if (!wrapper || !textContent) return;
     
-    // Получаем стили контейнера для учета padding
-    const containerStyle = window.getComputedStyle(container);
-    const paddingTop = parseFloat(containerStyle.paddingTop) || 0;
-    const paddingBottom = parseFloat(containerStyle.paddingBottom) || 0;
-    
-    // Высота видимой области = высота контейнера минус вертикальные padding'и
-    pageHeight = container.clientHeight - paddingTop - paddingBottom;
+    // Высота видимой области = высота обертки
+    // Это и есть размер одной "страницы"
+    pageHeight = wrapper.clientHeight;
     
     // Если высота слишком маленькая, используем fallback
     if (pageHeight < 100) {
         const viewportHeight = window.innerHeight;
         const headerHeight = document.querySelector('.reader-header')?.offsetHeight || 80;
         const navHeight = document.querySelector('.page-navigation')?.offsetHeight || 70;
-        pageHeight = viewportHeight - headerHeight - navHeight - paddingTop - paddingBottom - 20; // 20px запас
+        pageHeight = viewportHeight - headerHeight - navHeight - 20; // 20px запас
     }
     
     // Общая высота контента
@@ -524,9 +520,7 @@ function calculatePageDimensions() {
         totalPages,
         currentPage,
         currentScrollOffset,
-        paddingTop,
-        paddingBottom,
-        containerHeight: container.clientHeight,
+        wrapperHeight: wrapper.clientHeight,
         viewportHeight: window.innerHeight
     });
 }

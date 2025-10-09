@@ -170,12 +170,14 @@ body {
 .reader-container {
     max-width: 800px;
     margin: 0 auto;
-    padding: 0 2rem;
+    padding: 0 2rem; /* Только горизонтальный padding */
     transition: max-width 0.3s ease;
     height: 100%;
     overflow: hidden;
     position: relative;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
 }
 
 .reader-container.narrow {
@@ -186,6 +188,14 @@ body {
     max-width: 1000px;
 }
 
+/* Обертка для текстового контента с overflow */
+.text-content-wrapper {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
 /* Текстовый контент */
 .text-content {
     font-size: 16px;
@@ -194,8 +204,7 @@ body {
     /* Контент может быть любой высоты - сдвигается вертикально */
     min-height: 100%;
     width: 100%;
-    padding-top: 1rem;
-    box-sizing: border-box;
+    padding: 1rem 0; /* Вертикальный padding для красоты */
     transform: translateY(0);
     transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
     /* Дополнительная защита от копирования */
@@ -695,8 +704,7 @@ body {
     }
     
     .text-content {
-        font-size: 15px;
-        padding-top: 0.75rem;
+        padding: 0.5rem 0;
     }
     
     .chapter-title {
@@ -707,6 +715,10 @@ body {
     .section-title {
         font-size: 1.2rem;
         margin: 1rem 0 0.75rem 0;
+    }
+    
+    .text-content {
+        font-size: 15px;
     }
     
     .text-block {
@@ -787,7 +799,7 @@ body {
 @media (max-width: 480px) {
     .text-content {
         font-size: 14px;
-        padding-top: 0.5rem;
+        padding: 0.35rem 0;
     }
     
     .text-block {
