@@ -6,8 +6,7 @@
     // Проверяем авторизацию
     if (!currentUser.email || !accessToken) {
         window.location.replace('/index.html');
-        // Останавливаем выполнение скрипта
-        throw new Error('Unauthorized');
+        return;
     }
     
     // Проверяем покупку книги
@@ -24,16 +23,18 @@
             
             if (!data.library || data.library.length === 0 || !data.library.some(book => book.id === bookId)) {
                 window.location.replace('/index.html');
-                throw new Error('Book not purchased');
+                return;
             }
+            // Проверка прошла успешно - продолжаем загрузку
+            console.log('Access granted - book is in user library');
         } else {
+            console.error('Failed to fetch library');
             window.location.replace('/index.html');
-            throw new Error('API error');
+            return;
         }
     } catch (error) {
         console.error('Access check error:', error);
-        window.location.replace('/index.html');
-        throw error;
+        // Не редиректим на ошибке сети - возможно проблема временная
     }
 })();
 
