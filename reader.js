@@ -788,8 +788,8 @@ function closeSettings() {
 }
 
 function changeFontSize(delta) {
-    // Запоминаем текущую страницу
-    const previousPage = currentPage;
+    // Запоминаем процент прогресса вместо номера страницы
+    const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
     
     readingSettings.fontSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
     document.getElementById('fontSizeDisplay').textContent = readingSettings.fontSize + 'px';
@@ -801,17 +801,17 @@ function changeFontSize(delta) {
     setTimeout(() => {
         calculatePageDimensions();
         
-        // Сохраняем примерную позицию: пересчитываем offset для той же страницы
-        currentScrollOffset = (previousPage - 1) * pageHeight;
+        // Восстанавливаем позицию по проценту прогресса
+        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
         
         applyContentTransform();
-        console.log('🔤 Font size changed, recalculated position');
+        console.log('🔤 Font size changed, progress:', Math.round(progressPercent * 100) + '%');
     }, 300);
 }
 
 function changeFontFamily(family) {
-    // Запоминаем текущую страницу
-    const previousPage = currentPage;
+    // Запоминаем процент прогресса
+    const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
     
     readingSettings.fontFamily = family;
     applySettings();
@@ -821,11 +821,11 @@ function changeFontFamily(family) {
     setTimeout(() => {
         calculatePageDimensions();
         
-        // Сохраняем примерную позицию
-        currentScrollOffset = (previousPage - 1) * pageHeight;
+        // Восстанавливаем позицию по проценту прогресса
+        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
         
         applyContentTransform();
-        console.log('🔤 Font family changed, recalculated position');
+        console.log('🔤 Font family changed, progress:', Math.round(progressPercent * 100) + '%');
     }, 300);
 }
 
@@ -843,8 +843,8 @@ function setTheme(theme) {
 }
 
 function setTextWidth(width) {
-    // Запоминаем текущую страницу
-    const previousPage = currentPage;
+    // Запоминаем процент прогресса
+    const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
     
     readingSettings.textWidth = width;
     
@@ -861,17 +861,17 @@ function setTextWidth(width) {
     setTimeout(() => {
         calculatePageDimensions();
         
-        // Сохраняем примерную позицию
-        currentScrollOffset = (previousPage - 1) * pageHeight;
+        // Восстанавливаем позицию по проценту прогресса
+        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
         
         applyContentTransform();
-        console.log('📏 Text width changed, recalculated position');
+        console.log('📏 Text width changed, progress:', Math.round(progressPercent * 100) + '%');
     }, 300);
 }
 
 function setLineHeight(height) {
-    // Запоминаем текущую страницу
-    const previousPage = currentPage;
+    // Запоминаем процент прогресса
+    const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
     
     readingSettings.lineHeight = height;
     
@@ -888,11 +888,11 @@ function setLineHeight(height) {
     setTimeout(() => {
         calculatePageDimensions();
         
-        // Сохраняем примерную позицию
-        currentScrollOffset = (previousPage - 1) * pageHeight;
+        // Восстанавливаем позицию по проценту прогресса
+        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
         
         applyContentTransform();
-        console.log('📐 Line height changed, recalculated position');
+        console.log('📐 Line height changed, progress:', Math.round(progressPercent * 100) + '%');
     }, 300);
 }
 
