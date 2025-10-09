@@ -493,24 +493,35 @@ function calculatePageDimensions() {
     
     if (!container || !textContent) return;
     
-    // Высота видимой области
+    // Высота видимой области = высота контейнера
+    // Это уже учитывает header и navigation благодаря calc() в CSS
     pageHeight = container.clientHeight;
+    
+    // Если высота слишком маленькая, используем fallback
+    if (pageHeight < 100) {
+        const viewportHeight = window.innerHeight;
+        const headerHeight = document.querySelector('.reader-header')?.offsetHeight || 80;
+        const navHeight = document.querySelector('.page-navigation')?.offsetHeight || 70;
+        pageHeight = viewportHeight - headerHeight - navHeight - 20; // 20px запас
+    }
     
     // Общая высота контента
     totalContentHeight = textContent.scrollHeight;
     
     // Количество страниц = высота контента / высота экрана (округляем вверх)
-    totalPages = Math.ceil(totalContentHeight / pageHeight);
+    totalPages = Math.max(1, Math.ceil(totalContentHeight / pageHeight));
     
     // Текущая страница на основе текущего offset
-    currentPage = Math.floor(currentScrollOffset / pageHeight) + 1;
+    currentPage = Math.min(totalPages, Math.floor(currentScrollOffset / pageHeight) + 1);
     
     console.log('Page dimensions:', {
         pageHeight,
         totalContentHeight,
         totalPages,
         currentPage,
-        currentScrollOffset
+        currentScrollOffset,
+        containerHeight: container.clientHeight,
+        viewportHeight: window.innerHeight
     });
 }
 
