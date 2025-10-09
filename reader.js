@@ -68,7 +68,7 @@
 
 // Глобальные переменные
 let currentPage = 1;
-let totalPages = 52;
+let totalPages = 1;
 let currentChapter = 0;
 let isBookmarked = false;
 let readingSettings = {
@@ -78,6 +78,10 @@ let readingSettings = {
     textWidth: 'medium',
     lineHeight: 1.6
 };
+
+// Переменные для динамической пагинации
+let pageHeight = 0;
+let contentHeight = 0;
 
 // Данные книги (главы)
 const chapters = [
@@ -221,6 +225,30 @@ document.addEventListener('DOMContentLoaded', function() {
             changeFontFamily(this.value);
         });
     }
+    
+    // Инициализируем динамическую пагинацию
+    setTimeout(() => {
+        calculateTotalPages();
+        updatePageNumbers();
+        updateProgressBar();
+        updateNavigationButtons();
+    }, 100);
+    
+    // Обработчик скролла для обновления номера страницы
+    const textContent = document.getElementById('textContent');
+    if (textContent) {
+        textContent.addEventListener('scroll', updateCurrentPageFromScroll);
+    }
+    
+    // Пересчитываем страницы при изменении размера окна
+    window.addEventListener('resize', () => {
+        setTimeout(() => {
+            calculateTotalPages();
+            updatePageNumbers();
+            updateProgressBar();
+            updateNavigationButtons();
+        }, 100);
+    });
 });
 
 // Функция инициализации всех кнопок
@@ -470,26 +498,60 @@ function initializeReaderProtection() {
     }
 }
 
+// Вычисление количества страниц
+function calculateTotalPages() {
+    const textContent = document.getElementById('textContent');
+    if (!textContent) return 1;
+    
+    pageHeight = textContent.clientHeight;
+    contentHeight = textContent.scrollHeight;
+    
+    if (pageHeight === 0) return 1;
+    totalPages = Math.ceil(contentHeight / pageHeight);
+    return totalPages;
+}
+
+// Обновление текущей страницы на основе скролла
+function updateCurrentPageFromScroll() {
+    const textContent = document.getElementById('textContent');
+    if (!textContent || pageHeight === 0) return;
+    
+    const scrollTop = textContent.scrollTop;
+    currentPage = Math.floor(scrollTop / pageHeight) + 1;
+    
+    updatePageNumbers();
+    updateProgressBar();
+    updateNavigationButtons();
+}
+
 function previousPage() {
+    const textContent = document.getElementById('textContent');
+    if (!textContent) return;
+    
     if (currentPage > 1) {
         currentPage--;
-        updateContent();
-        updateProgressBar();
+        const scrollPosition = (currentPage - 1) * pageHeight;
+        textContent.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+        
         updatePageNumbers();
+        updateProgressBar();
         updateNavigationButtons();
-        scrollToTop();
         saveReadingProgress();
     }
 }
 
 function nextPage() {
+    const textContent = document.getElementById('textContent');
+    if (!textContent) return;
+    
     if (currentPage < totalPages) {
         currentPage++;
-        updateContent();
-        updateProgressBar();
+        const scrollPosition = (currentPage - 1) * pageHeight;
+        textContent.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+        
         updatePageNumbers();
+        updateProgressBar();
         updateNavigationButtons();
-        scrollToTop();
         saveReadingProgress();
     }
 }
@@ -498,12 +560,15 @@ function updateNavigationButtons() {
     const prevBtn = document.querySelector('.prev-btn');
     const nextBtn = document.querySelector('.next-btn');
     
-    prevBtn.disabled = currentPage === 1;
-    nextBtn.disabled = currentPage === totalPages;
+    if (prevBtn) prevBtn.disabled = currentPage === 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
 }
 
 function scrollToTop() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const textContent = document.getElementById('textContent');
+    if (textContent) {
+        textContent.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 }
 
 // Функции оглавления
@@ -656,12 +721,26 @@ function changeFontSize(delta) {
     document.getElementById('fontSizeDisplay').textContent = readingSettings.fontSize + 'px';
     applySettings();
     saveSettings();
+    // Пересчитываем страницы после изменения размера шрифта
+    setTimeout(() => {
+        calculateTotalPages();
+        updatePageNumbers();
+        updateProgressBar();
+        updateNavigationButtons();
+    }, 100);
 }
 
 function changeFontFamily(family) {
     readingSettings.fontFamily = family;
     applySettings();
     saveSettings();
+    // Пересчитываем страницы после изменения шрифта
+    setTimeout(() => {
+        calculateTotalPages();
+        updatePageNumbers();
+        updateProgressBar();
+        updateNavigationButtons();
+    }, 100);
 }
 
 function setTheme(theme) {
@@ -688,6 +767,13 @@ function setTextWidth(width) {
     
     applySettings();
     saveSettings();
+    // Пересчитываем страницы после изменения ширины
+    setTimeout(() => {
+        calculateTotalPages();
+        updatePageNumbers();
+        updateProgressBar();
+        updateNavigationButtons();
+    }, 100);
 }
 
 function setLineHeight(height) {
@@ -701,6 +787,13 @@ function setLineHeight(height) {
     
     applySettings();
     saveSettings();
+    // Пересчитываем страницы после изменения интервала
+    setTimeout(() => {
+        calculateTotalPages();
+        updatePageNumbers();
+        updateProgressBar();
+        updateNavigationButtons();
+    }, 100);
 }
 
 function applySettings() {

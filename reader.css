@@ -189,9 +189,14 @@ body {
     line-height: 1.6;
     transition: all 0.3s ease;
     position: relative;
-    /* Постраничный режим - контент обрезается по высоте */
+    /* Постраничный режим с прокруткой */
     height: 100%;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    /* Скрываем скроллбар */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
     /* Дополнительная защита от копирования */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -203,6 +208,11 @@ body {
     -webkit-user-modify: read-only !important;
     /* Защита от печати */
     -webkit-print-color-adjust: exact !important;
+}
+
+/* Скрываем скроллбар в WebKit */
+.text-content::-webkit-scrollbar {
+    display: none;
 }
 
 
