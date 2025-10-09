@@ -3,38 +3,71 @@
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
     const accessToken = localStorage.getItem('accessToken');
     
+    console.log('Reader access check:', {
+        hasUser: !!currentUser.email,
+        userEmail: currentUser.email,
+        hasToken: !!accessToken,
+        tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none'
+    });
+    
     // Проверяем авторизацию
     if (!currentUser.email || !accessToken) {
-        window.location.replace('/index.html');
+        console.error('Access denied: No user or token');
+        alert('Ошибка: Необходима авторизация.\nПожалуйста, выйдите и войдите заново.');
+        setTimeout(() => window.location.replace('/index.html'), 3000);
         return;
     }
     
     // Проверяем покупку книги
     try {
+        console.log('Fetching user library...');
         const response = await fetch('/api/users/library', {
             headers: {
                 'Authorization': `Bearer ${accessToken}`
             }
         });
         
+        console.log('Library API response:', {
+            status: response.status,
+            ok: response.ok
+        });
+        
         if (response.ok) {
             const data = await response.json();
             const bookId = 1; // ID книги Хаджи Гирай
             
+            console.log('Library data:', {
+                hasLibrary: !!data.library,
+                libraryLength: data.library?.length || 0,
+                books: data.library?.map(b => ({ id: b.id, title: b.title })),
+                checkingBookId: bookId,
+                bookFound: data.library?.some(book => book.id === bookId)
+            });
+            
             if (!data.library || data.library.length === 0 || !data.library.some(book => book.id === bookId)) {
-                window.location.replace('/index.html');
+                console.error('Access denied: Book not in library');
+                alert('Книга не найдена в вашей библиотеке.\n\nВозможные причины:\n- Платеж еще обрабатывается\n- Необходимо выйти и войти заново\n\nПопробуйте обновить страницу через 10 секунд.');
+                setTimeout(() => window.location.replace('/index.html'), 5000);
                 return;
             }
             // Проверка прошла успешно - продолжаем загрузку
-            console.log('Access granted - book is in user library');
+            console.log('✅ Access granted - book is in user library');
         } else {
-            console.error('Failed to fetch library');
-            window.location.replace('/index.html');
+            const errorText = await response.text();
+            console.error('Failed to fetch library:', {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorText
+            });
+            alert(`Ошибка проверки доступа (${response.status}).\n\nПопробуйте:\n1. Выйти и войти заново\n2. Обновить страницу\n\nЕсли проблема не исчезнет, обратитесь в поддержку.`);
+            setTimeout(() => window.location.replace('/index.html'), 5000);
             return;
         }
     } catch (error) {
         console.error('Access check error:', error);
-        // Не редиректим на ошибке сети - возможно проблема временная
+        alert(`Ошибка сети: ${error.message}\n\nПроверьте интернет-соединение и попробуйте снова.`);
+        // Не редиректим сразу - даем время прочитать ошибку
+        setTimeout(() => window.location.replace('/index.html'), 5000);
     }
 })();
 
