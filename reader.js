@@ -13,8 +13,7 @@
     // Проверяем авторизацию
     if (!currentUser.email || !accessToken) {
         console.error('Access denied: No user or token');
-        alert('Ошибка: Необходима авторизация.\nПожалуйста, выйдите и войдите заново.');
-        setTimeout(() => window.location.replace('/index.html'), 3000);
+        window.location.replace('/index.html');
         return;
     }
     
@@ -46,8 +45,7 @@
             
             if (!data.library || data.library.length === 0 || !data.library.some(book => book.id === bookId)) {
                 console.error('Access denied: Book not in library');
-                alert('Книга не найдена в вашей библиотеке.\n\nВозможные причины:\n- Платеж еще обрабатывается\n- Необходимо выйти и войти заново\n\nПопробуйте обновить страницу через 10 секунд.');
-                setTimeout(() => window.location.replace('/index.html'), 5000);
+                window.location.replace('/index.html');
                 return;
             }
             // Проверка прошла успешно - продолжаем загрузку
@@ -59,15 +57,12 @@
                 statusText: response.statusText,
                 error: errorText
             });
-            alert(`Ошибка проверки доступа (${response.status}).\n\nПопробуйте:\n1. Выйти и войти заново\n2. Обновить страницу\n\nЕсли проблема не исчезнет, обратитесь в поддержку.`);
-            setTimeout(() => window.location.replace('/index.html'), 5000);
+            window.location.replace('/index.html');
             return;
         }
     } catch (error) {
         console.error('Access check error:', error);
-        alert(`Ошибка сети: ${error.message}\n\nПроверьте интернет-соединение и попробуйте снова.`);
-        // Не редиректим сразу - даем время прочитать ошибку
-        setTimeout(() => window.location.replace('/index.html'), 5000);
+        // При ошибке сети не редиректим - возможно временная проблема
     }
 })();
 
