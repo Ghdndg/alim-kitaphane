@@ -490,38 +490,42 @@ function initializeReaderProtection() {
 function calculatePageDimensions() {
     const wrapper = document.querySelector('.text-content-wrapper');
     const textContent = document.getElementById('textContent');
+    const header = document.querySelector('.reader-header');
+    const navigation = document.querySelector('.page-navigation');
     
     if (!wrapper || !textContent) return;
     
-    // Высота видимой области = высота обертки
-    // Это и есть размер одной "страницы"
-    pageHeight = wrapper.clientHeight;
+    // ВАЖНО: pageHeight = реальная видимая высота окна минус хедер и навигация
+    const viewportHeight = window.innerHeight;
+    const headerHeight = header?.offsetHeight || 0;
+    const navHeight = navigation?.offsetHeight || 0;
     
-    // Если высота слишком маленькая, используем fallback
-    if (pageHeight < 100) {
-        const viewportHeight = window.innerHeight;
-        const headerHeight = document.querySelector('.reader-header')?.offsetHeight || 80;
-        const navHeight = document.querySelector('.page-navigation')?.offsetHeight || 70;
-        pageHeight = viewportHeight - headerHeight - navHeight - 20; // 20px запас
-    }
+    // Высота видимой области для текста
+    pageHeight = viewportHeight - headerHeight - navHeight;
+    
+    console.log('📏 Calculating page dimensions:', {
+        viewportHeight,
+        headerHeight,
+        navHeight,
+        calculatedPageHeight: pageHeight,
+        wrapperHeight: wrapper.clientHeight
+    });
     
     // Общая высота контента
     totalContentHeight = textContent.scrollHeight;
     
-    // Количество страниц = высота контента / высота экрана (округляем вверх)
+    // Количество страниц = высота контента / высота видимой области
     totalPages = Math.max(1, Math.ceil(totalContentHeight / pageHeight));
     
     // Текущая страница на основе текущего offset
     currentPage = Math.min(totalPages, Math.floor(currentScrollOffset / pageHeight) + 1);
     
-    console.log('Page dimensions:', {
-        pageHeight,
-        totalContentHeight,
+    console.log('📖 Page info:', {
+        pageHeight: Math.round(pageHeight),
+        totalContentHeight: Math.round(totalContentHeight),
         totalPages,
         currentPage,
-        currentScrollOffset,
-        wrapperHeight: wrapper.clientHeight,
-        viewportHeight: window.innerHeight
+        currentScrollOffset: Math.round(currentScrollOffset)
     });
 }
 
