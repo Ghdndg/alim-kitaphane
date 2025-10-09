@@ -832,7 +832,7 @@ async function handleRegister(event) {
             library: data.user.library || []
         };
         
-        localStorage.setItem('currentUser', JSON.stringify(email));
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
         registeredUsers.set(email, currentUser);
         saveUsersToStorage();
         
@@ -890,7 +890,7 @@ async function handleLogin(event) {
             library: data.user.library || []
         };
         
-        localStorage.setItem('currentUser', JSON.stringify(email));
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
         registeredUsers.set(email, currentUser);
         purchasedBooks = new Set(currentUser.library);
         saveUsersToStorage();
@@ -1317,22 +1317,41 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Проверяем, есть ли сохраненная сессия
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
-        const userEmail = JSON.parse(savedUser);
-        const user = registeredUsers.get(userEmail);
-        if (user) {
-            currentUser = user;
-            purchasedBooks = new Set(user.library || []);
-            updateAuthInterface();
+        try {
+            const userData = JSON.parse(savedUser);
+            // Поддерживаем старый формат (строка email) и новый (объект)
+            const userEmail = typeof userData === 'string' ? userData : userData.email;
             
-            // Загружаем актуальную библиотеку из API
-            await loadUserLibraryFromAPI();
+            if (userEmail) {
+                const user = registeredUsers.get(userEmail);
+                if (user) {
+                    currentUser = user;
+                    purchasedBooks = new Set(user.library || []);
+                    updateAuthInterface();
+                    
+                    // Загружаем актуальную библиотеку из API
+                    await loadUserLibraryFromAPI();
+                } else if (typeof userData === 'object' && userData.email) {
+                    // Если это объект и нет в registeredUsers, используем его напрямую
+                    currentUser = userData;
+                    purchasedBooks = new Set(currentUser.library || []);
+                    registeredUsers.set(currentUser.email, currentUser);
+                    updateAuthInterface();
+                    
+                    // Загружаем актуальную библиотеку из API
+                    await loadUserLibraryFromAPI();
+                }
+            }
+        } catch (e) {
+            console.error('Error loading saved user:', e);
+            localStorage.removeItem('currentUser');
         }
     }
     
     // Сохраняем сессию при изменении
     window.addEventListener('beforeunload', function() {
         if (currentUser) {
-            localStorage.setItem('currentUser', JSON.stringify(currentUser.email));
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
         } else {
             localStorage.removeItem('currentUser');
         }
