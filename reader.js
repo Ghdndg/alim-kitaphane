@@ -493,16 +493,20 @@ function calculatePageDimensions() {
     
     if (!container || !textContent) return;
     
-    // Высота видимой области = высота контейнера
-    // Это уже учитывает header и navigation благодаря calc() в CSS
-    pageHeight = container.clientHeight;
+    // Получаем стили контейнера для учета padding
+    const containerStyle = window.getComputedStyle(container);
+    const paddingTop = parseFloat(containerStyle.paddingTop) || 0;
+    const paddingBottom = parseFloat(containerStyle.paddingBottom) || 0;
+    
+    // Высота видимой области = высота контейнера минус вертикальные padding'и
+    pageHeight = container.clientHeight - paddingTop - paddingBottom;
     
     // Если высота слишком маленькая, используем fallback
     if (pageHeight < 100) {
         const viewportHeight = window.innerHeight;
         const headerHeight = document.querySelector('.reader-header')?.offsetHeight || 80;
         const navHeight = document.querySelector('.page-navigation')?.offsetHeight || 70;
-        pageHeight = viewportHeight - headerHeight - navHeight - 20; // 20px запас
+        pageHeight = viewportHeight - headerHeight - navHeight - paddingTop - paddingBottom - 20; // 20px запас
     }
     
     // Общая высота контента
@@ -520,6 +524,8 @@ function calculatePageDimensions() {
         totalPages,
         currentPage,
         currentScrollOffset,
+        paddingTop,
+        paddingBottom,
         containerHeight: container.clientHeight,
         viewportHeight: window.innerHeight
     });
