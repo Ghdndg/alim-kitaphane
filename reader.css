@@ -169,7 +169,7 @@ body {
 .reader-container {
     max-width: 800px;
     margin: 0 auto;
-    padding: 0 2rem;
+    padding: 0;
     transition: max-width 0.3s ease;
     height: 100%;
     overflow: hidden;
@@ -188,10 +188,14 @@ body {
 .text-content {
     font-size: 16px;
     line-height: 1.6;
-    position: relative;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
     /* Контент может быть любой высоты - сдвигается вертикально */
-    min-height: 100%;
     width: 100%;
+    padding: 0 2rem;
+    box-sizing: border-box;
     transform: translateY(0);
     transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
     /* Дополнительная защита от копирования */
@@ -682,10 +686,6 @@ body {
         height: calc(100vh - 55px - 50px); /* viewport минус хедер и навигация на мобильном */
     }
     
-    .reader-container {
-        padding: 0 0.75rem;
-    }
-    
     .chapter-title {
         font-size: 1.5rem;
         margin-bottom: 1rem;
@@ -698,6 +698,7 @@ body {
     
     .text-content {
         font-size: 15px;
+        padding: 0 0.75rem;
     }
     
     .sidebar {
