@@ -223,11 +223,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Пересчитываем размеры при изменении размера окна
     let resizeTimer;
     window.addEventListener('resize', function() {
+        // Запоминаем процент прогресса
+        const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
+        
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
             calculatePageDimensions();
+            
+            // Восстанавливаем позицию по проценту прогресса
+            currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
+            
             applyContentTransform();
-        }, 250);
+            console.log('🔄 Window resized, position adjusted');
+        }, 300);
     });
     
     // Добавляем обработчик для сохранения настроек при изменении семейства шрифтов
@@ -780,19 +788,31 @@ function closeSettings() {
 }
 
 function changeFontSize(delta) {
+    // Запоминаем текущую страницу
+    const previousPage = currentPage;
+    
     readingSettings.fontSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
     document.getElementById('fontSizeDisplay').textContent = readingSettings.fontSize + 'px';
     applySettings();
     saveSettings();
     
     // Пересчитываем размеры после изменения шрифта
+    // Увеличиваем задержку чтобы браузер успел перерендерить
     setTimeout(() => {
         calculatePageDimensions();
+        
+        // Сохраняем примерную позицию: пересчитываем offset для той же страницы
+        currentScrollOffset = (previousPage - 1) * pageHeight;
+        
         applyContentTransform();
-    }, 100);
+        console.log('🔤 Font size changed, recalculated position');
+    }, 300);
 }
 
 function changeFontFamily(family) {
+    // Запоминаем текущую страницу
+    const previousPage = currentPage;
+    
     readingSettings.fontFamily = family;
     applySettings();
     saveSettings();
@@ -800,8 +820,13 @@ function changeFontFamily(family) {
     // Пересчитываем размеры после изменения шрифта
     setTimeout(() => {
         calculatePageDimensions();
+        
+        // Сохраняем примерную позицию
+        currentScrollOffset = (previousPage - 1) * pageHeight;
+        
         applyContentTransform();
-    }, 100);
+        console.log('🔤 Font family changed, recalculated position');
+    }, 300);
 }
 
 function setTheme(theme) {
@@ -818,6 +843,9 @@ function setTheme(theme) {
 }
 
 function setTextWidth(width) {
+    // Запоминаем текущую страницу
+    const previousPage = currentPage;
+    
     readingSettings.textWidth = width;
     
     // Обновляем активную кнопку
@@ -832,11 +860,19 @@ function setTextWidth(width) {
     // Пересчитываем размеры после изменения ширины
     setTimeout(() => {
         calculatePageDimensions();
+        
+        // Сохраняем примерную позицию
+        currentScrollOffset = (previousPage - 1) * pageHeight;
+        
         applyContentTransform();
-    }, 100);
+        console.log('📏 Text width changed, recalculated position');
+    }, 300);
 }
 
 function setLineHeight(height) {
+    // Запоминаем текущую страницу
+    const previousPage = currentPage;
+    
     readingSettings.lineHeight = height;
     
     // Обновляем активную кнопку
@@ -851,8 +887,13 @@ function setLineHeight(height) {
     // Пересчитываем размеры после изменения межстрочного интервала
     setTimeout(() => {
         calculatePageDimensions();
+        
+        // Сохраняем примерную позицию
+        currentScrollOffset = (previousPage - 1) * pageHeight;
+        
         applyContentTransform();
-    }, 100);
+        console.log('📐 Line height changed, recalculated position');
+    }, 300);
 }
 
 function applySettings() {
