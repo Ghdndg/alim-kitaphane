@@ -5,9 +5,9 @@
     
     // Проверяем авторизацию
     if (!currentUser.email || !accessToken) {
-        alert('Для чтения книги необходимо войти в аккаунт');
-        window.location.href = '/index.html';
-        return;
+        window.location.replace('/index.html');
+        // Останавливаем выполнение скрипта
+        throw new Error('Unauthorized');
     }
     
     // Проверяем покупку книги
@@ -23,20 +23,17 @@
             const bookId = 1; // ID книги Хаджи Гирай
             
             if (!data.library || data.library.length === 0 || !data.library.some(book => book.id === bookId)) {
-                alert('Вы не приобрели эту книгу. Пожалуйста, купите книгу для доступа к чтению.');
-                window.location.href = '/index.html';
-                return;
+                window.location.replace('/index.html');
+                throw new Error('Book not purchased');
             }
         } else {
-            alert('Ошибка проверки доступа к книге');
-            window.location.href = '/index.html';
-            return;
+            window.location.replace('/index.html');
+            throw new Error('API error');
         }
     } catch (error) {
         console.error('Access check error:', error);
-        alert('Не удалось проверить доступ к книге');
-        window.location.href = '/index.html';
-        return;
+        window.location.replace('/index.html');
+        throw error;
     }
 })();
 
