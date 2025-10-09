@@ -1249,8 +1249,66 @@ function closeModal(modal) {
     modal.style.display = 'none';
 }
 
+// Функция загрузки библиотеки пользователя из API
+async function loadUserLibraryFromAPI() {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken || !currentUser) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/users/library', {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            // Обновляем библиотеку пользователя
+            if (data.library && data.library.length > 0) {
+                currentUser.library = data.library.map(book => book.id);
+                purchasedBooks = new Set(currentUser.library);
+                
+                // Обновляем в localStorage
+                const userEmail = currentUser.email;
+                if (registeredUsers.has(userEmail)) {
+                    const user = registeredUsers.get(userEmail);
+                    user.library = currentUser.library;
+                    registeredUsers.set(userEmail, user);
+                    saveUsersToStorage();
+                }
+                
+                // Обновляем интерфейс
+                updateBookPurchaseStatus();
+            }
+        }
+    } catch (error) {
+        console.error('Error loading user library:', error);
+    }
+}
+
+// Функция обновления статуса покупки книги на странице
+function updateBookPurchaseStatus() {
+    if (!currentUser || !currentUser.library) return;
+    
+    const bookId = 1; // ID книги Хаджи Гирай
+    const isBookPurchased = currentUser.library.includes(bookId);
+    
+    // Находим все кнопки покупки и заменяем на "Читать" если книга куплена
+    const purchaseButtons = document.querySelectorAll('#purchaseBtn, #purchaseBtn2');
+    purchaseButtons.forEach(btn => {
+        if (isBookPurchased && btn) {
+            btn.innerHTML = '<i class="fas fa-book-open"></i> Читать';
+            btn.onclick = function() {
+                window.location.href = 'reader.html';
+            };
+        }
+    });
+}
+
 // Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     loadUsersFromStorage();
     updateAuthInterface();
     initializeContentProtection(); // Включаем защиту
@@ -1263,8 +1321,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const user = registeredUsers.get(userEmail);
         if (user) {
             currentUser = user;
-            purchasedBooks = new Set(user.library);
+            purchasedBooks = new Set(user.library || []);
             updateAuthInterface();
+            
+            // Загружаем актуальную библиотеку из API
+            await loadUserLibraryFromAPI();
         }
     }
     
