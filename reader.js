@@ -500,18 +500,29 @@ function calculatePageDimensions() {
     const headerHeight = header?.offsetHeight || 0;
     const navHeight = navigation?.offsetHeight || 0;
     
-    // Высота видимой области для текста
-    pageHeight = viewportHeight - headerHeight - navHeight;
+    // Получаем padding контента
+    const textContentStyle = window.getComputedStyle(textContent);
+    const paddingTop = parseFloat(textContentStyle.paddingTop) || 0;
+    const paddingBottom = parseFloat(textContentStyle.paddingBottom) || 0;
+    const totalPadding = paddingTop + paddingBottom;
+    
+    // Высота видимой области для текста минус padding
+    // Также вычитаем небольшую коррекцию (~1 строка) для более плавного перелистывания
+    const lineHeight = parseFloat(textContentStyle.lineHeight) || 24;
+    pageHeight = viewportHeight - headerHeight - navHeight - totalPadding - (lineHeight * 0.1);
     
     console.log('📏 Calculating page dimensions:', {
         viewportHeight,
         headerHeight,
         navHeight,
-        calculatedPageHeight: pageHeight,
+        paddingTop,
+        paddingBottom,
+        lineHeight: Math.round(lineHeight),
+        calculatedPageHeight: Math.round(pageHeight),
         wrapperHeight: wrapper.clientHeight
     });
     
-    // Общая высота контента
+    // Общая высота контента (без padding)
     totalContentHeight = textContent.scrollHeight;
     
     // Количество страниц = высота контента / высота видимой области
