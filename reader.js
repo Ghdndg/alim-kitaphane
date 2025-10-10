@@ -554,14 +554,14 @@ function applyContentTransform() {
     if (!textContent) return;
     
     // Ограничиваем offset чтобы не выйти за пределы
-    const maxOffset = totalContentHeight - pageHeight;
+    const maxOffset = Math.max(0, totalContentHeight - pageHeight);
     currentScrollOffset = Math.max(0, Math.min(currentScrollOffset, maxOffset));
     
     // Применяем transform
     textContent.style.transform = `translateY(-${currentScrollOffset}px)`;
     
-    // Обновляем номер страницы
-    currentPage = Math.floor(currentScrollOffset / pageHeight) + 1;
+    // Обновляем номер страницы (минимум 1)
+    currentPage = Math.max(1, Math.floor(currentScrollOffset / pageHeight) + 1);
     
     updateProgressBar();
     updatePageNumbers();
@@ -609,8 +609,13 @@ function updateNavigationButtons() {
     const prevBtn = document.querySelector('.prev-btn');
     const nextBtn = document.querySelector('.next-btn');
     
-    prevBtn.disabled = currentPage === 1;
-    nextBtn.disabled = currentPage === totalPages;
+    if (!prevBtn || !nextBtn) return;
+    
+    // Используем currentScrollOffset для более точной проверки
+    const maxOffset = Math.max(0, totalContentHeight - pageHeight);
+    
+    prevBtn.disabled = currentScrollOffset <= 0;
+    nextBtn.disabled = currentScrollOffset >= maxOffset;
 }
 
 function scrollToTop() {
