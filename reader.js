@@ -66,13 +66,12 @@
     }
 })();
 
-// Глобальные переменные для Kindle-стайл виртуальной пагинации
-let virtualPages = []; // Массив виртуальных страниц (каждая содержит HTML контент)
+// Column-based глобальные переменные (горизонтальное перелистывание)
 let currentPage = 1;
 let totalPages = 1;
 let currentChapter = 0;
 let isBookmarked = false;
-let allContentHTML = ''; // Весь контент книги в HTML
+let columnWidth = 0; // Ширина одной колонки (страницы)
 let readingSettings = {
     fontSize: 16,
     fontFamily: 'Inter',
@@ -219,21 +218,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Загружаем весь контент книги
     loadAllContent();
     
-    // Пересчитываем размеры при изменении размера окна
+    // Column-based: Пересчёт при изменении размера окна
     let resizeTimer;
     window.addEventListener('resize', function() {
-        // Запоминаем процент прогресса
-        const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
+        const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
         
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-            calculatePageDimensions();
-            
-            // Восстанавливаем позицию по проценту прогресса
-            currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
-            
-            applyContentTransform();
-            console.log('🔄 Window resized, position adjusted');
+            calculateColumns();
+            currentPage = Math.max(1, Math.round(progressPercent * totalPages));
+            goToPage(currentPage, false);
+            console.log('🔄 Window resized, page:', currentPage, '/', totalPages);
         }, 300);
     });
     
@@ -493,156 +488,80 @@ function initializeReaderProtection() {
     }
 }
 
-// Kindle-стайл: Виртуальная пагинация - разбиваем контент на страницы
-function calculateVirtualPages() {
-    const textContent = document.getElementById('textContent');
+// Column-based: Рассчитываем колонки (горизонтальное перелистывание)
+function calculateColumns() {
     const wrapper = document.querySelector('.text-content-wrapper');
-    const header = document.querySelector('.reader-header');
-    const navigation = document.querySelector('.page-navigation');
+    const textContent = document.getElementById('textContent');
     
-    if (!textContent || !wrapper) return;
+    if (!wrapper || !textContent) return;
     
-    // Рассчитываем доступную высоту для текста
-    const viewportHeight = window.innerHeight;
-    const headerHeight = header?.offsetHeight || 0;
-    const navHeight = navigation?.offsetHeight || 0;
+    // Ширина одной колонки = ширина окна просмотра
+    columnWidth = wrapper.clientWidth;
     
-    const textContentStyle = window.getComputedStyle(textContent);
-    const paddingTop = parseFloat(textContentStyle.paddingTop) || 0;
-    const paddingBottom = parseFloat(textContentStyle.paddingBottom) || 0;
+    // Применяем CSS columns
+    textContent.style.columnWidth = `${columnWidth}px`;
+    textContent.style.columnGap = '0';
+    textContent.style.height = `${wrapper.clientHeight}px`;
     
-    // Доступная высота для одной страницы
-    const availableHeight = viewportHeight - headerHeight - navHeight - paddingTop - paddingBottom - 20; // -20 для запаса
-    
-    console.log('📏 Virtual pagination setup:', {
-        viewportHeight,
-        headerHeight,
-        navHeight,
-        paddingTop,
-        paddingBottom,
-        availableHeight
-    });
-    
-    // Создаём временный невидимый контейнер для измерения
-    const tempContainer = document.createElement('div');
-    tempContainer.style.cssText = `
-        position: absolute;
-        visibility: hidden;
-        width: ${textContent.offsetWidth}px;
-        font-size: ${textContentStyle.fontSize};
-        font-family: ${textContentStyle.fontFamily};
-        line-height: ${textContentStyle.lineHeight};
-        padding: 0;
-    `;
-    document.body.appendChild(tempContainer);
-    
-    // Разбиваем HTML на элементы
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = allContentHTML;
-    const allElements = Array.from(tempDiv.children);
-    
-    virtualPages = [];
-    let currentPageHTML = '';
-    let currentHeight = 0;
-    
-    for (let i = 0; i < allElements.length; i++) {
-        const element = allElements[i];
-        const elementHTML = element.outerHTML;
+    // Даём браузеру время на рендеринг
+    setTimeout(() => {
+        // Общая ширина контента = количество колонок
+        const totalWidth = textContent.scrollWidth;
+        totalPages = Math.max(1, Math.round(totalWidth / columnWidth));
         
-        // Добавляем элемент во временный контейнер для измерения
-        tempContainer.innerHTML = currentPageHTML + elementHTML;
-        const newHeight = tempContainer.offsetHeight;
+        console.log('📖 Column-based pagination:', {
+            columnWidth,
+            totalWidth,
+            totalPages,
+            currentPage
+        });
         
-        // Если элемент помещается на текущую страницу
-        if (newHeight <= availableHeight) {
-            currentPageHTML += elementHTML;
-            currentHeight = newHeight;
-        } else {
-            // Текущая страница заполнена - сохраняем её
-            if (currentPageHTML) {
-                virtualPages.push(currentPageHTML);
-            }
-            // Начинаем новую страницу с текущего элемента
-            currentPageHTML = elementHTML;
-            tempContainer.innerHTML = elementHTML;
-            currentHeight = tempContainer.offsetHeight;
-        }
-    }
-    
-    // Добавляем последнюю страницу
-    if (currentPageHTML) {
-        virtualPages.push(currentPageHTML);
-    }
-    
-    // Удаляем временный контейнер
-    document.body.removeChild(tempContainer);
-    
-    totalPages = virtualPages.length || 1;
-    currentPage = Math.min(currentPage, totalPages); // Корректируем текущую страницу
-    
-    console.log('📚 Virtual pages calculated:', {
-        totalPages,
-        currentPage,
-        pagesPreview: virtualPages.slice(0, 3).map((p, i) => `Page ${i + 1}: ${p.substring(0, 100)}...`)
-    });
+        updatePageNumbers();
+        updateNavigationButtons();
+    }, 100);
 }
 
-// Kindle-стайл: Отображаем текущую страницу с fade-анимацией
-function renderCurrentPage(animated = false) {
+// Column-based: Переход на страницу (горизонтальный свайп)
+function goToPage(page, animated = true) {
     const textContent = document.getElementById('textContent');
-    if (!textContent || virtualPages.length === 0) return;
+    if (!textContent) return;
     
-    // Корректируем номер страницы
-    currentPage = Math.max(1, Math.min(currentPage, totalPages));
+    currentPage = Math.max(1, Math.min(page, totalPages));
     
-    const pageHTML = virtualPages[currentPage - 1] || '';
+    // Рассчитываем смещение по X (каждая страница = одна колонка)
+    const offsetX = (currentPage - 1) * columnWidth;
     
     if (animated) {
-        // Fade-out анимация
-        textContent.style.opacity = '0';
-        
-        setTimeout(() => {
-            // Меняем контент
-            textContent.innerHTML = pageHTML;
-            textContent.style.transform = 'none'; // Убираем transform
-            
-            // Fade-in анимация
-            setTimeout(() => {
-                textContent.style.opacity = '1';
-            }, 50);
-        }, 300);
+        textContent.style.transition = 'transform 0.3s ease-out';
     } else {
-        // Без анимации
-        textContent.innerHTML = pageHTML;
-        textContent.style.transform = 'none';
-        textContent.style.opacity = '1';
+        textContent.style.transition = 'none';
     }
+    
+    textContent.style.transform = `translateX(-${offsetX}px)`;
     
     updateProgressBar();
     updatePageNumbers();
     updateNavigationButtons();
     saveReadingProgress();
     
-    console.log('📄 Page rendered:', currentPage, '/', totalPages);
+    console.log('📄 Page:', currentPage, '/', totalPages, 'offset:', offsetX);
 }
 
-// Kindle-стайл: Предыдущая страница
+// Column-based: Предыдущая страница
 function previousPage() {
     if (currentPage > 1) {
-        currentPage--;
-        renderCurrentPage(true); // С анимацией
+        goToPage(currentPage - 1, true);
     }
 }
 
-// Kindle-стайл: Следующая страница
+// Column-based: Следующая страница
 function nextPage() {
     if (currentPage < totalPages) {
-        currentPage++;
-        renderCurrentPage(true); // С анимацией
+        goToPage(currentPage + 1, true);
     }
 }
 
-// Kindle-стайл: Обновляем кнопки навигации
+// Column-based: Обновление кнопок навигации
 function updateNavigationButtons() {
     const prevBtn = document.querySelector('.prev-btn');
     const nextBtn = document.querySelector('.next-btn');
@@ -682,21 +601,24 @@ function closeSidebar() {
     document.body.style.overflow = 'auto';
 }
 
-// Kindle-стайл: Переход к главе
+// Column-based: Переход к главе
 function goToChapter(chapterIndex) {
     currentChapter = chapterIndex;
     
-    // Ищем страницу, на которой находится заголовок главы
-    const chapterTitle = chapters[chapterIndex]?.title;
-    if (!chapterTitle) return;
+    // Находим заголовок главы
+    const textContent = document.getElementById('textContent');
+    const chapterTitles = textContent.querySelectorAll('.chapter-title, .section-title');
     
-    // Ищем в каком virtualPage находится эта глава
-    for (let i = 0; i < virtualPages.length; i++) {
-        if (virtualPages[i].includes(chapterTitle)) {
-            currentPage = i + 1;
-            renderCurrentPage(true); // С анимацией
-            break;
-        }
+    if (chapterTitles[chapterIndex]) {
+        const chapterElement = chapterTitles[chapterIndex];
+        
+        // Получаем горизонтальную позицию элемента
+        const offsetLeft = chapterElement.offsetLeft;
+        
+        // Вычисляем на какой странице находится глава
+        const targetPage = Math.floor(offsetLeft / columnWidth) + 1;
+        
+        goToPage(targetPage, true);
     }
     
     updateActiveChapter();
@@ -715,16 +637,18 @@ function updateActiveChapter() {
     });
 }
 
-// Загружаем весь контент книги сразу
-// Kindle-стайл: Загрузка и разбивка контента на виртуальные страницы
+// Column-based: Загрузка контента
 function loadAllContent() {
-    // Объединяем весь контент всех глав в один HTML
-    allContentHTML = chapters.map(chapter => chapter.content).join('');
+    const textContent = document.getElementById('textContent');
     
-    // После загрузки контента разбиваем на страницы
+    // Объединяем весь контент всех глав
+    const allContent = chapters.map(chapter => chapter.content).join('');
+    textContent.innerHTML = allContent;
+    
+    // Рассчитываем колонки и переходим на нужную страницу
     setTimeout(() => {
-        calculateVirtualPages();
-        renderCurrentPage();
+        calculateColumns();
+        goToPage(currentPage, false);
         updateActiveChapter();
     }, 100);
 }
@@ -818,9 +742,8 @@ function closeSettings() {
     saveSettings();
 }
 
-// Kindle-стайл: Изменение размера шрифта
+// Column-based: Изменение размера шрифта
 function changeFontSize(delta) {
-    // Запоминаем прогресс (процент от общего количества страниц)
     const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
     
     readingSettings.fontSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
@@ -828,19 +751,15 @@ function changeFontSize(delta) {
     applySettings();
     saveSettings();
     
-    // Пересчитываем виртуальные страницы
     setTimeout(() => {
-        calculateVirtualPages();
-        
-        // Восстанавливаем позицию по проценту
-        currentPage = Math.max(1, Math.ceil(progressPercent * totalPages));
-        
-        renderCurrentPage(false); // Без анимации
+        calculateColumns();
+        currentPage = Math.max(1, Math.round(progressPercent * totalPages));
+        goToPage(currentPage, false);
         console.log('🔤 Font size changed, page:', currentPage, '/', totalPages);
     }, 300);
 }
 
-// Kindle-стайл: Изменение шрифта
+// Column-based: Изменение шрифта
 function changeFontFamily(family) {
     const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
     
@@ -849,9 +768,9 @@ function changeFontFamily(family) {
     saveSettings();
     
     setTimeout(() => {
-        calculateVirtualPages();
-        currentPage = Math.max(1, Math.ceil(progressPercent * totalPages));
-        renderCurrentPage(false);
+        calculateColumns();
+        currentPage = Math.max(1, Math.round(progressPercent * totalPages));
+        goToPage(currentPage, false);
         console.log('📝 Font family changed, page:', currentPage, '/', totalPages);
     }, 300);
 }
@@ -869,14 +788,12 @@ function setTheme(theme) {
     saveSettings();
 }
 
+// Column-based: Изменение ширины текста
 function setTextWidth(width) {
-    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
-    const oldTotalContentHeight = totalContentHeight;
-    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
+    const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
     
     readingSettings.textWidth = width;
     
-    // Обновляем активную кнопку
     const widthButtons = document.querySelectorAll('.width-btn');
     widthButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.width === width);
@@ -885,26 +802,20 @@ function setTextWidth(width) {
     applySettings();
     saveSettings();
     
-    // Пересчитываем размеры после изменения ширины
     setTimeout(() => {
-        calculatePageDimensions(); // Обновляет totalContentHeight
-        
-        // Применяем процент к НОВОМУ totalContentHeight
-        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
-        
-        applyContentTransform();
-        console.log('📏 Text width changed, progress:', Math.round(progressPercent * 100) + '%');
+        calculateColumns();
+        currentPage = Math.max(1, Math.round(progressPercent * totalPages));
+        goToPage(currentPage, false);
+        console.log('📏 Text width changed, page:', currentPage, '/', totalPages);
     }, 300);
 }
 
+// Column-based: Изменение межстрочного интервала
 function setLineHeight(height) {
-    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
-    const oldTotalContentHeight = totalContentHeight;
-    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
+    const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
     
     readingSettings.lineHeight = height;
     
-    // Обновляем активную кнопку
     const heightButtons = document.querySelectorAll('.lh-btn');
     heightButtons.forEach(btn => {
         btn.classList.toggle('active', parseFloat(btn.dataset.height) === height);
@@ -913,15 +824,11 @@ function setLineHeight(height) {
     applySettings();
     saveSettings();
     
-    // Пересчитываем размеры после изменения межстрочного интервала
     setTimeout(() => {
-        calculatePageDimensions(); // Обновляет totalContentHeight
-        
-        // Применяем процент к НОВОМУ totalContentHeight
-        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
-        
-        applyContentTransform();
-        console.log('📐 Line height changed, progress:', Math.round(progressPercent * 100) + '%');
+        calculateColumns();
+        currentPage = Math.max(1, Math.round(progressPercent * totalPages));
+        goToPage(currentPage, false);
+        console.log('📐 Line height changed, page:', currentPage, '/', totalPages);
     }, 300);
 }
 
@@ -998,10 +905,9 @@ function saveSettings() {
     localStorage.setItem('readingSettings', JSON.stringify(readingSettings));
 }
 
-// Сохранение прогресса чтения
+// Column-based: Сохранение прогресса
 function saveReadingProgress() {
     const progressData = {
-        currentScrollOffset: currentScrollOffset,
         currentPage: currentPage,
         currentChapter: currentChapter,
         lastReadTime: new Date().toISOString()
@@ -1009,12 +915,11 @@ function saveReadingProgress() {
     localStorage.setItem('readingProgress', JSON.stringify(progressData));
 }
 
-// Загрузка прогресса чтения
+// Column-based: Загрузка прогресса
 function loadReadingProgress() {
     const saved = localStorage.getItem('readingProgress');
     if (saved) {
         const progressData = JSON.parse(saved);
-        currentScrollOffset = progressData.currentScrollOffset || 0;
         currentPage = progressData.currentPage || 1;
         currentChapter = progressData.currentChapter || 0;
     }

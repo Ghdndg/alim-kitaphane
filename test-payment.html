@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест модалки оплаты</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-button {
+            background: #c9a96e;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e8;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Тест модалки оплаты</h1>
+    
+    <button class="test-button" onclick="testPaymentModal()">
+        Открыть модалку оплаты
+    </button>
+    
+    <div id="result" class="result">
+        <p>Нажмите кнопку чтобы протестировать модалку оплаты</p>
+        <p><strong>Ожидаемое поведение:</strong></p>
+        <ul>
+            <li>✅ Модалка должна открыться</li>
+            <li>✅ Крестик должен закрывать модалку</li>
+            <li>✅ Кнопка оплаты должна вызывать функцию (возможно с ошибкой API)</li>
+            <li>❌ НЕ должно быть CSP ошибок в консоли</li>
+        </ul>
+    </div>
+    
+    <script src="js/api.js"></script>
+    <script src="script.js"></script>
+    <script>
+        function testPaymentModal() {
+            console.log('🧪 Тестируем модалку оплаты...');
+            
+            // Имитируем наличие пользователя для тестирования
+            currentUser = {
+                id: 1,
+                name: 'Тестовый пользователь',
+                email: 'test@example.com',
+                library: []
+            };
+            
+            try {
+                showPaymentModal();
+                document.getElementById('result').innerHTML = `
+                    <p style="color: green;">✅ Модалка оплаты открыта успешно!</p>
+                    <p>Проверьте:</p>
+                    <ul>
+                        <li>Работает ли крестик для закрытия</li>
+                        <li>Работает ли кнопка "Оплатить через ЮKassa"</li>
+                        <li>Нет ли CSP ошибок в консоли браузера (F12)</li>
+                    </ul>
+                `;
+            } catch (e) {
+                document.getElementById('result').innerHTML = `
+                    <p style="color: red;">❌ Ошибка: ${e.message}</p>
+                `;
+                console.error('Ошибка тестирования:', e);
+            }
+        }
+    </script>
+
+    <!-- Футер с реквизитами -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="footer-requisites">
+                <h3>Реквизиты</h3>
+                <div class="requisites-info">
+                    <p><strong>Куртсеитова Эмине Алимовна</strong></p>
+                    <p>ИНН: <strong>910235108571</strong></p>
+                </div>
+            </div>
+            <div class="footer-links" style="margin-top: 1rem;">
+                <a href="terms.html" style="color: #bdc3c7; text-decoration: none; font-size: 0.9rem;">Пользовательское соглашение и Публичная оферта</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
