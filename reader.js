@@ -1,612 +1,655 @@
-// Проверка доступа к читалке
+// Профессиональная читалка с правильной логикой отображения
+let currentUser = null;
+let currentBook = null;
+let currentChapter = 0;
+let chapters = [];
+let readingSettings = {
+    fontSize: 16,
+    fontFamily: 'Georgia',
+    textWidth: 'medium',
+    lineHeight: 1.6,
+    theme: 'light'
+};
+
+// Новая система отображения страниц
+let pageSystem = {
+    currentPage: 1,
+    totalPages: 1,
+    pageHeight: 0,
+    contentHeight: 0,
+    visibleContent: null,
+    pageContainer: null,
+    isAnimating: false
+};
+
+// Инициализация читалки
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Инициализация профессиональной читалки');
+    
+    // Проверяем доступ
+    checkAccess().then(() => {
+        initializeReader();
+        loadSettings();
+        initializeButtons();
+    }).catch(error => {
+        console.error('❌ Ошибка доступа:', error);
+        window.location.replace('index.html');
+    });
+});
+
+// Проверка доступа к книге
 async function checkAccess() {
     try {
-        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-        
-        if (!currentUser.id) {
-            console.error('❌ No user ID found');
-            window.location.replace('index.html');
-            return;
+        // Получаем пользователя из localStorage
+        const userData = localStorage.getItem('currentUser');
+        if (!userData) {
+            throw new Error('Пользователь не авторизован');
         }
+        
+        currentUser = JSON.parse(userData);
+        console.log('👤 Пользователь:', currentUser.name);
         
         // Получаем ID книги из URL
         const urlParams = new URLSearchParams(window.location.search);
         const bookId = urlParams.get('book') || '1';
         
-        console.log('🔍 Checking access for user:', currentUser.id, 'book:', bookId);
-        
-        // Проверяем доступ через API
+        // Проверяем доступ к книге через API
         const response = await fetch(`/api/books/${bookId}/access`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${currentUser.token || ''}`,
+                'Authorization': `Bearer ${currentUser.token || 'dummy'}`,
                 'Content-Type': 'application/json'
             }
         });
         
         if (!response.ok) {
-            console.error('❌ Access denied:', response.status);
-            window.location.replace('index.html');
-            return;
+            throw new Error('Нет доступа к книге');
         }
         
-        const data = await response.json();
-        console.log('✅ Access granted:', data);
+        const bookData = await response.json();
+        currentBook = bookData.book;
+        chapters = bookData.chapters;
         
-        return { user: currentUser, bookId: parseInt(bookId) };
+        console.log('📚 Книга загружена:', currentBook.title);
+        console.log('📖 Глав:', chapters.length);
         
     } catch (error) {
-        console.error('❌ Access check failed:', error);
-        window.location.replace('index.html');
-        return null;
-    }
-}
-
-// Профессиональная система отображения текста
-class ProfessionalReader {
-    constructor() {
-        this.container = null;
-        this.content = null;
-        this.currentPage = 1;
-        this.totalPages = 1;
-        this.pageHeight = 0;
-        this.contentHeight = 0;
-        this.isAnimating = false;
-        this.settings = this.loadSettings();
-        
-        // Привязка методов
-        this.handleResize = this.handleResize.bind(this);
-        this.handleKeyPress = this.handleKeyPress.bind(this);
-    }
-    
-    async init() {
-        // Проверяем доступ (пока отключаем для тестирования)
-        // const access = await checkAccess();
-        // if (!access) return;
-        
-        this.container = document.getElementById('textContent');
-        if (!this.container) {
-            console.error('❌ Text content container not found');
-            return;
-        }
-        
-        // Загружаем контент
-        await this.loadContent(1); // Используем bookId = 1
-        
-        // Инициализируем читалку
-        this.setupEventListeners();
-        this.calculateDimensions();
-        this.applySettings();
-        this.renderCurrentPage();
-        this.updateUI();
-        
-        console.log('📚 Professional reader initialized');
-    }
-    
-    async loadContent(bookId) {
-        try {
-            // Пока используем статический контент из HTML
-            // В будущем можно загружать через API
-            this.content = `Алим Мидат къалемининъ асери - "Хаджи Гирай" тарихий романы, Къырым Хандырынынъ буюк шахсиетлеринден биси акъкъында. Бу эсер садедже тарихий вакъалары анлатмай, бельки бир халкънынъ миллий рухыны, адетлерини ве ихтикъадларыны косьтере.
-
-Хаджи Гирай Хан - Къырым тарихининъ эн буюк шахсиетлеринден биси. Онынъ заманында Къырым Хандыры эвджинде эди. Дипломатия, тиджарет ве санат инкишаф этмишти. Къырым татарлары бутюн дюньяда хюрметле къаралырды.
-
-Романда автор бизни XV-XVI асырларына алып бара. О заман Къырым - Ширк Юлынынъ мархиз ноктъаларындан биси эди. Буюк тиджарет йоллары бу топракъларны кечирди. Шерклерден ве Гъарбдан тджирлер келирди.
-
-Лякин бу романнынъ асыл къыммети онда ки, о бизге эски Къырымнынъ гуньдалыкъ хаятыны косьтере. Халкъ насыл яшайды эди, не фикир этирди, неге инанырды - бутюн бунлар эсерде ачыкъ косьтерильди.
-
-Бахчисарай сарайы гунь догъгъанда алтын нурларда ялтырай эди. Хаджи Гирай Хан диванханеде олтуре, девлет ишлерини косьтерир эди. Йанында вязирлери, нукерлери ве алимлери турды.
-
-"Хан хазретлери," деди башвезири Эмин-эфенди, "Османлы падишахындан мектуп кельди. Алтын Орданынъ калдыкълары акъын этмекте девам этелер."
-
-Хаджи Гирай элини сакъалына сурте, дерин фикирге далды. Бильди ки бу меселелер коптан берли девлет ичюн зарарлы. Лякин чёзюм тапмакъ керек эди.
-
-Сарайнынъ пенджерелеринден Къырым тагъларынынъ гозеллиги корюне эди. Табиатнынъ бу буюксюзюне бакъып, Хан фикир этир эди: "Аллах бизге не гузель бир ер берди. Бу топракъларны къоруамакъ ве инкишаф эттирмек бизим боржумыз."
-
-Диванханенинъ дуварларында эски Хан аталарынынъ сюретлери асыла эди. Эр биси кенди заманында Къырым ичюн харп этмишти, халкъны къорумышты. Шимди бу борч Хаджи Гирайгъа дюшмишти.
-
-"Везири Азам," деди Хан, "халкъымызнынъ ахвалыны насыл коресинъ? Хасылат ем болды му?"
-
-"Аллахгъа шукюр, Хан хазретлери, бу йыл беркетли кечти. Буюдайлар ем олды, багълар мейве берди. Халкъ разы," джавап берди Эмин-эфенди.
-
-Бу хабер Хаджи Гирайны куванталы. Чюнки билир эди ки девлетнинъ асыл гучи - халкъынынъ гузель яшавы. Тодж халкъ разы олмаса, хандарнынъ да икбали олмаз.`;
-            
-            // Очищаем контейнер
-            this.container.innerHTML = '';
-            
-            // Создаем элементы страниц
-            this.createPages();
-            
-        } catch (error) {
-            console.error('❌ Failed to load content:', error);
-            this.container.innerHTML = '<p>Ошибка загрузки контента</p>';
-        }
-    }
-    
-    createPages() {
-        if (!this.content) return;
-        
-        // Разбиваем контент на страницы
-        const words = this.content.split(' ');
-        const wordsPerPage = this.calculateWordsPerPage();
-        
-        this.pages = [];
-        for (let i = 0; i < words.length; i += wordsPerPage) {
-            const pageWords = words.slice(i, i + wordsPerPage);
-            this.pages.push(pageWords.join(' '));
-        }
-        
-        this.totalPages = this.pages.length;
-        console.log(`📄 Created ${this.totalPages} pages`);
-    }
-    
-    calculateWordsPerPage() {
-        // Базовое количество слов на страницу
-        let baseWords = 200;
-        
-        // Корректируем в зависимости от настроек
-        if (this.settings.fontSize <= 14) baseWords += 50;
-        if (this.settings.fontSize >= 18) baseWords -= 50;
-        
-        if (this.settings.textWidth === 'narrow') baseWords -= 30;
-        if (this.settings.textWidth === 'wide') baseWords += 30;
-        
-        if (this.settings.lineHeight <= 1.4) baseWords += 20;
-        if (this.settings.lineHeight >= 1.8) baseWords -= 20;
-        
-        return Math.max(50, baseWords);
-    }
-    
-    calculateDimensions() {
-        if (!this.container) return;
-        
-        // Получаем размеры контейнера
-        const rect = this.container.getBoundingClientRect();
-        this.pageHeight = rect.height;
-        
-        // Рассчитываем высоту контента
-        this.contentHeight = this.pageHeight * this.totalPages;
-        
-        console.log('📏 Dimensions calculated:', {
-            pageHeight: this.pageHeight,
-            totalPages: this.totalPages,
-            contentHeight: this.contentHeight
-        });
-    }
-    
-    renderCurrentPage() {
-        if (!this.container || !this.pages || this.currentPage < 1 || this.currentPage > this.totalPages) {
-            return;
-        }
-        
-        const pageContent = this.pages[this.currentPage - 1];
-        this.container.innerHTML = `<div class="page-content">${pageContent}</div>`;
-        
-        console.log(`📖 Rendered page ${this.currentPage}/${this.totalPages}`);
-    }
-    
-    nextPage() {
-        if (this.isAnimating || this.currentPage >= this.totalPages) return;
-        
-        this.isAnimating = true;
-        this.currentPage++;
-        
-        // Анимация перелистывания
-        this.container.style.transform = 'translateX(-100%)';
-        this.container.style.opacity = '0.7';
-        
-        setTimeout(() => {
-            this.renderCurrentPage();
-            this.container.style.transform = 'translateX(0)';
-            this.container.style.opacity = '1';
-            
-            setTimeout(() => {
-                this.isAnimating = false;
-                this.updateUI();
-                this.saveProgress();
-            }, 150);
-        }, 150);
-    }
-    
-    previousPage() {
-        if (this.isAnimating || this.currentPage <= 1) return;
-        
-        this.isAnimating = true;
-        this.currentPage--;
-        
-        // Анимация перелистывания
-        this.container.style.transform = 'translateX(100%)';
-        this.container.style.opacity = '0.7';
-        
-        setTimeout(() => {
-            this.renderCurrentPage();
-            this.container.style.transform = 'translateX(0)';
-            this.container.style.opacity = '1';
-            
-            setTimeout(() => {
-                this.isAnimating = false;
-                this.updateUI();
-                this.saveProgress();
-            }, 150);
-        }, 150);
-    }
-    
-    goToPage(pageNumber) {
-        if (this.isAnimating || pageNumber < 1 || pageNumber > this.totalPages) return;
-        
-        this.currentPage = pageNumber;
-        this.renderCurrentPage();
-        this.updateUI();
-        this.saveProgress();
-    }
-    
-    updateUI() {
-        // Обновляем прогресс-бар
-        const progress = (this.currentPage / this.totalPages) * 100;
-        const progressBar = document.querySelector('.progress-bar');
-        if (progressBar) {
-            progressBar.style.width = `${progress}%`;
-        }
-        
-        // Обновляем номера страниц
-        const pageNumbers = document.querySelectorAll('.page-number');
-        pageNumbers.forEach(el => {
-            el.textContent = `${this.currentPage} / ${this.totalPages}`;
-        });
-        
-        // Обновляем кнопки навигации
-        const prevBtn = document.querySelector('.prev-btn');
-        const nextBtn = document.querySelector('.next-btn');
-        
-        if (prevBtn) prevBtn.disabled = this.currentPage <= 1;
-        if (nextBtn) nextBtn.disabled = this.currentPage >= this.totalPages;
-    }
-    
-    applySettings() {
-        if (!this.container) return;
-        
-        const pageContent = this.container.querySelector('.page-content');
-        if (!pageContent) return;
-        
-        // Применяем настройки шрифта
-        pageContent.style.fontSize = `${this.settings.fontSize}px`;
-        pageContent.style.fontFamily = this.settings.fontFamily;
-        pageContent.style.lineHeight = this.settings.lineHeight;
-        
-        // Применяем настройки ширины
-        const widthClasses = {
-            'narrow': 'text-narrow',
-            'medium': 'text-medium', 
-            'wide': 'text-wide'
-        };
-        
-        // Убираем старые классы
-        Object.values(widthClasses).forEach(cls => {
-            pageContent.classList.remove(cls);
-        });
-        
-        // Добавляем новый класс
-        pageContent.classList.add(widthClasses[this.settings.textWidth]);
-        
-        // Применяем тему
-        const themeClasses = {
-            'light': 'theme-light',
-            'sepia': 'theme-sepia',
-            'dark': 'theme-dark'
-        };
-        
-        // Убираем старые классы темы
-        Object.values(themeClasses).forEach(cls => {
-            document.body.classList.remove(cls);
-        });
-        
-        // Добавляем новую тему
-        document.body.classList.add(themeClasses[this.settings.theme]);
-        
-        console.log('🎨 Settings applied:', this.settings);
-    }
-    
-    changeFontSize(delta) {
-        const newSize = Math.max(12, Math.min(24, this.settings.fontSize + delta));
-        if (newSize === this.settings.fontSize) return;
-        
-        this.settings.fontSize = newSize;
-        this.applySettings();
-        this.saveSettings();
-        
-        // Пересоздаем страницы с новыми настройками
-        this.createPages();
-        this.calculateDimensions();
-        this.renderCurrentPage();
-        this.updateUI();
-        
-        console.log(`🔤 Font size changed to ${newSize}px`);
-    }
-    
-    changeFontFamily(family) {
-        this.settings.fontFamily = family;
-        this.applySettings();
-        this.saveSettings();
-        
-        // Пересоздаем страницы
-        this.createPages();
-        this.calculateDimensions();
-        this.renderCurrentPage();
-        this.updateUI();
-        
-        console.log(`📝 Font family changed to ${family}`);
-    }
-    
-    setTextWidth(width) {
-        this.settings.textWidth = width;
-        this.applySettings();
-        this.saveSettings();
-        
-        // Пересоздаем страницы
-        this.createPages();
-        this.calculateDimensions();
-        this.renderCurrentPage();
-        this.updateUI();
-        
-        console.log(`📏 Text width changed to ${width}`);
-    }
-    
-    setLineHeight(height) {
-        this.settings.lineHeight = height;
-        this.applySettings();
-        this.saveSettings();
-        
-        // Пересоздаем страницы
-        this.createPages();
-        this.calculateDimensions();
-        this.renderCurrentPage();
-        this.updateUI();
-        
-        console.log(`📐 Line height changed to ${height}`);
-    }
-    
-    setTheme(theme) {
-        this.settings.theme = theme;
-        this.applySettings();
-        this.saveSettings();
-        
-        console.log(`🎨 Theme changed to ${theme}`);
-    }
-    
-    setupEventListeners() {
-        // Обработчики кнопок
-        const prevBtn = document.querySelector('.prev-btn');
-        const nextBtn = document.querySelector('.next-btn');
-        
-        if (prevBtn) prevBtn.addEventListener('click', () => this.previousPage());
-        if (nextBtn) nextBtn.addEventListener('click', () => this.nextPage());
-        
-        // Клавиатурные сокращения
-        document.addEventListener('keydown', this.handleKeyPress);
-        
-        // Изменение размера окна
-        window.addEventListener('resize', this.handleResize);
-        
-        // Обработчики настроек
-        this.setupSettingsHandlers();
-    }
-    
-    setupSettingsHandlers() {
-        // Кнопки размера шрифта
-        const fontSizeButtons = document.querySelectorAll('.font-size-btn');
-        fontSizeButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const delta = btn.dataset.delta ? parseInt(btn.dataset.delta) : 0;
-                this.changeFontSize(delta);
-            });
-        });
-        
-        // Кнопки семейства шрифтов
-        const fontFamilyButtons = document.querySelectorAll('.font-family-btn');
-        fontFamilyButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.changeFontFamily(btn.dataset.family);
-            });
-        });
-        
-        // Кнопки ширины текста
-        const widthButtons = document.querySelectorAll('.width-btn');
-        widthButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.setTextWidth(btn.dataset.width);
-            });
-        });
-        
-        // Кнопки межстрочного интервала
-        const lineHeightButtons = document.querySelectorAll('.lh-btn');
-        lineHeightButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.setLineHeight(parseFloat(btn.dataset.height));
-            });
-        });
-        
-        // Кнопки темы
-        const themeButtons = document.querySelectorAll('.theme-btn');
-        themeButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.setTheme(btn.dataset.theme);
-            });
-        });
-    }
-    
-    handleKeyPress(event) {
-        if (this.isAnimating) return;
-        
-        switch(event.key) {
-            case 'ArrowLeft':
-            case 'ArrowUp':
-                event.preventDefault();
-                this.previousPage();
-                break;
-            case 'ArrowRight':
-            case 'ArrowDown':
-            case ' ':
-                event.preventDefault();
-                this.nextPage();
-                break;
-            case 'Home':
-                event.preventDefault();
-                this.goToPage(1);
-                break;
-            case 'End':
-                event.preventDefault();
-                this.goToPage(this.totalPages);
-                break;
-        }
-    }
-    
-    handleResize() {
-        // Дебаунс для производительности
-        clearTimeout(this.resizeTimeout);
-        this.resizeTimeout = setTimeout(() => {
-            this.calculateDimensions();
-            this.createPages();
-            this.renderCurrentPage();
-            this.updateUI();
-        }, 250);
-    }
-    
-    loadSettings() {
-        const defaultSettings = {
-            fontSize: 16,
-            fontFamily: 'Georgia, serif',
-            textWidth: 'medium',
-            lineHeight: 1.6,
-            theme: 'light'
-        };
-        
-        try {
-            const saved = localStorage.getItem('readingSettings');
-            return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
-        } catch (error) {
-            console.error('❌ Failed to load settings:', error);
-            return defaultSettings;
-        }
-    }
-    
-    saveSettings() {
-        try {
-            localStorage.setItem('readingSettings', JSON.stringify(this.settings));
-        } catch (error) {
-            console.error('❌ Failed to save settings:', error);
-        }
-    }
-    
-    saveProgress() {
-        try {
-            const progress = {
-                page: this.currentPage,
-                totalPages: this.totalPages,
-                timestamp: Date.now()
-            };
-            localStorage.setItem('readingProgress', JSON.stringify(progress));
-        } catch (error) {
-            console.error('❌ Failed to save progress:', error);
-        }
-    }
-    
-    loadProgress() {
-        try {
-            const saved = localStorage.getItem('readingProgress');
-            if (saved) {
-                const progress = JSON.parse(saved);
-                if (progress.page && progress.page <= this.totalPages) {
-                    this.currentPage = progress.page;
-                    return true;
-                }
-            }
-        } catch (error) {
-            console.error('❌ Failed to load progress:', error);
-        }
-        return false;
+        console.error('❌ Ошибка проверки доступа:', error);
+        throw error;
     }
 }
 
 // Инициализация читалки
-let reader = null;
+function initializeReader() {
+    console.log('🔧 Инициализация системы отображения');
+    
+    // Создаем контейнер для страниц
+    createPageContainer();
+    
+    // Загружаем контент
+    loadAllContent();
+    
+    // Настраиваем систему страниц
+    setupPageSystem();
+    
+    // Загружаем прогресс
+    loadReadingProgress();
+    
+    console.log('✅ Читалка инициализирована');
+}
 
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        reader = new ProfessionalReader();
-        await reader.init();
-        
-        // Загружаем сохраненный прогресс
-        if (reader.loadProgress()) {
-            reader.renderCurrentPage();
-            reader.updateUI();
+// Создание контейнера для страниц
+function createPageContainer() {
+    const readerMain = document.querySelector('.reader-main');
+    const existingContent = document.getElementById('textContent');
+    
+    // Удаляем старый контент
+    if (existingContent) {
+        existingContent.remove();
+    }
+    
+    // Создаем новый контейнер
+    pageSystem.pageContainer = document.createElement('div');
+    pageSystem.pageContainer.className = 'page-container';
+    pageSystem.pageContainer.innerHTML = `
+        <div class="page-content" id="pageContent">
+            <div class="page-text" id="pageText"></div>
+        </div>
+    `;
+    
+    readerMain.appendChild(pageSystem.pageContainer);
+    
+    // Стили для контейнера
+    const style = document.createElement('style');
+    style.textContent = `
+        .page-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            background: var(--bg-color);
         }
         
-    } catch (error) {
-        console.error('❌ Failed to initialize reader:', error);
+        .page-content {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            right: 20px;
+            bottom: 80px;
+            overflow: hidden;
+            background: var(--bg-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .page-text {
+            padding: 30px;
+            height: 100%;
+            overflow: hidden;
+            font-family: var(--font-family);
+            font-size: var(--font-size);
+            line-height: var(--line-height);
+            color: var(--text-color);
+            text-align: justify;
+        }
+        
+        .page-turning {
+            transform: translateX(-100%);
+        }
+        
+        .page-turning-in {
+            transform: translateX(100%);
+            animation: slideIn 0.3s ease-in-out forwards;
+        }
+        
+        @keyframes slideIn {
+            to { transform: translateX(0); }
+        }
+        
+        @media (max-width: 768px) {
+            .page-content {
+                top: 60px;
+                left: 10px;
+                right: 10px;
+                bottom: 60px;
+            }
+            
+            .page-text {
+                padding: 20px;
+            }
+        }
+    `;
+    
+    document.head.appendChild(style);
+}
+
+// Загрузка всего контента
+async function loadAllContent() {
+    console.log('📖 Загрузка контента книги');
+    
+    let fullContent = '';
+    
+    for (let i = 0; i < chapters.length; i++) {
+        try {
+            const response = await fetch(`/api/books/${currentBook.id}/chapters/${chapters[i].id}`);
+            const chapterData = await response.json();
+            
+            fullContent += `<div class="chapter" data-chapter="${i}">`;
+            fullContent += `<h2 class="chapter-title">${chapters[i].title}</h2>`;
+            fullContent += `<div class="chapter-content">${chapterData.content}</div>`;
+            fullContent += `</div>`;
+            
+        } catch (error) {
+            console.error(`❌ Ошибка загрузки главы ${i}:`, error);
+        }
     }
+    
+    // Сохраняем полный контент
+    pageSystem.fullContent = fullContent;
+    console.log('✅ Контент загружен, символов:', fullContent.length);
+}
+
+// Настройка системы страниц
+function setupPageSystem() {
+    console.log('⚙️ Настройка системы страниц');
+    
+    // Применяем настройки
+    applySettings();
+    
+    // Рассчитываем размеры
+    calculatePageDimensions();
+    
+    // Отображаем первую страницу
+    displayCurrentPage();
+    
+    // Обновляем навигацию
+    updateNavigation();
+}
+
+// Расчет размеров страницы
+function calculatePageDimensions() {
+    const pageContent = document.getElementById('pageContent');
+    const pageText = document.getElementById('pageText');
+    
+    if (!pageContent || !pageText) return;
+    
+    // Получаем размеры видимой области
+    const containerRect = pageContent.getBoundingClientRect();
+    pageSystem.pageHeight = containerRect.height;
+    
+    // Временно помещаем весь контент для измерения
+    pageText.innerHTML = pageSystem.fullContent;
+    pageSystem.contentHeight = pageText.scrollHeight;
+    
+    // Рассчитываем количество страниц
+    pageSystem.totalPages = Math.max(1, Math.ceil(pageSystem.contentHeight / pageSystem.pageHeight));
+    
+    console.log('📏 Размеры страницы:', {
+        pageHeight: Math.round(pageSystem.pageHeight),
+        contentHeight: Math.round(pageSystem.contentHeight),
+        totalPages: pageSystem.totalPages
+    });
+}
+
+// Отображение текущей страницы
+function displayCurrentPage() {
+    if (pageSystem.isAnimating) return;
+    
+    const pageText = document.getElementById('pageText');
+    if (!pageText) return;
+    
+    // Рассчитываем видимую часть контента
+    const startOffset = (pageSystem.currentPage - 1) * pageSystem.pageHeight;
+    const endOffset = startOffset + pageSystem.pageHeight;
+    
+    // Создаем видимую страницу
+    const visibleContent = createVisiblePage(startOffset, endOffset);
+    pageText.innerHTML = visibleContent;
+    
+    // Обновляем навигацию
+    updateNavigation();
+    
+    // Сохраняем прогресс
+    saveReadingProgress();
+    
+    console.log(`📄 Страница ${pageSystem.currentPage}/${pageSystem.totalPages}`);
+}
+
+// Создание видимой страницы
+function createVisiblePage(startOffset, endOffset) {
+    // Создаем временный контейнер для измерения
+    const tempContainer = document.createElement('div');
+    tempContainer.style.cssText = `
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+        width: 100%;
+        font-family: var(--font-family);
+        font-size: var(--font-size);
+        line-height: var(--line-height);
+        color: var(--text-color);
+        text-align: justify;
+        padding: 30px;
+        box-sizing: border-box;
+    `;
+    tempContainer.innerHTML = pageSystem.fullContent;
+    document.body.appendChild(tempContainer);
+    
+    // Находим видимую часть
+    const visibleContent = extractVisibleContent(tempContainer, startOffset, endOffset);
+    
+    // Удаляем временный контейнер
+    document.body.removeChild(tempContainer);
+    
+    return visibleContent;
+}
+
+// Извлечение видимой части контента
+function extractVisibleContent(container, startOffset, endOffset) {
+    const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+    );
+    
+    let currentOffset = 0;
+    let visibleContent = '';
+    let node;
+    
+    while (node = walker.nextNode()) {
+        const text = node.textContent;
+        const nodeStart = currentOffset;
+        const nodeEnd = currentOffset + text.length;
+        
+        // Проверяем пересечение с видимой областью
+        if (nodeEnd > startOffset && nodeStart < endOffset) {
+            const visibleStart = Math.max(0, startOffset - nodeStart);
+            const visibleEnd = Math.min(text.length, endOffset - nodeStart);
+            
+            if (visibleStart < visibleEnd) {
+                const visibleText = text.substring(visibleStart, visibleEnd);
+                
+                // Создаем элемент с видимым текстом
+                const span = document.createElement('span');
+                span.textContent = visibleText;
+                visibleContent += span.outerHTML;
+            }
+        }
+        
+        currentOffset = nodeEnd;
+    }
+    
+    return visibleContent || '<p>Содержимое страницы</p>';
+}
+
+// Обновление навигации
+function updateNavigation() {
+    // Обновляем номер страницы
+    const pageNumbers = document.querySelector('.page-numbers');
+    if (pageNumbers) {
+        pageNumbers.textContent = `${pageSystem.currentPage} / ${pageSystem.totalPages}`;
+    }
+    
+    // Обновляем прогресс-бар
+    const progressBar = document.querySelector('.progress-bar');
+    if (progressBar) {
+        const progress = (pageSystem.currentPage / pageSystem.totalPages) * 100;
+        progressBar.style.width = `${progress}%`;
+    }
+    
+    // Обновляем кнопки навигации
+    const prevBtn = document.querySelector('.prev-btn');
+    const nextBtn = document.querySelector('.next-btn');
+    
+    if (prevBtn) {
+        prevBtn.disabled = pageSystem.currentPage <= 1;
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = pageSystem.currentPage >= pageSystem.totalPages;
+    }
+}
+
+// Переход к предыдущей странице
+function previousPage() {
+    if (pageSystem.currentPage <= 1 || pageSystem.isAnimating) return;
+    
+    pageSystem.currentPage--;
+    animatePageTransition('prev');
+}
+
+// Переход к следующей странице
+function nextPage() {
+    if (pageSystem.currentPage >= pageSystem.totalPages || pageSystem.isAnimating) return;
+    
+    pageSystem.currentPage++;
+    animatePageTransition('next');
+}
+
+// Анимация перехода страницы
+function animatePageTransition(direction) {
+    if (pageSystem.isAnimating) return;
+    
+    pageSystem.isAnimating = true;
+    const pageContent = document.getElementById('pageContent');
+    
+    // Добавляем класс анимации
+    pageContent.classList.add('page-turning');
+    
+    setTimeout(() => {
+        // Обновляем контент
+        displayCurrentPage();
+        
+        // Убираем класс анимации
+        pageContent.classList.remove('page-turning');
+        
+        pageSystem.isAnimating = false;
+    }, 300);
+}
+
+// Применение настроек чтения
+function applySettings() {
+    const root = document.documentElement;
+    
+    // Устанавливаем CSS переменные
+    root.style.setProperty('--font-size', `${readingSettings.fontSize}px`);
+    root.style.setProperty('--font-family', readingSettings.fontFamily);
+    root.style.setProperty('--line-height', readingSettings.lineHeight);
+    
+    // Применяем тему
+    if (readingSettings.theme === 'dark') {
+        root.style.setProperty('--bg-color', '#1a1a1a');
+        root.style.setProperty('--text-color', '#e0e0e0');
+    } else {
+        root.style.setProperty('--bg-color', '#ffffff');
+        root.style.setProperty('--text-color', '#333333');
+    }
+    
+    // Применяем ширину текста
+    const pageContent = document.getElementById('pageContent');
+    if (pageContent) {
+        pageContent.className = `page-content text-width-${readingSettings.textWidth}`;
+    }
+}
+
+// Инициализация кнопок
+function initializeButtons() {
+    // Кнопки навигации
+    const prevBtn = document.querySelector('.prev-btn');
+    const nextBtn = document.querySelector('.next-btn');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', previousPage);
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', nextPage);
+    }
+    
+    // Кнопки настроек
+    const fontSizeMinus = document.querySelector('.font-size-minus');
+    const fontSizePlus = document.querySelector('.font-size-plus');
+    
+    if (fontSizeMinus) {
+        fontSizeMinus.addEventListener('click', () => changeFontSize(-1));
+    }
+    
+    if (fontSizePlus) {
+        fontSizePlus.addEventListener('click', () => changeFontSize(1));
+    }
+    
+    // Остальные кнопки настроек...
+    console.log('🎮 Кнопки инициализированы');
+}
+
+// Изменение размера шрифта
+function changeFontSize(delta) {
+    const newSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
+    if (newSize === readingSettings.fontSize) return;
+    
+    readingSettings.fontSize = newSize;
+    applySettings();
+    saveSettings();
+    
+    // Пересчитываем страницы
+    setTimeout(() => {
+        calculatePageDimensions();
+        displayCurrentPage();
+    }, 100);
+    
+    // Обновляем отображение
+    const fontSizeDisplay = document.getElementById('fontSizeDisplay');
+    if (fontSizeDisplay) {
+        fontSizeDisplay.textContent = `${readingSettings.fontSize}px`;
+    }
+}
+
+// Сохранение настроек
+function saveSettings() {
+    localStorage.setItem('readingSettings', JSON.stringify(readingSettings));
+}
+
+// Загрузка настроек
+function loadSettings() {
+    const saved = localStorage.getItem('readingSettings');
+    if (saved) {
+        readingSettings = { ...readingSettings, ...JSON.parse(saved) };
+    }
+    applySettings();
+}
+
+// Сохранение прогресса чтения
+function saveReadingProgress() {
+    if (currentUser && currentBook) {
+        const progress = {
+            userId: currentUser.id,
+            bookId: currentBook.id,
+            currentPage: pageSystem.currentPage,
+            totalPages: pageSystem.totalPages,
+            timestamp: Date.now()
+        };
+        
+        localStorage.setItem(`readingProgress_${currentBook.id}`, JSON.stringify(progress));
+    }
+}
+
+// Загрузка прогресса чтения
+function loadReadingProgress() {
+    if (currentBook) {
+        const saved = localStorage.getItem(`readingProgress_${currentBook.id}`);
+        if (saved) {
+            const progress = JSON.parse(saved);
+            pageSystem.currentPage = Math.max(1, Math.min(progress.currentPage, pageSystem.totalPages));
+        }
+    }
+}
+
+// Обработка изменения размера окна
+window.addEventListener('resize', () => {
+    setTimeout(() => {
+        calculatePageDimensions();
+        displayCurrentPage();
+    }, 100);
 });
 
-// Глобальные функции для совместимости с HTML
-function previousPage() {
-    if (reader) reader.previousPage();
-}
-
-function nextPage() {
-    if (reader) reader.nextPage();
-}
-
-function changeFontSize(delta) {
-    if (reader) reader.changeFontSize(delta);
-}
-
-function changeFontFamily(family) {
-    if (reader) reader.changeFontFamily(family);
-}
-
-function setTextWidth(width) {
-    if (reader) reader.setTextWidth(width);
-}
-
-function setLineHeight(height) {
-    if (reader) reader.setLineHeight(height);
-}
-
-function setTheme(theme) {
-    if (reader) reader.setTheme(theme);
+// Дополнительные функции для читалки
+function goBack() {
+    window.location.href = 'index.html';
 }
 
 function openSettings() {
-    const modal = document.getElementById('settingsModal');
-    if (modal) modal.style.display = 'block';
+    document.getElementById('settingsModal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
 
 function closeSettings() {
-    const modal = document.getElementById('settingsModal');
-    if (modal) modal.style.display = 'none';
+    document.getElementById('settingsModal').style.display = 'none';
     document.body.style.overflow = 'auto';
 }
 
+function toggleBookmark() {
+    // Функция закладок (пока заглушка)
+    console.log('🔖 Закладка переключена');
+}
+
 function openTableOfContents() {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar) sidebar.classList.add('open');
+    document.getElementById('sidebar').classList.add('open');
 }
 
 function closeTableOfContents() {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar) sidebar.classList.remove('open');
+    document.getElementById('sidebar').classList.remove('open');
+}
+
+function handleReaderLogout() {
+    localStorage.removeItem('currentUser');
+    window.location.href = 'index.html';
 }
 
 function goToChapter(chapterIndex) {
-    if (reader) reader.goToPage(chapterIndex + 1);
+    // Переход к главе (пока заглушка)
+    console.log('📖 Переход к главе:', chapterIndex);
     closeTableOfContents();
 }
 
-function toggleBookmark() {
-    // Реализация закладок
-    console.log('🔖 Bookmark toggled');
+function changeFontFamily(family) {
+    readingSettings.fontFamily = family;
+    applySettings();
+    saveSettings();
+    
+    // Обновляем активные кнопки
+    document.querySelectorAll('.font-family-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.family === family);
+    });
+    
+    // Пересчитываем страницы
+    setTimeout(() => {
+        calculatePageDimensions();
+        displayCurrentPage();
+    }, 100);
 }
 
-function scrollToTop() {
-    if (reader) reader.goToPage(1);
+function setTextWidth(width) {
+    readingSettings.textWidth = width;
+    applySettings();
+    saveSettings();
+    
+    // Обновляем активные кнопки
+    document.querySelectorAll('.width-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.width === width);
+    });
+    
+    // Пересчитываем страницы
+    setTimeout(() => {
+        calculatePageDimensions();
+        displayCurrentPage();
+    }, 100);
 }
+
+function setLineHeight(height) {
+    readingSettings.lineHeight = height;
+    applySettings();
+    saveSettings();
+    
+    // Обновляем активные кнопки
+    document.querySelectorAll('.lh-btn').forEach(btn => {
+        btn.classList.toggle('active', parseFloat(btn.dataset.height) === height);
+    });
+    
+    // Пересчитываем страницы
+    setTimeout(() => {
+        calculatePageDimensions();
+        displayCurrentPage();
+    }, 100);
+}
+
+function setTheme(theme) {
+    readingSettings.theme = theme;
+    applySettings();
+    saveSettings();
+    
+    // Обновляем активные кнопки
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === theme);
+    });
+}
+
+// Экспорт функций для глобального доступа
+window.previousPage = previousPage;
+window.nextPage = nextPage;
+window.changeFontSize = changeFontSize;
+window.goBack = goBack;
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
+window.toggleBookmark = toggleBookmark;
+window.openTableOfContents = openTableOfContents;
+window.closeTableOfContents = closeTableOfContents;
+window.handleReaderLogout = handleReaderLogout;
+window.goToChapter = goToChapter;
+window.changeFontFamily = changeFontFamily;
+window.setTextWidth = setTextWidth;
+window.setLineHeight = setLineHeight;
+window.setTheme = setTheme;

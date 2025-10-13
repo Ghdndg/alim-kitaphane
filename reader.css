@@ -195,34 +195,22 @@ body {
 /* Обертка для текстового контента с overflow */
 .text-content-wrapper {
     flex: 1;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: hidden;
     position: relative;
     width: 100%;
-    /* Скрываем скроллбар */
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    /* Плавный скролл */
-    scroll-behavior: smooth;
-    /* Snap к страницам */
-    scroll-snap-type: x mandatory;
 }
 
-.text-content-wrapper::-webkit-scrollbar {
-    display: none;
-}
-
-/* Текстовый контент с колонками */
+/* Текстовый контент */
 .text-content {
     font-size: 16px;
     line-height: 1.6;
-    /* CSS Multi-column layout для пагинации */
-    column-width: 100%;
-    column-gap: 3rem;
-    column-fill: auto;
-    height: 100%;
-    width: auto;
-    padding: 1rem 0;
+    position: relative;
+    /* Контент может быть любой высоты - сдвигается вертикально */
+    min-height: 100%;
+    width: 100%;
+    padding: 0.5rem 0; /* Минимальный вертикальный padding */
+    transform: translateY(0);
+    transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
     /* Дополнительная защита от копирования */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -237,6 +225,11 @@ body {
 }
 
 /* Анимация перелистывания страницы */
+.text-content.page-turning {
+    transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.3s ease;
+}
+
+
 .chapter-title {
     font-size: 2.5rem;
     font-weight: 700;
