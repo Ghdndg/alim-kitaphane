@@ -1348,6 +1348,143 @@ body.modal-open {
     color: #95a5a6;
 }
 
+/* ===== ПРОФЕССИОНАЛЬНЫЕ СТИЛИ ЧИТАЛКИ ===== */
+
+/* Основной контейнер читалки */
+.reader-main {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: #f5f5f5;
+    z-index: 1000;
+    padding-top: 60px;
+    padding-bottom: 60px;
+    overflow: hidden;
+}
+
+.reader-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+/* Контент страницы */
+.text-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 40px;
+    overflow: hidden;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #333;
+    background: white;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-content {
+    width: 100%;
+    max-width: 100%;
+    text-align: justify;
+    hyphens: auto;
+    word-wrap: break-word;
+    font-family: Georgia, serif;
+    font-size: 18px;
+    line-height: 1.8;
+    color: #2c3e50;
+}
+
+/* Настройки ширины текста */
+.text-narrow {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.text-medium {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.text-wide {
+    max-width: 100%;
+}
+
+/* Темы оформления */
+.theme-light {
+    background: #ffffff;
+    color: #2c3e50;
+}
+
+.theme-light .text-content {
+    background: #ffffff;
+    color: #2c3e50;
+}
+
+.theme-sepia {
+    background: #f4f1ea;
+    color: #5c4b37;
+}
+
+.theme-sepia .text-content {
+    background: #f4f1ea;
+    color: #5c4b37;
+}
+
+.theme-dark {
+    background: #1a1a1a;
+    color: #e0e0e0;
+}
+
+.theme-dark .text-content {
+    background: #1a1a1a;
+    color: #e0e0e0;
+}
+
+/* Анимации перелистывания */
+.text-content {
+    transform-origin: center;
+}
+
+.text-content.page-turning {
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .reader-main {
+        padding-top: 50px;
+        padding-bottom: 50px;
+    }
+    
+    .text-content {
+        padding: 20px;
+    }
+    
+    .page-content {
+        font-size: 16px;
+        line-height: 1.6;
+    }
+    
+    .text-narrow {
+        max-width: 100%;
+    }
+    
+    .text-medium {
+        max-width: 100%;
+    }
+}
+
 @media (max-width: 768px) {
     .site-footer {
         padding: 1.5rem 0 0.75rem;
