@@ -192,32 +192,27 @@ body {
     max-width: 1000px;
 }
 
-/* Обертка для текстового контента - scroll-snap контейнер */
+/* Обертка для текстового контента с overflow */
 .text-content-wrapper {
     flex: 1;
-    overflow-y: scroll;
-    overflow-x: hidden;
+    overflow: hidden; /* Прячем overflow */
     position: relative;
     width: 100%;
-    /* Scroll-snap для постраничного листания */
-    scroll-snap-type: y mandatory;
-    scroll-behavior: smooth;
-    /* Скрываем scrollbar */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    display: flex;
+    align-items: flex-start;
 }
 
-.text-content-wrapper::-webkit-scrollbar {
-    display: none; /* Chrome/Safari/Opera */
-}
-
-/* Текстовый контент */
+/* Текстовый контент - виртуальные страницы */
 .text-content {
     font-size: 16px;
     line-height: 1.6;
     position: relative;
     width: 100%;
-    padding: 0.5rem 0; /* Минимальный вертикальный padding */
+    padding: 2rem 0;
+    opacity: 1;
+    transition: opacity 0.3s ease; /* Плавная смена страниц */
+    transform: translateY(0);
+    transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
     /* Дополнительная защита от копирования */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -231,12 +226,10 @@ body {
     -webkit-print-color-adjust: exact !important;
 }
 
-/* Виртуальные snap-точки для страниц */
-.page-snap-point {
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-    min-height: 100%;
-    position: relative;
+/* Анимация перелистывания страницы */
+.text-content.page-turning {
+    opacity: 0.5;
+    transition: opacity 0.2s ease-in-out;
 }
 
 

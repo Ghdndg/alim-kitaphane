@@ -66,10 +66,12 @@
     }
 })();
 
-// Глобальные переменные для постраничной навигации (scroll-snap подход)
-let pageHeight = 0; // Высота одной "страницы" (видимой области wrapper)
+// Глобальные переменные для постраничной навигации
+let currentScrollOffset = 0; // Текущее смещение в пикселях
+let pageHeight = 0; // Высота одной "страницы" (видимой области)
+let totalContentHeight = 0; // Общая высота контента
+let currentPage = 1; // Текущая страница (рассчитывается)
 let totalPages = 1; // Общее количество страниц (рассчитывается)
-let currentPage = 1; // Текущая страница
 let currentChapter = 0;
 let isBookmarked = false;
 let readingSettings = {
@@ -212,37 +214,27 @@ document.addEventListener('DOMContentLoaded', function() {
     applySettings();
     initializeReaderProtection(); // Защита читалки
     
-    // Добавляем обработчик scroll для автоматического обновления UI
-    const wrapper = document.querySelector('.text-content-wrapper');
-    if (wrapper) {
-        wrapper.addEventListener('scroll', () => {
-            updateReaderUI();
-        });
-    }
-    
     // Инициализация всех кнопок
     initializeButtons();
     
     // Загружаем весь контент книги
     loadAllContent();
     
-    // Пересчитываем размеры при изменении размера окна (scroll-snap подход)
+    // Пересчитываем размеры при изменении размера окна
     let resizeTimer;
     window.addEventListener('resize', function() {
-        const wrapper = document.querySelector('.text-content-wrapper');
-        if (!wrapper) return;
-        
         // Запоминаем процент прогресса
-        const progressPercent = wrapper.scrollHeight > 0 ? wrapper.scrollTop / wrapper.scrollHeight : 0;
+        const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
         
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
             calculatePageDimensions();
             
-            // Восстанавливаем позицию по проценту
-            wrapper.scrollTop = progressPercent * wrapper.scrollHeight;
+            // Восстанавливаем позицию по проценту прогресса
+            currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
             
-            console.log('🔄 Window resized, progress:', Math.round(progressPercent * 100) + '%');
+            applyContentTransform();
+            console.log('🔄 Window resized, position adjusted');
         }, 300);
     });
     
@@ -503,37 +495,73 @@ function initializeReaderProtection() {
 }
 
 // Рассчитываем размеры страницы
-// Упрощенный расчёт размеров для scroll-snap подхода
 function calculatePageDimensions() {
     const wrapper = document.querySelector('.text-content-wrapper');
     const textContent = document.getElementById('textContent');
+    const header = document.querySelector('.reader-header');
+    const navigation = document.querySelector('.page-navigation');
     
     if (!wrapper || !textContent) return;
     
-    // pageHeight = высота видимой области wrapper (это и есть одна "страница")
-    pageHeight = wrapper.clientHeight;
+    // ВАЖНО: pageHeight = реальная видимая высота окна минус хедер и навигация
+    const viewportHeight = window.innerHeight;
+    const headerHeight = header?.offsetHeight || 0;
+    const navHeight = navigation?.offsetHeight || 0;
     
-    // totalContentHeight = полная высота контента с учетом скролла
-    const totalContentHeight = textContent.scrollHeight;
+    // Получаем padding контента
+    const textContentStyle = window.getComputedStyle(textContent);
+    const paddingTop = parseFloat(textContentStyle.paddingTop) || 0;
+    const paddingBottom = parseFloat(textContentStyle.paddingBottom) || 0;
+    const totalPadding = paddingTop + paddingBottom;
     
-    // Количество страниц
+    // Высота видимой области для текста минус padding
+    // Вычитаем полную строку текста чтобы текст не заходил под кнопки
+    const lineHeight = parseFloat(textContentStyle.lineHeight) || 24;
+    pageHeight = viewportHeight - headerHeight - navHeight - totalPadding - lineHeight;
+    
+    console.log('📏 Calculating page dimensions:', {
+        viewportHeight,
+        headerHeight,
+        navHeight,
+        paddingTop,
+        paddingBottom,
+        lineHeight: Math.round(lineHeight),
+        calculatedPageHeight: Math.round(pageHeight),
+        wrapperHeight: wrapper.clientHeight
+    });
+    
+    // Общая высота контента (без padding)
+    totalContentHeight = textContent.scrollHeight;
+    
+    // Количество страниц = высота контента / высота видимой области
     totalPages = Math.max(1, Math.ceil(totalContentHeight / pageHeight));
     
-    console.log('📏 Page dimensions:', {
-        pageHeight,
-        totalContentHeight,
-        totalPages
+    // Текущая страница на основе текущего offset
+    currentPage = Math.min(totalPages, Math.floor(currentScrollOffset / pageHeight) + 1);
+    
+    console.log('📖 Page info:', {
+        pageHeight: Math.round(pageHeight),
+        totalContentHeight: Math.round(totalContentHeight),
+        totalPages,
+        currentPage,
+        currentScrollOffset: Math.round(currentScrollOffset)
     });
 }
 
-// Обновляем UI на основе текущей scroll позиции
-function updateReaderUI() {
-    const wrapper = document.querySelector('.text-content-wrapper');
-    if (!wrapper) return;
+// Применяем трансформацию к контенту
+function applyContentTransform() {
+    const textContent = document.getElementById('textContent');
+    if (!textContent) return;
     
-    // Текущая страница на основе scrollTop
-    const scrollTop = wrapper.scrollTop;
-    currentPage = Math.max(1, Math.min(totalPages, Math.floor(scrollTop / pageHeight) + 1));
+    // Ограничиваем offset чтобы не выйти за пределы
+    const maxOffset = Math.max(0, totalContentHeight - pageHeight);
+    currentScrollOffset = Math.max(0, Math.min(currentScrollOffset, maxOffset));
+    
+    // Применяем transform
+    textContent.style.transform = `translateY(-${currentScrollOffset}px)`;
+    
+    // Обновляем номер страницы (минимум 1)
+    currentPage = Math.max(1, Math.floor(currentScrollOffset / pageHeight) + 1);
     
     updateProgressBar();
     updatePageNumbers();
@@ -541,43 +569,53 @@ function updateReaderUI() {
     saveReadingProgress();
 }
 
-// Перелистывание назад (scroll-snap подход)
 function previousPage() {
-    const wrapper = document.querySelector('.text-content-wrapper');
-    if (!wrapper || currentPage <= 1) return;
-    
-    // Скроллим на одну pageHeight вверх
-    wrapper.scrollBy({
-        top: -pageHeight,
-        behavior: 'smooth'
-    });
+    if (currentScrollOffset > 0) {
+        // Добавляем класс для анимации
+        const textContent = document.getElementById('textContent');
+        textContent.classList.add('page-turning');
+        
+        // Сдвигаем на одну страницу вверх
+        currentScrollOffset = Math.max(0, currentScrollOffset - pageHeight);
+        applyContentTransform();
+        
+        // Убираем класс анимации
+        setTimeout(() => {
+            textContent.classList.remove('page-turning');
+        }, 600);
+    }
 }
 
-// Перелистывание вперед (scroll-snap подход)
 function nextPage() {
-    const wrapper = document.querySelector('.text-content-wrapper');
-    if (!wrapper || currentPage >= totalPages) return;
+    const maxOffset = totalContentHeight - pageHeight;
     
-    // Скроллим на одну pageHeight вниз
-    wrapper.scrollBy({
-        top: pageHeight,
-        behavior: 'smooth'
-    });
+    if (currentScrollOffset < maxOffset) {
+        // Добавляем класс для анимации
+        const textContent = document.getElementById('textContent');
+        textContent.classList.add('page-turning');
+        
+        // Сдвигаем на одну страницу вниз
+        currentScrollOffset = Math.min(maxOffset, currentScrollOffset + pageHeight);
+        applyContentTransform();
+        
+        // Убираем класс анимации
+        setTimeout(() => {
+            textContent.classList.remove('page-turning');
+        }, 600);
+    }
 }
 
 function updateNavigationButtons() {
     const prevBtn = document.querySelector('.prev-btn');
     const nextBtn = document.querySelector('.next-btn');
-    const wrapper = document.querySelector('.text-content-wrapper');
     
-    if (!prevBtn || !nextBtn || !wrapper) return;
+    if (!prevBtn || !nextBtn) return;
     
-    // Используем scrollTop для проверки
-    const scrollTop = wrapper.scrollTop;
-    const maxScroll = wrapper.scrollHeight - wrapper.clientHeight;
+    // Используем currentScrollOffset для более точной проверки
+    const maxOffset = Math.max(0, totalContentHeight - pageHeight);
     
-    prevBtn.disabled = scrollTop <= 0;
-    nextBtn.disabled = scrollTop >= maxScroll - 5; // -5 для погрешности
+    prevBtn.disabled = currentScrollOffset <= 0;
+    nextBtn.disabled = currentScrollOffset >= maxOffset;
 }
 
 function scrollToTop() {
@@ -609,24 +647,28 @@ function closeSidebar() {
     document.body.style.overflow = 'auto';
 }
 
-// Переход к главе (scroll-snap подход)
 function goToChapter(chapterIndex) {
     currentChapter = chapterIndex;
     
-    const wrapper = document.querySelector('.text-content-wrapper');
+    // Находим все заголовки глав в контенте
     const textContent = document.getElementById('textContent');
     const chapterTitles = textContent.querySelectorAll('.chapter-title, .section-title');
     
-    if (chapterTitles[chapterIndex] && wrapper) {
-        // Получаем позицию заголовка главы
+    if (chapterTitles[chapterIndex]) {
+        // Получаем позицию заголовка главы относительно контейнера
         const chapterElement = chapterTitles[chapterIndex];
         const offsetTop = chapterElement.offsetTop;
         
-        // Скроллим к главе
-        wrapper.scrollTo({
-            top: offsetTop,
-            behavior: 'smooth'
-        });
+        // Устанавливаем scroll offset на позицию главы
+        currentScrollOffset = offsetTop;
+        
+        // Добавляем анимацию
+        textContent.classList.add('page-turning');
+        applyContentTransform();
+        
+        setTimeout(() => {
+            textContent.classList.remove('page-turning');
+        }, 600);
     }
     
     updateActiveChapter();
@@ -656,7 +698,7 @@ function loadAllContent() {
     // После загрузки контента пересчитываем размеры
     setTimeout(() => {
         calculatePageDimensions();
-        updateReaderUI();
+        applyContentTransform();
         updateActiveChapter();
     }, 100);
 }
@@ -750,46 +792,54 @@ function closeSettings() {
     saveSettings();
 }
 
-// Изменение размера шрифта (scroll-snap подход)
 function changeFontSize(delta) {
-    const wrapper = document.querySelector('.text-content-wrapper');
-    if (!wrapper) return;
-    
-    // Сохраняем процент прогресса ДО изменения
-    const progressPercent = wrapper.scrollHeight > 0 ? wrapper.scrollTop / wrapper.scrollHeight : 0;
+    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
+    const oldTotalContentHeight = totalContentHeight;
+    // Вычисляем процент прогресса от старого значения
+    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
     
     readingSettings.fontSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
     document.getElementById('fontSizeDisplay').textContent = readingSettings.fontSize + 'px';
     applySettings();
     saveSettings();
     
-    // Пересчитываем размеры и восстанавливаем позицию
+    // Пересчитываем размеры после изменения шрифта
+    // Увеличиваем задержку чтобы браузер успел перерендерить
     setTimeout(() => {
-        calculatePageDimensions();
+        calculatePageDimensions(); // Это обновляет totalContentHeight на НОВОЕ значение
         
-        // Восстанавливаем позицию по проценту
-        wrapper.scrollTop = progressPercent * wrapper.scrollHeight;
+        // Применяем процент к НОВОМУ totalContentHeight
+        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
         
-        console.log('🔤 Font size changed, progress:', Math.round(progressPercent * 100) + '%');
-    }, 100);
+        applyContentTransform();
+        console.log('🔤 Font size changed:', {
+            oldHeight: oldTotalContentHeight,
+            newHeight: totalContentHeight,
+            progress: Math.round(progressPercent * 100) + '%',
+            offset: Math.round(currentScrollOffset)
+        });
+    }, 300);
 }
 
-// Изменение семейства шрифтов (scroll-snap подход)
 function changeFontFamily(family) {
-    const wrapper = document.querySelector('.text-content-wrapper');
-    if (!wrapper) return;
-    
-    const progressPercent = wrapper.scrollHeight > 0 ? wrapper.scrollTop / wrapper.scrollHeight : 0;
+    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
+    const oldTotalContentHeight = totalContentHeight;
+    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
     
     readingSettings.fontFamily = family;
     applySettings();
     saveSettings();
     
+    // Пересчитываем размеры после изменения шрифта
     setTimeout(() => {
-        calculatePageDimensions();
-        wrapper.scrollTop = progressPercent * wrapper.scrollHeight;
+        calculatePageDimensions(); // Обновляет totalContentHeight
+        
+        // Применяем процент к НОВОМУ totalContentHeight
+        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
+        
+        applyContentTransform();
         console.log('📝 Font family changed, progress:', Math.round(progressPercent * 100) + '%');
-    }, 100);
+    }, 300);
 }
 
 function setTheme(theme) {
@@ -805,12 +855,10 @@ function setTheme(theme) {
     saveSettings();
 }
 
-// Изменение ширины текста (scroll-snap подход)
 function setTextWidth(width) {
-    const wrapper = document.querySelector('.text-content-wrapper');
-    if (!wrapper) return;
-    
-    const progressPercent = wrapper.scrollHeight > 0 ? wrapper.scrollTop / wrapper.scrollHeight : 0;
+    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
+    const oldTotalContentHeight = totalContentHeight;
+    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
     
     readingSettings.textWidth = width;
     
@@ -823,19 +871,22 @@ function setTextWidth(width) {
     applySettings();
     saveSettings();
     
+    // Пересчитываем размеры после изменения ширины
     setTimeout(() => {
-        calculatePageDimensions();
-        wrapper.scrollTop = progressPercent * wrapper.scrollHeight;
+        calculatePageDimensions(); // Обновляет totalContentHeight
+        
+        // Применяем процент к НОВОМУ totalContentHeight
+        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
+        
+        applyContentTransform();
         console.log('📏 Text width changed, progress:', Math.round(progressPercent * 100) + '%');
-    }, 100);
+    }, 300);
 }
 
-// Изменение межстрочного интервала (scroll-snap подход)
 function setLineHeight(height) {
-    const wrapper = document.querySelector('.text-content-wrapper');
-    if (!wrapper) return;
-    
-    const progressPercent = wrapper.scrollHeight > 0 ? wrapper.scrollTop / wrapper.scrollHeight : 0;
+    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
+    const oldTotalContentHeight = totalContentHeight;
+    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
     
     readingSettings.lineHeight = height;
     
@@ -848,11 +899,16 @@ function setLineHeight(height) {
     applySettings();
     saveSettings();
     
+    // Пересчитываем размеры после изменения межстрочного интервала
     setTimeout(() => {
-        calculatePageDimensions();
-        wrapper.scrollTop = progressPercent * wrapper.scrollHeight;
+        calculatePageDimensions(); // Обновляет totalContentHeight
+        
+        // Применяем процент к НОВОМУ totalContentHeight
+        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
+        
+        applyContentTransform();
         console.log('📐 Line height changed, progress:', Math.round(progressPercent * 100) + '%');
-    }, 100);
+    }, 300);
 }
 
 function applySettings() {
@@ -930,11 +986,8 @@ function saveSettings() {
 
 // Сохранение прогресса чтения
 function saveReadingProgress() {
-    const wrapper = document.querySelector('.text-content-wrapper');
-    if (!wrapper) return;
-    
     const progressData = {
-        scrollTop: wrapper.scrollTop,
+        currentScrollOffset: currentScrollOffset,
         currentPage: currentPage,
         currentChapter: currentChapter,
         lastReadTime: new Date().toISOString()
@@ -947,13 +1000,7 @@ function loadReadingProgress() {
     const saved = localStorage.getItem('readingProgress');
     if (saved) {
         const progressData = JSON.parse(saved);
-        const wrapper = document.querySelector('.text-content-wrapper');
-        
-        if (wrapper && progressData.scrollTop !== undefined) {
-            // Восстанавливаем позицию скролла
-            wrapper.scrollTop = progressData.scrollTop;
-        }
-        
+        currentScrollOffset = progressData.currentScrollOffset || 0;
         currentPage = progressData.currentPage || 1;
         currentChapter = progressData.currentChapter || 0;
     }
