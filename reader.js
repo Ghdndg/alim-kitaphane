@@ -1,548 +1,409 @@
-// Профессиональная читалка с правильной логикой отображения
-let currentUser = null;
-let currentBook = null;
-let currentChapter = 0;
-let chapters = [];
-let readingSettings = {
-    fontSize: 16,
-    fontFamily: 'Georgia',
-    textWidth: 'medium',
-    lineHeight: 1.6,
-    theme: 'light'
-};
+/**
+ * Профессиональная читалка с правильной логикой отображения
+ * Система страниц без погрешностей и с сохранением позиции
+ */
 
-// Новая система отображения страниц
-let pageSystem = {
-    currentPage: 1,
-    totalPages: 1,
-    pageHeight: 0,
-    contentHeight: 0,
-    visibleContent: null,
-    pageContainer: null,
-    isAnimating: false
-};
-
-// Инициализация читалки
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Инициализация профессиональной читалки');
+class ProfessionalReader {
+    constructor() {
+        this.currentPage = 1;
+        this.totalPages = 1;
+        this.pageHeight = 0;
+        this.contentHeight = 0;
+        this.containerHeight = 0;
+        this.settings = this.loadSettings();
+        this.isAnimating = false;
+        
+        // Элементы DOM
+        this.textContent = null;
+        this.container = null;
+        this.wrapper = null;
+        
+        this.init();
+    }
     
-    // Проверяем доступ
-    checkAccess().then(() => {
-        initializeReader();
-        loadSettings();
-        initializeButtons();
-    }).catch(error => {
-        console.error('❌ Ошибка доступа:', error);
-        window.location.replace('index.html');
-    });
-});
-
-// Проверка доступа к книге
-async function checkAccess() {
-    try {
-        // Получаем пользователя из localStorage
-        const userData = localStorage.getItem('currentUser');
-        if (!userData) {
-            throw new Error('Пользователь не авторизован');
+    init() {
+        this.checkAccess().then(() => {
+            this.setupElements();
+            this.loadContent();
+            this.calculateDimensions();
+            this.setupEventListeners();
+            this.applySettings();
+            this.loadProgress();
+        });
+    }
+    
+    async checkAccess() {
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const accessToken = localStorage.getItem('accessToken');
+        
+        if (!currentUser.email || !accessToken) {
+            window.location.replace('/index.html');
+            return;
         }
         
-        currentUser = JSON.parse(userData);
-        console.log('👤 Пользователь:', currentUser.name);
+        try {
+            const response = await fetch('/api/users/library', {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const bookId = 1;
+                
+                if (!data.library || !data.library.some(book => book.id === bookId)) {
+                    window.location.replace('/index.html');
+                    return;
+                }
+            } else {
+                window.location.replace('/index.html');
+                return;
+            }
+        } catch (error) {
+            console.error('Access check failed:', error);
+            window.location.replace('/index.html');
+            return;
+        }
+    }
+    
+    setupElements() {
+        this.textContent = document.getElementById('textContent');
+        this.container = document.querySelector('.reader-container');
+        this.wrapper = document.querySelector('.text-content-wrapper');
         
-        // Получаем ID книги из URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const bookId = urlParams.get('book') || '1';
+        if (!this.textContent || !this.container || !this.wrapper) {
+            console.error('Required elements not found');
+            return;
+        }
+    }
+    
+    async loadContent() {
+        try {
+            const response = await fetch('/api/books/1/content');
+            if (response.ok) {
+                const data = await response.json();
+                this.textContent.innerHTML = data.content;
+            }
+        } catch (error) {
+            console.error('Failed to load content:', error);
+        }
+    }
+    
+    calculateDimensions() {
+        // Получаем размеры контейнера
+        const containerRect = this.container.getBoundingClientRect();
+        this.containerHeight = containerRect.height;
         
-        // Проверяем доступ к книге через API
-        const response = await fetch(`/api/books/${bookId}/access`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${currentUser.token || 'dummy'}`,
-                'Content-Type': 'application/json'
+        // Применяем настройки для точного расчета
+        this.applySettings();
+        
+        // Ждем перерисовки
+        requestAnimationFrame(() => {
+            // Получаем высоту контента после применения стилей
+            this.contentHeight = this.textContent.scrollHeight;
+            
+            // Вычисляем высоту страницы (видимая область)
+            this.pageHeight = this.containerHeight;
+            
+            // Вычисляем общее количество страниц
+            this.totalPages = Math.max(1, Math.ceil(this.contentHeight / this.pageHeight));
+            
+            console.log('📏 Dimensions calculated:', {
+                containerHeight: this.containerHeight,
+                contentHeight: this.contentHeight,
+                pageHeight: this.pageHeight,
+                totalPages: this.totalPages
+            });
+            
+            this.updateUI();
+        });
+    }
+    
+    applySettings() {
+        if (!this.textContent) return;
+        
+        // Применяем настройки шрифта
+        this.textContent.style.fontSize = this.settings.fontSize + 'px';
+        this.textContent.style.fontFamily = this.settings.fontFamily;
+        this.textContent.style.lineHeight = this.settings.lineHeight;
+        
+        // Применяем настройки ширины
+        const widthMap = {
+            'narrow': '60%',
+            'medium': '75%',
+            'wide': '90%'
+        };
+        this.textContent.style.maxWidth = widthMap[this.settings.textWidth] || '75%';
+        
+        // Применяем тему
+        this.textContent.className = `text-content theme-${this.settings.theme}`;
+    }
+    
+    goToPage(pageNumber) {
+        if (this.isAnimating) return;
+        
+        pageNumber = Math.max(1, Math.min(pageNumber, this.totalPages));
+        
+        if (pageNumber === this.currentPage) return;
+        
+        this.isAnimating = true;
+        this.currentPage = pageNumber;
+        
+        // Вычисляем offset для страницы
+        const offset = (pageNumber - 1) * this.pageHeight;
+        
+        // Применяем трансформацию с анимацией
+        this.textContent.style.transition = 'transform 0.3s ease-in-out';
+        this.textContent.style.transform = `translateY(-${offset}px)`;
+        
+        // Обновляем UI
+        this.updateUI();
+        
+        // Сохраняем прогресс
+        this.saveProgress();
+        
+        // Сбрасываем флаг анимации
+        setTimeout(() => {
+            this.isAnimating = false;
+            this.textContent.style.transition = '';
+        }, 300);
+    }
+    
+    nextPage() {
+        if (this.currentPage < this.totalPages) {
+            this.goToPage(this.currentPage + 1);
+        }
+    }
+    
+    previousPage() {
+        if (this.currentPage > 1) {
+            this.goToPage(this.currentPage - 1);
+        }
+    }
+    
+    updateUI() {
+        // Обновляем номер страницы
+        const pageDisplay = document.querySelector('.page-number');
+        if (pageDisplay) {
+            pageDisplay.textContent = `${this.currentPage} / ${this.totalPages}`;
+        }
+        
+        // Обновляем прогресс-бар
+        const progressBar = document.querySelector('.progress-bar');
+        if (progressBar) {
+            const progress = (this.currentPage / this.totalPages) * 100;
+            progressBar.style.width = progress + '%';
+        }
+        
+        // Обновляем кнопки навигации
+        const prevBtn = document.querySelector('.prev-btn');
+        const nextBtn = document.querySelector('.next-btn');
+        
+        if (prevBtn) prevBtn.disabled = this.currentPage === 1;
+        if (nextBtn) nextBtn.disabled = this.currentPage === this.totalPages;
+    }
+    
+    // Настройки
+    changeFontSize(delta) {
+        const oldProgress = this.getProgressPercent();
+        
+        this.settings.fontSize = Math.max(12, Math.min(24, this.settings.fontSize + delta));
+        document.getElementById('fontSizeDisplay').textContent = this.settings.fontSize + 'px';
+        
+        this.applySettings();
+        this.saveSettings();
+        
+        // Пересчитываем размеры и восстанавливаем позицию
+        setTimeout(() => {
+            this.calculateDimensions();
+            this.goToPageByProgress(oldProgress);
+        }, 100);
+    }
+    
+    changeFontFamily(family) {
+        const oldProgress = this.getProgressPercent();
+        
+        this.settings.fontFamily = family;
+        this.applySettings();
+        this.saveSettings();
+        
+        setTimeout(() => {
+            this.calculateDimensions();
+            this.goToPageByProgress(oldProgress);
+        }, 100);
+    }
+    
+    setTextWidth(width) {
+        const oldProgress = this.getProgressPercent();
+        
+        this.settings.textWidth = width;
+        this.applySettings();
+        this.saveSettings();
+        
+        // Обновляем активную кнопку
+        const widthButtons = document.querySelectorAll('.width-btn');
+        widthButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.width === width);
+        });
+        
+        setTimeout(() => {
+            this.calculateDimensions();
+            this.goToPageByProgress(oldProgress);
+        }, 100);
+    }
+    
+    setLineHeight(height) {
+        const oldProgress = this.getProgressPercent();
+        
+        this.settings.lineHeight = height;
+        this.applySettings();
+        this.saveSettings();
+        
+        // Обновляем активную кнопку
+        const heightButtons = document.querySelectorAll('.lh-btn');
+        heightButtons.forEach(btn => {
+            btn.classList.toggle('active', parseFloat(btn.dataset.height) === height);
+        });
+        
+        setTimeout(() => {
+            this.calculateDimensions();
+            this.goToPageByProgress(oldProgress);
+        }, 100);
+    }
+    
+    setTheme(theme) {
+        this.settings.theme = theme;
+        this.applySettings();
+        this.saveSettings();
+        
+        // Обновляем активную кнопку
+        const themeButtons = document.querySelectorAll('.theme-btn');
+        themeButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === theme);
+        });
+    }
+    
+    getProgressPercent() {
+        return this.totalPages > 1 ? (this.currentPage - 1) / (this.totalPages - 1) : 0;
+    }
+    
+    goToPageByProgress(progress) {
+        const targetPage = Math.max(1, Math.min(this.totalPages, Math.round(progress * (this.totalPages - 1) + 1)));
+        this.goToPage(targetPage);
+    }
+    
+    // Сохранение/загрузка
+    saveSettings() {
+        localStorage.setItem('readingSettings', JSON.stringify(this.settings));
+    }
+    
+    loadSettings() {
+        const defaultSettings = {
+            fontSize: 16,
+            fontFamily: 'Georgia, serif',
+            lineHeight: 1.6,
+            textWidth: 'medium',
+            theme: 'light'
+        };
+        
+        const saved = localStorage.getItem('readingSettings');
+        return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+    }
+    
+    saveProgress() {
+        const progress = {
+            page: this.currentPage,
+            progress: this.getProgressPercent(),
+            timestamp: Date.now()
+        };
+        localStorage.setItem('readingProgress', JSON.stringify(progress));
+    }
+    
+    loadProgress() {
+        const saved = localStorage.getItem('readingProgress');
+        if (saved) {
+            const progress = JSON.parse(saved);
+            this.goToPage(progress.page);
+        }
+    }
+    
+    // Оглавление
+    goToChapter(chapterIndex) {
+        // Простая реализация - можно улучшить
+        const targetPage = Math.max(1, Math.floor((chapterIndex / 10) * this.totalPages));
+        this.goToPage(targetPage);
+    }
+    
+    // События
+    setupEventListeners() {
+        // Кнопки навигации
+        const prevBtn = document.querySelector('.prev-btn');
+        const nextBtn = document.querySelector('.next-btn');
+        
+        if (prevBtn) prevBtn.addEventListener('click', () => this.previousPage());
+        if (nextBtn) nextBtn.addEventListener('click', () => this.nextPage());
+        
+        // Клавиатура
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.previousPage();
+            } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.nextPage();
             }
         });
         
-        if (!response.ok) {
-            throw new Error('Нет доступа к книге');
-        }
-        
-        const bookData = await response.json();
-        currentBook = bookData.book;
-        chapters = bookData.chapters;
-        
-        console.log('📚 Книга загружена:', currentBook.title);
-        console.log('📖 Глав:', chapters.length);
-        
-    } catch (error) {
-        console.error('❌ Ошибка проверки доступа:', error);
-        throw error;
+        // Изменение размера окна
+        window.addEventListener('resize', () => {
+            const oldProgress = this.getProgressPercent();
+            this.calculateDimensions();
+            this.goToPageByProgress(oldProgress);
+        });
     }
 }
 
-// Инициализация читалки
+// Глобальные функции для совместимости с HTML
+let reader;
+
 function initializeReader() {
-    console.log('🔧 Инициализация системы отображения');
-    
-    // Создаем контейнер для страниц
-    createPageContainer();
-    
-    // Загружаем контент
-    loadAllContent();
-    
-    // Настраиваем систему страниц
-    setupPageSystem();
-    
-    // Загружаем прогресс
-    loadReadingProgress();
-    
-    console.log('✅ Читалка инициализирована');
+    reader = new ProfessionalReader();
 }
 
-// Создание контейнера для страниц
-function createPageContainer() {
-    const readerMain = document.querySelector('.reader-main');
-    const existingContent = document.getElementById('textContent');
-    
-    // Удаляем старый контент
-    if (existingContent) {
-        existingContent.remove();
-    }
-    
-    // Создаем новый контейнер
-    pageSystem.pageContainer = document.createElement('div');
-    pageSystem.pageContainer.className = 'page-container';
-    pageSystem.pageContainer.innerHTML = `
-        <div class="page-content" id="pageContent">
-            <div class="page-text" id="pageText"></div>
-        </div>
-    `;
-    
-    readerMain.appendChild(pageSystem.pageContainer);
-    
-    // Стили для контейнера
-    const style = document.createElement('style');
-    style.textContent = `
-        .page-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            overflow: hidden;
-            background: var(--bg-color);
-        }
-        
-        .page-content {
-            position: absolute;
-            top: 80px;
-            left: 20px;
-            right: 20px;
-            bottom: 80px;
-            overflow: hidden;
-            background: var(--bg-color);
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease-in-out;
-        }
-        
-        .page-text {
-            padding: 30px;
-            height: 100%;
-            overflow: hidden;
-            font-family: var(--font-family);
-            font-size: var(--font-size);
-            line-height: var(--line-height);
-            color: var(--text-color);
-            text-align: justify;
-        }
-        
-        .page-turning {
-            transform: translateX(-100%);
-        }
-        
-        .page-turning-in {
-            transform: translateX(100%);
-            animation: slideIn 0.3s ease-in-out forwards;
-        }
-        
-        @keyframes slideIn {
-            to { transform: translateX(0); }
-        }
-        
-        @media (max-width: 768px) {
-            .page-content {
-                top: 60px;
-                left: 10px;
-                right: 10px;
-                bottom: 60px;
-            }
-            
-            .page-text {
-                padding: 20px;
-            }
-        }
-    `;
-    
-    document.head.appendChild(style);
-}
-
-// Загрузка всего контента
-async function loadAllContent() {
-    console.log('📖 Загрузка контента книги');
-    
-    let fullContent = '';
-    
-    for (let i = 0; i < chapters.length; i++) {
-        try {
-            const response = await fetch(`/api/books/${currentBook.id}/chapters/${chapters[i].id}`);
-            const chapterData = await response.json();
-            
-            fullContent += `<div class="chapter" data-chapter="${i}">`;
-            fullContent += `<h2 class="chapter-title">${chapters[i].title}</h2>`;
-            fullContent += `<div class="chapter-content">${chapterData.content}</div>`;
-            fullContent += `</div>`;
-            
-        } catch (error) {
-            console.error(`❌ Ошибка загрузки главы ${i}:`, error);
-        }
-    }
-    
-    // Сохраняем полный контент
-    pageSystem.fullContent = fullContent;
-    console.log('✅ Контент загружен, символов:', fullContent.length);
-}
-
-// Настройка системы страниц
-function setupPageSystem() {
-    console.log('⚙️ Настройка системы страниц');
-    
-    // Применяем настройки
-    applySettings();
-    
-    // Рассчитываем размеры
-    calculatePageDimensions();
-    
-    // Отображаем первую страницу
-    displayCurrentPage();
-    
-    // Обновляем навигацию
-    updateNavigation();
-}
-
-// Расчет размеров страницы
-function calculatePageDimensions() {
-    const pageContent = document.getElementById('pageContent');
-    const pageText = document.getElementById('pageText');
-    
-    if (!pageContent || !pageText) return;
-    
-    // Получаем размеры видимой области
-    const containerRect = pageContent.getBoundingClientRect();
-    pageSystem.pageHeight = containerRect.height;
-    
-    // Временно помещаем весь контент для измерения
-    pageText.innerHTML = pageSystem.fullContent;
-    pageSystem.contentHeight = pageText.scrollHeight;
-    
-    // Рассчитываем количество страниц
-    pageSystem.totalPages = Math.max(1, Math.ceil(pageSystem.contentHeight / pageSystem.pageHeight));
-    
-    console.log('📏 Размеры страницы:', {
-        pageHeight: Math.round(pageSystem.pageHeight),
-        contentHeight: Math.round(pageSystem.contentHeight),
-        totalPages: pageSystem.totalPages
-    });
-}
-
-// Отображение текущей страницы
-function displayCurrentPage() {
-    if (pageSystem.isAnimating) return;
-    
-    const pageText = document.getElementById('pageText');
-    if (!pageText) return;
-    
-    // Рассчитываем видимую часть контента
-    const startOffset = (pageSystem.currentPage - 1) * pageSystem.pageHeight;
-    const endOffset = startOffset + pageSystem.pageHeight;
-    
-    // Создаем видимую страницу
-    const visibleContent = createVisiblePage(startOffset, endOffset);
-    pageText.innerHTML = visibleContent;
-    
-    // Обновляем навигацию
-    updateNavigation();
-    
-    // Сохраняем прогресс
-    saveReadingProgress();
-    
-    console.log(`📄 Страница ${pageSystem.currentPage}/${pageSystem.totalPages}`);
-}
-
-// Создание видимой страницы
-function createVisiblePage(startOffset, endOffset) {
-    // Создаем временный контейнер для измерения
-    const tempContainer = document.createElement('div');
-    tempContainer.style.cssText = `
-        position: absolute;
-        top: -9999px;
-        left: -9999px;
-        width: 100%;
-        font-family: var(--font-family);
-        font-size: var(--font-size);
-        line-height: var(--line-height);
-        color: var(--text-color);
-        text-align: justify;
-        padding: 30px;
-        box-sizing: border-box;
-    `;
-    tempContainer.innerHTML = pageSystem.fullContent;
-    document.body.appendChild(tempContainer);
-    
-    // Находим видимую часть
-    const visibleContent = extractVisibleContent(tempContainer, startOffset, endOffset);
-    
-    // Удаляем временный контейнер
-    document.body.removeChild(tempContainer);
-    
-    return visibleContent;
-}
-
-// Извлечение видимой части контента
-function extractVisibleContent(container, startOffset, endOffset) {
-    const walker = document.createTreeWalker(
-        container,
-        NodeFilter.SHOW_TEXT,
-        null,
-        false
-    );
-    
-    let currentOffset = 0;
-    let visibleContent = '';
-    let node;
-    
-    while (node = walker.nextNode()) {
-        const text = node.textContent;
-        const nodeStart = currentOffset;
-        const nodeEnd = currentOffset + text.length;
-        
-        // Проверяем пересечение с видимой областью
-        if (nodeEnd > startOffset && nodeStart < endOffset) {
-            const visibleStart = Math.max(0, startOffset - nodeStart);
-            const visibleEnd = Math.min(text.length, endOffset - nodeStart);
-            
-            if (visibleStart < visibleEnd) {
-                const visibleText = text.substring(visibleStart, visibleEnd);
-                
-                // Создаем элемент с видимым текстом
-                const span = document.createElement('span');
-                span.textContent = visibleText;
-                visibleContent += span.outerHTML;
-            }
-        }
-        
-        currentOffset = nodeEnd;
-    }
-    
-    return visibleContent || '<p>Содержимое страницы</p>';
-}
-
-// Обновление навигации
-function updateNavigation() {
-    // Обновляем номер страницы
-    const pageNumbers = document.querySelector('.page-numbers');
-    if (pageNumbers) {
-        pageNumbers.textContent = `${pageSystem.currentPage} / ${pageSystem.totalPages}`;
-    }
-    
-    // Обновляем прогресс-бар
-    const progressBar = document.querySelector('.progress-bar');
-    if (progressBar) {
-        const progress = (pageSystem.currentPage / pageSystem.totalPages) * 100;
-        progressBar.style.width = `${progress}%`;
-    }
-    
-    // Обновляем кнопки навигации
-    const prevBtn = document.querySelector('.prev-btn');
-    const nextBtn = document.querySelector('.next-btn');
-    
-    if (prevBtn) {
-        prevBtn.disabled = pageSystem.currentPage <= 1;
-    }
-    
-    if (nextBtn) {
-        nextBtn.disabled = pageSystem.currentPage >= pageSystem.totalPages;
-    }
-}
-
-// Переход к предыдущей странице
-function previousPage() {
-    if (pageSystem.currentPage <= 1 || pageSystem.isAnimating) return;
-    
-    pageSystem.currentPage--;
-    animatePageTransition('prev');
-}
-
-// Переход к следующей странице
-function nextPage() {
-    if (pageSystem.currentPage >= pageSystem.totalPages || pageSystem.isAnimating) return;
-    
-    pageSystem.currentPage++;
-    animatePageTransition('next');
-}
-
-// Анимация перехода страницы
-function animatePageTransition(direction) {
-    if (pageSystem.isAnimating) return;
-    
-    pageSystem.isAnimating = true;
-    const pageContent = document.getElementById('pageContent');
-    
-    // Добавляем класс анимации
-    pageContent.classList.add('page-turning');
-    
-    setTimeout(() => {
-        // Обновляем контент
-        displayCurrentPage();
-        
-        // Убираем класс анимации
-        pageContent.classList.remove('page-turning');
-        
-        pageSystem.isAnimating = false;
-    }, 300);
-}
-
-// Применение настроек чтения
-function applySettings() {
-    const root = document.documentElement;
-    
-    // Устанавливаем CSS переменные
-    root.style.setProperty('--font-size', `${readingSettings.fontSize}px`);
-    root.style.setProperty('--font-family', readingSettings.fontFamily);
-    root.style.setProperty('--line-height', readingSettings.lineHeight);
-    
-    // Применяем тему
-    if (readingSettings.theme === 'dark') {
-        root.style.setProperty('--bg-color', '#1a1a1a');
-        root.style.setProperty('--text-color', '#e0e0e0');
-    } else {
-        root.style.setProperty('--bg-color', '#ffffff');
-        root.style.setProperty('--text-color', '#333333');
-    }
-    
-    // Применяем ширину текста
-    const pageContent = document.getElementById('pageContent');
-    if (pageContent) {
-        pageContent.className = `page-content text-width-${readingSettings.textWidth}`;
-    }
-}
-
-// Инициализация кнопок
-function initializeButtons() {
-    // Кнопки навигации
-    const prevBtn = document.querySelector('.prev-btn');
-    const nextBtn = document.querySelector('.next-btn');
-    
-    if (prevBtn) {
-        prevBtn.addEventListener('click', previousPage);
-    }
-    
-    if (nextBtn) {
-        nextBtn.addEventListener('click', nextPage);
-    }
-    
-    // Кнопки настроек
-    const fontSizeMinus = document.querySelector('.font-size-minus');
-    const fontSizePlus = document.querySelector('.font-size-plus');
-    
-    if (fontSizeMinus) {
-        fontSizeMinus.addEventListener('click', () => changeFontSize(-1));
-    }
-    
-    if (fontSizePlus) {
-        fontSizePlus.addEventListener('click', () => changeFontSize(1));
-    }
-    
-    // Остальные кнопки настроек...
-    console.log('🎮 Кнопки инициализированы');
-}
-
-// Изменение размера шрифта
+// Функции для кнопок
 function changeFontSize(delta) {
-    const newSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
-    if (newSize === readingSettings.fontSize) return;
-    
-    readingSettings.fontSize = newSize;
-    applySettings();
-    saveSettings();
-    
-    // Пересчитываем страницы
-    setTimeout(() => {
-        calculatePageDimensions();
-        displayCurrentPage();
-    }, 100);
-    
-    // Обновляем отображение
-    const fontSizeDisplay = document.getElementById('fontSizeDisplay');
-    if (fontSizeDisplay) {
-        fontSizeDisplay.textContent = `${readingSettings.fontSize}px`;
-    }
+    if (reader) reader.changeFontSize(delta);
 }
 
-// Сохранение настроек
-function saveSettings() {
-    localStorage.setItem('readingSettings', JSON.stringify(readingSettings));
+function changeFontFamily(family) {
+    if (reader) reader.changeFontFamily(family);
 }
 
-// Загрузка настроек
-function loadSettings() {
-    const saved = localStorage.getItem('readingSettings');
-    if (saved) {
-        readingSettings = { ...readingSettings, ...JSON.parse(saved) };
-    }
-    applySettings();
+function setTextWidth(width) {
+    if (reader) reader.setTextWidth(width);
 }
 
-// Сохранение прогресса чтения
-function saveReadingProgress() {
-    if (currentUser && currentBook) {
-        const progress = {
-            userId: currentUser.id,
-            bookId: currentBook.id,
-            currentPage: pageSystem.currentPage,
-            totalPages: pageSystem.totalPages,
-            timestamp: Date.now()
-        };
-        
-        localStorage.setItem(`readingProgress_${currentBook.id}`, JSON.stringify(progress));
-    }
+function setLineHeight(height) {
+    if (reader) reader.setLineHeight(height);
 }
 
-// Загрузка прогресса чтения
-function loadReadingProgress() {
-    if (currentBook) {
-        const saved = localStorage.getItem(`readingProgress_${currentBook.id}`);
-        if (saved) {
-            const progress = JSON.parse(saved);
-            pageSystem.currentPage = Math.max(1, Math.min(progress.currentPage, pageSystem.totalPages));
-        }
-    }
+function setTheme(theme) {
+    if (reader) reader.setTheme(theme);
 }
 
-// Обработка изменения размера окна
-window.addEventListener('resize', () => {
-    setTimeout(() => {
-        calculatePageDimensions();
-        displayCurrentPage();
-    }, 100);
-});
+function previousPage() {
+    if (reader) reader.previousPage();
+}
 
-// Дополнительные функции для читалки
-function goBack() {
-    window.location.href = 'index.html';
+function nextPage() {
+    if (reader) reader.nextPage();
+}
+
+function goToChapter(index) {
+    if (reader) reader.goToChapter(index);
 }
 
 function openSettings() {
-    document.getElementById('settingsModal').style.display = 'flex';
+    document.getElementById('settingsModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
 }
 
@@ -551,105 +412,15 @@ function closeSettings() {
     document.body.style.overflow = 'auto';
 }
 
-function toggleBookmark() {
-    // Функция закладок (пока заглушка)
-    console.log('🔖 Закладка переключена');
-}
-
 function openTableOfContents() {
-    document.getElementById('sidebar').classList.add('open');
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.add('open');
 }
 
 function closeTableOfContents() {
-    document.getElementById('sidebar').classList.remove('open');
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.remove('open');
 }
 
-function handleReaderLogout() {
-    localStorage.removeItem('currentUser');
-    window.location.href = 'index.html';
-}
-
-function goToChapter(chapterIndex) {
-    // Переход к главе (пока заглушка)
-    console.log('📖 Переход к главе:', chapterIndex);
-    closeTableOfContents();
-}
-
-function changeFontFamily(family) {
-    readingSettings.fontFamily = family;
-    applySettings();
-    saveSettings();
-    
-    // Обновляем активные кнопки
-    document.querySelectorAll('.font-family-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.family === family);
-    });
-    
-    // Пересчитываем страницы
-    setTimeout(() => {
-        calculatePageDimensions();
-        displayCurrentPage();
-    }, 100);
-}
-
-function setTextWidth(width) {
-    readingSettings.textWidth = width;
-    applySettings();
-    saveSettings();
-    
-    // Обновляем активные кнопки
-    document.querySelectorAll('.width-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.width === width);
-    });
-    
-    // Пересчитываем страницы
-    setTimeout(() => {
-        calculatePageDimensions();
-        displayCurrentPage();
-    }, 100);
-}
-
-function setLineHeight(height) {
-    readingSettings.lineHeight = height;
-    applySettings();
-    saveSettings();
-    
-    // Обновляем активные кнопки
-    document.querySelectorAll('.lh-btn').forEach(btn => {
-        btn.classList.toggle('active', parseFloat(btn.dataset.height) === height);
-    });
-    
-    // Пересчитываем страницы
-    setTimeout(() => {
-        calculatePageDimensions();
-        displayCurrentPage();
-    }, 100);
-}
-
-function setTheme(theme) {
-    readingSettings.theme = theme;
-    applySettings();
-    saveSettings();
-    
-    // Обновляем активные кнопки
-    document.querySelectorAll('.theme-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.theme === theme);
-    });
-}
-
-// Экспорт функций для глобального доступа
-window.previousPage = previousPage;
-window.nextPage = nextPage;
-window.changeFontSize = changeFontSize;
-window.goBack = goBack;
-window.openSettings = openSettings;
-window.closeSettings = closeSettings;
-window.toggleBookmark = toggleBookmark;
-window.openTableOfContents = openTableOfContents;
-window.closeTableOfContents = closeTableOfContents;
-window.handleReaderLogout = handleReaderLogout;
-window.goToChapter = goToChapter;
-window.changeFontFamily = changeFontFamily;
-window.setTextWidth = setTextWidth;
-window.setLineHeight = setLineHeight;
-window.setTheme = setTheme;
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', initializeReader);

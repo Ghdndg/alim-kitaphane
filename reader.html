@@ -3,156 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Читалка - Алим Мидат: Хаджи Гирай</title>
+    <title>Читалка - Алим Мидат</title>
+    <link rel="stylesheet" href="reader-new.css">
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:wght@400;600&family=Georgia:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <!-- Заголовок ридера -->
-    <header class="reader-header">
-        <div class="header-left">
-            <button class="back-btn" onclick="goBack()">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <div class="book-info">
-                <h1 class="book-title">Алим Мидат: Хаджи Гирай</h1>
-                <p class="book-author">Тарихий роман</p>
-            </div>
-        </div>
-        <div class="header-right">
-            <button class="settings-btn" onclick="openSettings()">
-                <i class="fas fa-cog"></i>
-            </button>
-            <button class="bookmark-btn" onclick="toggleBookmark()">
-                <i class="fas fa-bookmark"></i>
-            </button>
-            <button class="menu-btn" onclick="openTableOfContents()">
-                <i class="fas fa-list"></i>
-            </button>
-            <button class="logout-btn" onclick="handleReaderLogout()">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
-        </div>
-    </header>
-
-    <!-- Основная область чтения -->
-    <main class="reader-main">
-        <!-- Контейнер для страниц будет создан динамически -->
-    </main>
-
-    <!-- Навигация по страницам -->
-    <nav class="nav-buttons">
-        <button class="nav-btn prev-btn" onclick="previousPage()" disabled>
-            <i class="fas fa-chevron-left"></i>
-            <span class="btn-text">Предыдущая</span>
-        </button>
-        
-        <div class="page-info">
-            <div class="page-numbers">1 / 1</div>
-            <div class="progress-bar-container">
-                <div class="progress-bar"></div>
-            </div>
-        </div>
-        
-        <button class="nav-btn next-btn" onclick="nextPage()">
-            <span class="btn-text">Следующая</span>
-            <i class="fas fa-chevron-right"></i>
-        </button>
-    </nav>
-
-    <!-- Модальное окно настроек -->
-    <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Настройки чтения</h2>
-                <button class="close-btn" onclick="closeSettings()">
-                    <i class="fas fa-times"></i>
+    <!-- Основной контейнер читалки -->
+    <div class="reader-main">
+        <!-- Заголовок -->
+        <header class="reader-header">
+            <h1 class="reader-title">Алим Мидат</h1>
+            <div class="reader-controls">
+                <button class="control-btn" onclick="openTableOfContents()" title="Оглавление">
+                    📖 Оглавление
+                </button>
+                <button class="control-btn" onclick="openSettings()" title="Настройки">
+                    ⚙️ Настройки
+                </button>
+                <button class="control-btn" onclick="window.location.href='/index.html'" title="На главную">
+                    🏠 Главная
                 </button>
             </div>
+        </header>
+
+        <!-- Область контента -->
+        <div class="reader-container">
+            <div class="text-content-wrapper">
+                <div class="text-content" id="textContent">
+                    <!-- Контент книги будет загружен здесь -->
+                    <p>Загрузка...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Навигация -->
+        <nav class="nav-buttons">
+            <button class="nav-btn prev-btn" onclick="previousPage()">
+                ← <span>Предыдущая</span>
+            </button>
             
-            <div class="modal-body">
-                <!-- Размер шрифта -->
-                <div class="setting-group">
-                    <label>Размер шрифта</label>
+            <div class="page-info">
+                <div class="progress-container">
+                    <div class="progress-bar"></div>
+                </div>
+                <div class="page-number">1 / 1</div>
+            </div>
+            
+            <button class="nav-btn next-btn" onclick="nextPage()">
+                <span>Следующая</span> →
+            </button>
+        </nav>
+    </div>
+
+    <!-- Модальное окно настроек -->
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-content">
+            <div class="settings-header">
+                <h2 class="settings-title">Настройки чтения</h2>
+                <button class="close-btn" onclick="closeSettings()">×</button>
+            </div>
+
+            <!-- Размер шрифта -->
+            <div class="settings-group">
+                <label class="settings-label">Размер шрифта</label>
+                <div class="settings-controls">
                     <div class="font-size-controls">
-                        <button class="font-size-minus" onclick="changeFontSize(-1)">А-</button>
-                        <span id="fontSizeDisplay">16px</span>
-                        <button class="font-size-plus" onclick="changeFontSize(1)">А+</button>
+                        <button class="size-btn" onclick="changeFontSize(-1)">А-</button>
+                        <span class="size-display" id="fontSizeDisplay">16px</span>
+                        <button class="size-btn" onclick="changeFontSize(1)">А+</button>
                     </div>
                 </div>
-                
-                <!-- Семейство шрифтов -->
-                <div class="setting-group">
-                    <label>Шрифт</label>
-                    <div class="font-family-controls">
-                        <button class="font-family-btn" onclick="changeFontFamily('Georgia')" data-family="Georgia">Georgia</button>
-                        <button class="font-family-btn" onclick="changeFontFamily('Times New Roman')" data-family="Times New Roman">Times</button>
-                        <button class="font-family-btn" onclick="changeFontFamily('Arial')" data-family="Arial">Arial</button>
-                    </div>
+            </div>
+
+            <!-- Семейство шрифтов -->
+            <div class="settings-group">
+                <label class="settings-label">Шрифт</label>
+                <div class="choice-buttons">
+                    <button class="choice-btn active" data-family="Georgia, serif" onclick="changeFontFamily('Georgia, serif')">
+                        Georgia
+                    </button>
+                    <button class="choice-btn" data-family="'Times New Roman', serif" onclick="changeFontFamily('Times New Roman, serif')">
+                        Times
+                    </button>
+                    <button class="choice-btn" data-family="'Helvetica Neue', Arial, sans-serif" onclick="changeFontFamily('Helvetica Neue, Arial, sans-serif')">
+                        Helvetica
+                    </button>
+                    <button class="choice-btn" data-family="'Courier New', monospace" onclick="changeFontFamily('Courier New, monospace')">
+                        Courier
+                    </button>
                 </div>
-                
-                <!-- Ширина текста -->
-                <div class="setting-group">
-                    <label>Ширина текста</label>
-                    <div class="width-controls">
-                        <button class="width-btn" onclick="setTextWidth('narrow')" data-width="narrow">Узкая</button>
-                        <button class="width-btn active" onclick="setTextWidth('medium')" data-width="medium">Средняя</button>
-                        <button class="width-btn" onclick="setTextWidth('wide')" data-width="wide">Широкая</button>
-                    </div>
+            </div>
+
+            <!-- Ширина текста -->
+            <div class="settings-group">
+                <label class="settings-label">Ширина текста</label>
+                <div class="choice-buttons">
+                    <button class="choice-btn" data-width="narrow" onclick="setTextWidth('narrow')">
+                        Узкая
+                    </button>
+                    <button class="choice-btn active" data-width="medium" onclick="setTextWidth('medium')">
+                        Средняя
+                    </button>
+                    <button class="choice-btn" data-width="wide" onclick="setTextWidth('wide')">
+                        Широкая
+                    </button>
                 </div>
-                
-                <!-- Межстрочный интервал -->
-                <div class="setting-group">
-                    <label>Межстрочный интервал</label>
-                    <div class="line-height-controls">
-                        <button class="lh-btn" onclick="setLineHeight(1.4)" data-height="1.4">1.4</button>
-                        <button class="lh-btn active" onclick="setLineHeight(1.6)" data-height="1.6">1.6</button>
-                        <button class="lh-btn" onclick="setLineHeight(1.8)" data-height="1.8">1.8</button>
-                        <button class="lh-btn" onclick="setLineHeight(2.0)" data-height="2.0">2.0</button>
-                    </div>
+            </div>
+
+            <!-- Межстрочный интервал -->
+            <div class="settings-group">
+                <label class="settings-label">Межстрочный интервал</label>
+                <div class="choice-buttons">
+                    <button class="choice-btn" data-height="1.4" onclick="setLineHeight(1.4)">
+                        1.4
+                    </button>
+                    <button class="choice-btn active" data-height="1.6" onclick="setLineHeight(1.6)">
+                        1.6
+                    </button>
+                    <button class="choice-btn" data-height="1.8" onclick="setLineHeight(1.8)">
+                        1.8
+                    </button>
+                    <button class="choice-btn" data-height="2.0" onclick="setLineHeight(2.0)">
+                        2.0
+                    </button>
                 </div>
-                
-                <!-- Тема -->
-                <div class="setting-group">
-                    <label>Тема</label>
-                    <div class="theme-controls">
-                        <button class="theme-btn" onclick="setTheme('light')" data-theme="light">Светлая</button>
-                        <button class="theme-btn" onclick="setTheme('dark')" data-theme="dark">Тёмная</button>
-                    </div>
+            </div>
+
+            <!-- Тема -->
+            <div class="settings-group">
+                <label class="settings-label">Тема</label>
+                <div class="choice-buttons">
+                    <button class="choice-btn active" data-theme="light" onclick="setTheme('light')">
+                        ☀️ Светлая
+                    </button>
+                    <button class="choice-btn" data-theme="sepia" onclick="setTheme('sepia')">
+                        📜 Сепия
+                    </button>
+                    <button class="choice-btn" data-theme="dark" onclick="setTheme('dark')">
+                        🌙 Темная
+                    </button>
+                    <button class="choice-btn" data-theme="night" onclick="setTheme('night')">
+                        🌃 Ночная
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Боковая панель с оглавлением -->
-    <div id="sidebar" class="sidebar">
+    <!-- Боковая панель оглавления -->
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h3>Оглавление</h3>
-            <button class="close-sidebar" onclick="closeTableOfContents()">
-                <i class="fas fa-times"></i>
-            </button>
+            <h3 class="sidebar-title">Оглавление</h3>
+            <button class="sidebar-close" onclick="closeTableOfContents()">×</button>
         </div>
-        <div class="sidebar-content">
-            <ul class="chapter-list">
-                <li><a href="#" onclick="goToChapter(0)">Къириш</a></li>
-                <li><a href="#" onclick="goToChapter(1)">1-чи Фасыл: Хандыр Сарайы</a></li>
-                <li><a href="#" onclick="goToChapter(2)">2-чи Фасыл: Дипломатия</a></li>
-                <li><a href="#" onclick="goToChapter(3)">3-чи Фасыл: Тиджарет</a></li>
-                <li><a href="#" onclick="goToChapter(4)">4-чи Фасыл: Санат</a></li>
-                <li><a href="#" onclick="goToChapter(5)">5-чи Фасыл: Меденийет</a></li>
-            </ul>
+        <div class="chapter-list">
+            <div class="chapter-item" onclick="goToChapter(0)">
+                <h4 class="chapter-title">Глава 1. Начало</h4>
+            </div>
+            <div class="chapter-item" onclick="goToChapter(1)">
+                <h4 class="chapter-title">Глава 2. Развитие</h4>
+            </div>
+            <div class="chapter-item" onclick="goToChapter(2)">
+                <h4 class="chapter-title">Глава 3. Кульминация</h4>
+            </div>
+            <div class="chapter-item" onclick="goToChapter(3)">
+                <h4 class="chapter-title">Глава 4. Развязка</h4>
+            </div>
+            <div class="chapter-item" onclick="goToChapter(4)">
+                <h4 class="chapter-title">Глава 5. Заключение</h4>
+            </div>
         </div>
     </div>
 
-    <!-- Компактный футер -->
-    <footer class="compact-footer">
-        <div class="footer-links">
-            <a href="terms.html" target="_blank">Пользовательское соглашение</a>
-            <a href="terms.html#privacy" target="_blank">Политика конфиденциальности</a>
+    <!-- Футер -->
+    <footer class="site-footer" style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);">
+        <div class="footer-content" style="padding: 10px 20px; text-align: center;">
+            <div class="footer-copyright" style="font-size: 12px; color: #6c757d;">
+                © 2025 Алим Китапхане. Все права защищены.
+            </div>
         </div>
     </footer>
 
-    <script src="reader.js"></script>
+    <!-- Скрипты -->
+    <script src="reader-new.js"></script>
 </body>
 </html>
