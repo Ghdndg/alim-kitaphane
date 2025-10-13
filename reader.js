@@ -793,8 +793,10 @@ function closeSettings() {
 }
 
 function changeFontSize(delta) {
-    // Запоминаем процент прогресса вместо номера страницы
-    const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
+    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
+    const oldTotalContentHeight = totalContentHeight;
+    // Вычисляем процент прогресса от старого значения
+    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
     
     readingSettings.fontSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
     document.getElementById('fontSizeDisplay').textContent = readingSettings.fontSize + 'px';
@@ -804,19 +806,25 @@ function changeFontSize(delta) {
     // Пересчитываем размеры после изменения шрифта
     // Увеличиваем задержку чтобы браузер успел перерендерить
     setTimeout(() => {
-        calculatePageDimensions();
+        calculatePageDimensions(); // Это обновляет totalContentHeight на НОВОЕ значение
         
-        // Восстанавливаем позицию по проценту прогресса
+        // Применяем процент к НОВОМУ totalContentHeight
         currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
         
         applyContentTransform();
-        console.log('🔤 Font size changed, progress:', Math.round(progressPercent * 100) + '%');
+        console.log('🔤 Font size changed:', {
+            oldHeight: oldTotalContentHeight,
+            newHeight: totalContentHeight,
+            progress: Math.round(progressPercent * 100) + '%',
+            offset: Math.round(currentScrollOffset)
+        });
     }, 300);
 }
 
 function changeFontFamily(family) {
-    // Запоминаем процент прогресса
-    const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
+    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
+    const oldTotalContentHeight = totalContentHeight;
+    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
     
     readingSettings.fontFamily = family;
     applySettings();
@@ -824,13 +832,13 @@ function changeFontFamily(family) {
     
     // Пересчитываем размеры после изменения шрифта
     setTimeout(() => {
-        calculatePageDimensions();
+        calculatePageDimensions(); // Обновляет totalContentHeight
         
-        // Восстанавливаем позицию по проценту прогресса
+        // Применяем процент к НОВОМУ totalContentHeight
         currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
         
         applyContentTransform();
-        console.log('🔤 Font family changed, progress:', Math.round(progressPercent * 100) + '%');
+        console.log('📝 Font family changed, progress:', Math.round(progressPercent * 100) + '%');
     }, 300);
 }
 
@@ -848,8 +856,9 @@ function setTheme(theme) {
 }
 
 function setTextWidth(width) {
-    // Запоминаем процент прогресса
-    const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
+    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
+    const oldTotalContentHeight = totalContentHeight;
+    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
     
     readingSettings.textWidth = width;
     
@@ -864,9 +873,9 @@ function setTextWidth(width) {
     
     // Пересчитываем размеры после изменения ширины
     setTimeout(() => {
-        calculatePageDimensions();
+        calculatePageDimensions(); // Обновляет totalContentHeight
         
-        // Восстанавливаем позицию по проценту прогресса
+        // Применяем процент к НОВОМУ totalContentHeight
         currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
         
         applyContentTransform();
@@ -875,8 +884,9 @@ function setTextWidth(width) {
 }
 
 function setLineHeight(height) {
-    // Запоминаем процент прогресса
-    const progressPercent = totalContentHeight > 0 ? currentScrollOffset / totalContentHeight : 0;
+    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
+    const oldTotalContentHeight = totalContentHeight;
+    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
     
     readingSettings.lineHeight = height;
     
@@ -891,9 +901,9 @@ function setLineHeight(height) {
     
     // Пересчитываем размеры после изменения межстрочного интервала
     setTimeout(() => {
-        calculatePageDimensions();
+        calculatePageDimensions(); // Обновляет totalContentHeight
         
-        // Восстанавливаем позицию по проценту прогресса
+        // Применяем процент к НОВОМУ totalContentHeight
         currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
         
         applyContentTransform();
