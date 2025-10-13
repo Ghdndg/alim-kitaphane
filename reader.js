@@ -66,14 +66,13 @@
     }
 })();
 
-// Глобальные переменные для постраничной навигации
-let currentScrollOffset = 0; // Текущее смещение в пикселях
-let pageHeight = 0; // Высота одной "страницы" (видимой области)
-let totalContentHeight = 0; // Общая высота контента
-let currentPage = 1; // Текущая страница (рассчитывается)
-let totalPages = 1; // Общее количество страниц (рассчитывается)
+// Глобальные переменные для Kindle-стайл виртуальной пагинации
+let virtualPages = []; // Массив виртуальных страниц (каждая содержит HTML контент)
+let currentPage = 1;
+let totalPages = 1;
 let currentChapter = 0;
 let isBookmarked = false;
+let allContentHTML = ''; // Весь контент книги в HTML
 let readingSettings = {
     fontSize: 16,
     fontFamily: 'Inter',
@@ -494,128 +493,164 @@ function initializeReaderProtection() {
     }
 }
 
-// Рассчитываем размеры страницы
-function calculatePageDimensions() {
-    const wrapper = document.querySelector('.text-content-wrapper');
+// Kindle-стайл: Виртуальная пагинация - разбиваем контент на страницы
+function calculateVirtualPages() {
     const textContent = document.getElementById('textContent');
+    const wrapper = document.querySelector('.text-content-wrapper');
     const header = document.querySelector('.reader-header');
     const navigation = document.querySelector('.page-navigation');
     
-    if (!wrapper || !textContent) return;
+    if (!textContent || !wrapper) return;
     
-    // ВАЖНО: pageHeight = реальная видимая высота окна минус хедер и навигация
+    // Рассчитываем доступную высоту для текста
     const viewportHeight = window.innerHeight;
     const headerHeight = header?.offsetHeight || 0;
     const navHeight = navigation?.offsetHeight || 0;
     
-    // Получаем padding контента
     const textContentStyle = window.getComputedStyle(textContent);
     const paddingTop = parseFloat(textContentStyle.paddingTop) || 0;
     const paddingBottom = parseFloat(textContentStyle.paddingBottom) || 0;
-    const totalPadding = paddingTop + paddingBottom;
     
-    // Высота видимой области для текста минус padding
-    // Вычитаем полную строку текста чтобы текст не заходил под кнопки
-    const lineHeight = parseFloat(textContentStyle.lineHeight) || 24;
-    pageHeight = viewportHeight - headerHeight - navHeight - totalPadding - lineHeight;
+    // Доступная высота для одной страницы
+    const availableHeight = viewportHeight - headerHeight - navHeight - paddingTop - paddingBottom - 20; // -20 для запаса
     
-    console.log('📏 Calculating page dimensions:', {
+    console.log('📏 Virtual pagination setup:', {
         viewportHeight,
         headerHeight,
         navHeight,
         paddingTop,
         paddingBottom,
-        lineHeight: Math.round(lineHeight),
-        calculatedPageHeight: Math.round(pageHeight),
-        wrapperHeight: wrapper.clientHeight
+        availableHeight
     });
     
-    // Общая высота контента (без padding)
-    totalContentHeight = textContent.scrollHeight;
+    // Создаём временный невидимый контейнер для измерения
+    const tempContainer = document.createElement('div');
+    tempContainer.style.cssText = `
+        position: absolute;
+        visibility: hidden;
+        width: ${textContent.offsetWidth}px;
+        font-size: ${textContentStyle.fontSize};
+        font-family: ${textContentStyle.fontFamily};
+        line-height: ${textContentStyle.lineHeight};
+        padding: 0;
+    `;
+    document.body.appendChild(tempContainer);
     
-    // Количество страниц = высота контента / высота видимой области
-    totalPages = Math.max(1, Math.ceil(totalContentHeight / pageHeight));
+    // Разбиваем HTML на элементы
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = allContentHTML;
+    const allElements = Array.from(tempDiv.children);
     
-    // Текущая страница на основе текущего offset
-    currentPage = Math.min(totalPages, Math.floor(currentScrollOffset / pageHeight) + 1);
+    virtualPages = [];
+    let currentPageHTML = '';
+    let currentHeight = 0;
     
-    console.log('📖 Page info:', {
-        pageHeight: Math.round(pageHeight),
-        totalContentHeight: Math.round(totalContentHeight),
+    for (let i = 0; i < allElements.length; i++) {
+        const element = allElements[i];
+        const elementHTML = element.outerHTML;
+        
+        // Добавляем элемент во временный контейнер для измерения
+        tempContainer.innerHTML = currentPageHTML + elementHTML;
+        const newHeight = tempContainer.offsetHeight;
+        
+        // Если элемент помещается на текущую страницу
+        if (newHeight <= availableHeight) {
+            currentPageHTML += elementHTML;
+            currentHeight = newHeight;
+        } else {
+            // Текущая страница заполнена - сохраняем её
+            if (currentPageHTML) {
+                virtualPages.push(currentPageHTML);
+            }
+            // Начинаем новую страницу с текущего элемента
+            currentPageHTML = elementHTML;
+            tempContainer.innerHTML = elementHTML;
+            currentHeight = tempContainer.offsetHeight;
+        }
+    }
+    
+    // Добавляем последнюю страницу
+    if (currentPageHTML) {
+        virtualPages.push(currentPageHTML);
+    }
+    
+    // Удаляем временный контейнер
+    document.body.removeChild(tempContainer);
+    
+    totalPages = virtualPages.length || 1;
+    currentPage = Math.min(currentPage, totalPages); // Корректируем текущую страницу
+    
+    console.log('📚 Virtual pages calculated:', {
         totalPages,
         currentPage,
-        currentScrollOffset: Math.round(currentScrollOffset)
+        pagesPreview: virtualPages.slice(0, 3).map((p, i) => `Page ${i + 1}: ${p.substring(0, 100)}...`)
     });
 }
 
-// Применяем трансформацию к контенту
-function applyContentTransform() {
+// Kindle-стайл: Отображаем текущую страницу с fade-анимацией
+function renderCurrentPage(animated = false) {
     const textContent = document.getElementById('textContent');
-    if (!textContent) return;
+    if (!textContent || virtualPages.length === 0) return;
     
-    // Ограничиваем offset чтобы не выйти за пределы
-    const maxOffset = Math.max(0, totalContentHeight - pageHeight);
-    currentScrollOffset = Math.max(0, Math.min(currentScrollOffset, maxOffset));
+    // Корректируем номер страницы
+    currentPage = Math.max(1, Math.min(currentPage, totalPages));
     
-    // Применяем transform
-    textContent.style.transform = `translateY(-${currentScrollOffset}px)`;
+    const pageHTML = virtualPages[currentPage - 1] || '';
     
-    // Обновляем номер страницы (минимум 1)
-    currentPage = Math.max(1, Math.floor(currentScrollOffset / pageHeight) + 1);
+    if (animated) {
+        // Fade-out анимация
+        textContent.style.opacity = '0';
+        
+        setTimeout(() => {
+            // Меняем контент
+            textContent.innerHTML = pageHTML;
+            textContent.style.transform = 'none'; // Убираем transform
+            
+            // Fade-in анимация
+            setTimeout(() => {
+                textContent.style.opacity = '1';
+            }, 50);
+        }, 300);
+    } else {
+        // Без анимации
+        textContent.innerHTML = pageHTML;
+        textContent.style.transform = 'none';
+        textContent.style.opacity = '1';
+    }
     
     updateProgressBar();
     updatePageNumbers();
     updateNavigationButtons();
     saveReadingProgress();
-}
-
-function previousPage() {
-    if (currentScrollOffset > 0) {
-        // Добавляем класс для анимации
-        const textContent = document.getElementById('textContent');
-        textContent.classList.add('page-turning');
-        
-        // Сдвигаем на одну страницу вверх
-        currentScrollOffset = Math.max(0, currentScrollOffset - pageHeight);
-        applyContentTransform();
-        
-        // Убираем класс анимации
-        setTimeout(() => {
-            textContent.classList.remove('page-turning');
-        }, 600);
-    }
-}
-
-function nextPage() {
-    const maxOffset = totalContentHeight - pageHeight;
     
-    if (currentScrollOffset < maxOffset) {
-        // Добавляем класс для анимации
-        const textContent = document.getElementById('textContent');
-        textContent.classList.add('page-turning');
-        
-        // Сдвигаем на одну страницу вниз
-        currentScrollOffset = Math.min(maxOffset, currentScrollOffset + pageHeight);
-        applyContentTransform();
-        
-        // Убираем класс анимации
-        setTimeout(() => {
-            textContent.classList.remove('page-turning');
-        }, 600);
+    console.log('📄 Page rendered:', currentPage, '/', totalPages);
+}
+
+// Kindle-стайл: Предыдущая страница
+function previousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        renderCurrentPage(true); // С анимацией
     }
 }
 
+// Kindle-стайл: Следующая страница
+function nextPage() {
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderCurrentPage(true); // С анимацией
+    }
+}
+
+// Kindle-стайл: Обновляем кнопки навигации
 function updateNavigationButtons() {
     const prevBtn = document.querySelector('.prev-btn');
     const nextBtn = document.querySelector('.next-btn');
     
     if (!prevBtn || !nextBtn) return;
     
-    // Используем currentScrollOffset для более точной проверки
-    const maxOffset = Math.max(0, totalContentHeight - pageHeight);
-    
-    prevBtn.disabled = currentScrollOffset <= 0;
-    nextBtn.disabled = currentScrollOffset >= maxOffset;
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= totalPages;
 }
 
 function scrollToTop() {
@@ -647,28 +682,21 @@ function closeSidebar() {
     document.body.style.overflow = 'auto';
 }
 
+// Kindle-стайл: Переход к главе
 function goToChapter(chapterIndex) {
     currentChapter = chapterIndex;
     
-    // Находим все заголовки глав в контенте
-    const textContent = document.getElementById('textContent');
-    const chapterTitles = textContent.querySelectorAll('.chapter-title, .section-title');
+    // Ищем страницу, на которой находится заголовок главы
+    const chapterTitle = chapters[chapterIndex]?.title;
+    if (!chapterTitle) return;
     
-    if (chapterTitles[chapterIndex]) {
-        // Получаем позицию заголовка главы относительно контейнера
-        const chapterElement = chapterTitles[chapterIndex];
-        const offsetTop = chapterElement.offsetTop;
-        
-        // Устанавливаем scroll offset на позицию главы
-        currentScrollOffset = offsetTop;
-        
-        // Добавляем анимацию
-        textContent.classList.add('page-turning');
-        applyContentTransform();
-        
-        setTimeout(() => {
-            textContent.classList.remove('page-turning');
-        }, 600);
+    // Ищем в каком virtualPage находится эта глава
+    for (let i = 0; i < virtualPages.length; i++) {
+        if (virtualPages[i].includes(chapterTitle)) {
+            currentPage = i + 1;
+            renderCurrentPage(true); // С анимацией
+            break;
+        }
     }
     
     updateActiveChapter();
@@ -688,17 +716,15 @@ function updateActiveChapter() {
 }
 
 // Загружаем весь контент книги сразу
+// Kindle-стайл: Загрузка и разбивка контента на виртуальные страницы
 function loadAllContent() {
-    const textContent = document.getElementById('textContent');
+    // Объединяем весь контент всех глав в один HTML
+    allContentHTML = chapters.map(chapter => chapter.content).join('');
     
-    // Объединяем весь контент всех глав
-    const allContent = chapters.map(chapter => chapter.content).join('');
-    textContent.innerHTML = allContent;
-    
-    // После загрузки контента пересчитываем размеры
+    // После загрузки контента разбиваем на страницы
     setTimeout(() => {
-        calculatePageDimensions();
-        applyContentTransform();
+        calculateVirtualPages();
+        renderCurrentPage();
         updateActiveChapter();
     }, 100);
 }
@@ -792,53 +818,41 @@ function closeSettings() {
     saveSettings();
 }
 
+// Kindle-стайл: Изменение размера шрифта
 function changeFontSize(delta) {
-    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
-    const oldTotalContentHeight = totalContentHeight;
-    // Вычисляем процент прогресса от старого значения
-    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
+    // Запоминаем прогресс (процент от общего количества страниц)
+    const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
     
     readingSettings.fontSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
     document.getElementById('fontSizeDisplay').textContent = readingSettings.fontSize + 'px';
     applySettings();
     saveSettings();
     
-    // Пересчитываем размеры после изменения шрифта
-    // Увеличиваем задержку чтобы браузер успел перерендерить
+    // Пересчитываем виртуальные страницы
     setTimeout(() => {
-        calculatePageDimensions(); // Это обновляет totalContentHeight на НОВОЕ значение
+        calculateVirtualPages();
         
-        // Применяем процент к НОВОМУ totalContentHeight
-        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
+        // Восстанавливаем позицию по проценту
+        currentPage = Math.max(1, Math.ceil(progressPercent * totalPages));
         
-        applyContentTransform();
-        console.log('🔤 Font size changed:', {
-            oldHeight: oldTotalContentHeight,
-            newHeight: totalContentHeight,
-            progress: Math.round(progressPercent * 100) + '%',
-            offset: Math.round(currentScrollOffset)
-        });
+        renderCurrentPage(false); // Без анимации
+        console.log('🔤 Font size changed, page:', currentPage, '/', totalPages);
     }, 300);
 }
 
+// Kindle-стайл: Изменение шрифта
 function changeFontFamily(family) {
-    // Сохраняем СТАРЫЙ totalContentHeight ДО изменения настроек
-    const oldTotalContentHeight = totalContentHeight;
-    const progressPercent = oldTotalContentHeight > 0 ? currentScrollOffset / oldTotalContentHeight : 0;
+    const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
     
     readingSettings.fontFamily = family;
     applySettings();
     saveSettings();
     
-    // Пересчитываем размеры после изменения шрифта
     setTimeout(() => {
-        calculatePageDimensions(); // Обновляет totalContentHeight
-        
-        // Применяем процент к НОВОМУ totalContentHeight
-        currentScrollOffset = Math.max(0, Math.min(progressPercent * totalContentHeight, totalContentHeight - pageHeight));
-        
-        applyContentTransform();
-        console.log('📝 Font family changed, progress:', Math.round(progressPercent * 100) + '%');
+        calculateVirtualPages();
+        currentPage = Math.max(1, Math.ceil(progressPercent * totalPages));
+        renderCurrentPage(false);
+        console.log('📝 Font family changed, page:', currentPage, '/', totalPages);
     }, 300);
 }
 
