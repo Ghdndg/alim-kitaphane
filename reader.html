@@ -3,188 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Читалка - Алим Мидат</title>
-    <link rel="stylesheet" href="reader-new.css">
-    <link rel="stylesheet" href="styles.css">
+    <title>Читалка - Алим Мидат: Хаджи Гирай</title>
+    <link rel="stylesheet" href="reader.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <!-- Основной контейнер читалки -->
-    <div class="reader-main">
-        <!-- Заголовок -->
-        <header class="reader-header">
-            <h1 class="reader-title">Алим Мидат</h1>
-            <div class="reader-controls">
-                <button class="control-btn" onclick="openTableOfContents()" title="Оглавление">
-                    📖 Оглавление
-                </button>
-                <button class="control-btn" onclick="openSettings()" title="Настройки">
-                    ⚙️ Настройки
-                </button>
-                <button class="control-btn" onclick="window.location.href='/index.html'" title="На главную">
-                    🏠 Главная
-                </button>
+    <!-- Заголовок ридера -->
+    <header class="reader-header">
+        <div class="header-left">
+            <button class="back-btn" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div class="book-info">
+                <h1 class="book-title">Алим Мидат: Хаджи Гирай</h1>
+                <p class="book-author">Тарихий роман</p>
             </div>
-        </header>
+        </div>
+        <div class="header-right">
+            <button class="settings-btn" onclick="openSettings()">
+                <i class="fas fa-cog"></i>
+            </button>
+            <button class="bookmark-btn" onclick="toggleBookmark()">
+                <i class="fas fa-bookmark"></i>
+            </button>
+            <button class="menu-btn" onclick="openTableOfContents()">
+                <i class="fas fa-list"></i>
+            </button>
+            <button class="logout-btn" onclick="handleReaderLogout()">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+    </header>
 
-        <!-- Область контента -->
+    <!-- Основная область чтения -->
+    <main class="reader-main">
         <div class="reader-container">
             <div class="text-content-wrapper">
                 <div class="text-content" id="textContent">
-                    <!-- Контент книги будет загружен здесь -->
-                    <p>Загрузка...</p>
+                <h2 class="chapter-title">Къириш</h2>
+                <div class="text-block">
+                    <p>Алим Мидат къалемининъ асери - "Хаджи Гирай" тарихий романы, Къырым Хандырынынъ буюк шахсиетлеринден биси акъкъында. Бу эсер садедже тарихий вакъалары анлатмай, бельки бир халкънынъ миллий рухыны, адетлерини ве ихтикъадларыны косьтере.</p>
+                    
+                    <p>Хаджи Гирай Хан - Къырым тарихининъ эн буюк шахсиетлеринден биси. Онынъ заманында Къырым Хандыры эвджинде эди. Дипломатия, тиджарет ве санат инкишаф этмишти. Къырым татарлары бутюн дюньяда хюрметле къаралырды.</p>
+                    
+                    <p>Романда автор бизни XV-XVI асырларына алып бара. О заман Къырым - Ширк Юлынынъ мархиз ноктъаларындан биси эди. Буюк тиджарет йоллары бу топракъларны кечирди. Шерклерден ве Гъарбдан тджирлер келирди.</p>
+                    
+                    <p>Лякин бу романнынъ асыл къыммети онда ки, о бизге эски Къырымнынъ гуньдалыкъ хаятыны косьтере. Халкъ насыл яшайды эди, не фикир этирди, неге инанырды - бутюн бунлар эсерде ачыкъ косьтерильди.</p>
+                </div>
+
+                <h3 class="section-title">1-чи Фасыл<br>Хандыр Сарайы</h3>
+                
+                <div class="text-block">
+                    <p>Бахчисарай сарайы гунь догъгъанда алтын нурларда ялтырай эди. Хаджи Гирай Хан диванханеде олтуре, девлет ишлерини косьтерир эди. Йанында вязирлери, нукерлери ве алимлери турды.</p>
+                    
+                    <p>"Хан хазретлери," деди башвезири Эмин-эфенди, "Османлы падишахындан мектуп кельди. Алтын Орданынъ калдыкълары акъын этмекте девам этелер."</p>
+                    
+                    <p>Хаджи Гирай элини сакъалына сурте, дерин фикирге далды. Бильди ки бу меселелер коптан берли девлет ичюн зарарлы. Лякин чёзюм тапмакъ керек эди.</p>
+                    
+                    <p>Сарайнынъ пенджерелеринден Къырым тагъларынынъ гозеллиги корюне эди. Табиатнынъ бу буюксюзюне бакъып, Хан фикир этир эди: "Аллах бизге не гузель бир ер берди. Бу топракъларны къоруамакъ ве инкишаф эттирмек бизим боржумыз."</p>
+                    
+                    <p>Диванханенинъ дуварларында эски Хан аталарынынъ сюретлери асыла эди. Эр биси кенди заманында Къырым ичюн харп этмишти, халкъны къорумышты. Шимди бу борч Хаджи Гирайгъа дюшмишти.</p>
+                </div>
+
+                <div class="text-block">
+                    <p>"Везири Азам," деди Хан, "халкъымызнынъ ахвалыны насыл коресинъ? Хасылат ем болды му?"</p>
+                    
+                    <p>"Аллахгъа шукюр, Хан хазретлери, бу йыл беркетли кечти. Буюдайлар ем олды, багълар мейве берди. Халкъ разы," джавап берди Эмин-эфенди.</p>
+                    
+                    <p>Бу хабер Хаджи Гирайны куванталы. Чюнки билир эди ки девлетнинъ асыл гучи - халкъынынъ гузель яшавы. Тодж халкъ разы олмаса, хандарнынъ да икбали олмаз.</p>
+                </div>
                 </div>
             </div>
         </div>
 
-        <!-- Навигация -->
-        <nav class="nav-buttons">
-            <button class="nav-btn prev-btn" onclick="previousPage()">
-                ← <span>Предыдущая</span>
-            </button>
-            
-            <div class="page-info">
-                <div class="progress-container">
-                    <div class="progress-bar"></div>
-                </div>
-                <div class="page-number">1 / 1</div>
+        <!-- Навигационные кнопки -->
+        <div class="page-navigation">
+            <!-- Прогресс бар сверху навигации -->
+            <div class="nav-progress">
+                <div class="nav-progress-fill" id="navProgressFill"></div>
             </div>
             
-            <button class="nav-btn next-btn" onclick="nextPage()">
-                <span>Следующая</span> →
+            <!-- Кнопки навигации -->
+            <div class="nav-buttons">
+                <button class="nav-btn prev-btn" onclick="previousPage()" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                    <span>Предыдущая</span>
+                </button>
+                <div class="page-info">
+                    <span id="currentPage">1</span> из <span id="totalPages">52</span>
+                </div>
+                <button class="nav-btn next-btn" onclick="nextPage()">
+                    <span>Следующая</span>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Боковая панель с оглавлением -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Содержание</h3>
+            <button class="close-sidebar" onclick="closeSidebar()">
+                <i class="fas fa-times"></i>
             </button>
-        </nav>
-    </div>
+        </div>
+        <div class="table-of-contents">
+            <div class="toc-item active" onclick="goToChapter(0)">
+                <span class="chapter-number">Къириш</span>
+                <span class="chapter-title">Введение</span>
+                <span class="page-number">1</span>
+            </div>
+            <div class="toc-item" onclick="goToChapter(1)">
+                <span class="chapter-number">1</span>
+                <span class="chapter-title">Хандыр Сарайы</span>
+                <span class="page-number">3</span>
+            </div>
+            <div class="toc-item" onclick="goToChapter(2)">
+                <span class="chapter-number">2</span>
+                <span class="chapter-title">Диванханеде Мешавере</span>
+                <span class="page-number">8</span>
+            </div>
+            <div class="toc-item" onclick="goToChapter(3)">
+                <span class="chapter-number">3</span>
+                <span class="chapter-title">Къырым Топракълары</span>
+                <span class="page-number">15</span>
+            </div>
+            <div class="toc-item" onclick="goToChapter(4)">
+                <span class="chapter-number">4</span>
+                <span class="chapter-title">Халкъ ве Хан</span>
+                <span class="page-number">22</span>
+            </div>
+            <div class="toc-item" onclick="goToChapter(5)">
+                <span class="chapter-number">5</span>
+                <span class="chapter-title">Тиджарет Йоллары</span>
+                <span class="page-number">29</span>
+            </div>
+            <div class="toc-item" onclick="goToChapter(6)">
+                <span class="chapter-number">6</span>
+                <span class="chapter-title">Дипломатия ве Сиясет</span>
+                <span class="page-number">37</span>
+            </div>
+            <div class="toc-item" onclick="goToChapter(7)">
+                <span class="chapter-number">7</span>
+                <span class="chapter-title">Санат ве Медениет</span>
+                <span class="page-number">44</span>
+            </div>
+            <div class="toc-item" onclick="goToChapter(8)">
+                <span class="chapter-number">Хатиме</span>
+                <span class="chapter-title">Мирас</span>
+                <span class="page-number">50</span>
+            </div>
+        </div>
+    </aside>
 
     <!-- Модальное окно настроек -->
-    <div class="settings-modal" id="settingsModal">
-        <div class="settings-content">
-            <div class="settings-header">
-                <h2 class="settings-title">Настройки чтения</h2>
-                <button class="close-btn" onclick="closeSettings()">×</button>
+    <div id="settingsModal" class="modal settings-modal">
+        <div class="modal-content settings-content">
+            <div class="modal-header">
+                <h3>Настройки чтения</h3>
+                <button class="close-modal" onclick="closeSettings()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-
-            <!-- Размер шрифта -->
-            <div class="settings-group">
-                <label class="settings-label">Размер шрифта</label>
-                <div class="settings-controls">
+            <div class="settings-body">
+                <div class="setting-group">
+                    <label>Размер шрифта</label>
                     <div class="font-size-controls">
-                        <button class="size-btn" onclick="changeFontSize(-1)">А-</button>
-                        <span class="size-display" id="fontSizeDisplay">16px</span>
-                        <button class="size-btn" onclick="changeFontSize(1)">А+</button>
+                        <button onclick="changeFontSize(-1)">А-</button>
+                        <span id="fontSizeDisplay">16px</span>
+                        <button onclick="changeFontSize(1)">А+</button>
+                    </div>
+                </div>
+                
+                <div class="setting-group">
+                    <label>Семейство шрифтов</label>
+                    <select id="fontFamily" onchange="changeFontFamily(this.value)">
+                        <option value="Inter">Inter (По умолчанию)</option>
+                        <option value="Crimson Text">Crimson Text</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Arial">Arial</option>
+                    </select>
+                </div>
+                
+                <div class="setting-group">
+                    <label>Тема</label>
+                    <div class="theme-options">
+                        <button class="theme-btn active" onclick="setTheme('light')" data-theme="light">
+                            <i class="fas fa-sun"></i>
+                            Светлая
+                        </button>
+                        <button class="theme-btn" onclick="setTheme('dark')" data-theme="dark">
+                            <i class="fas fa-moon"></i>
+                            Темная
+                        </button>
+                        <button class="theme-btn" onclick="setTheme('sepia')" data-theme="sepia">
+                            <i class="fas fa-eye"></i>
+                            Сепия
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="setting-group">
+                    <label>Ширина текста</label>
+                    <div class="width-controls">
+                        <button onclick="setTextWidth('narrow')" class="width-btn" data-width="narrow">Узкая</button>
+                        <button onclick="setTextWidth('medium')" class="width-btn active" data-width="medium">Средняя</button>
+                        <button onclick="setTextWidth('wide')" class="width-btn" data-width="wide">Широкая</button>
+                    </div>
+                </div>
+                
+                <div class="setting-group">
+                    <label>Межстрочный интервал</label>
+                    <div class="line-height-controls">
+                        <button onclick="setLineHeight(1.4)" class="lh-btn" data-height="1.4">1.4</button>
+                        <button onclick="setLineHeight(1.6)" class="lh-btn active" data-height="1.6">1.6</button>
+                        <button onclick="setLineHeight(1.8)" class="lh-btn" data-height="1.8">1.8</button>
+                        <button onclick="setLineHeight(2.0)" class="lh-btn" data-height="2.0">2.0</button>
                     </div>
                 </div>
             </div>
-
-            <!-- Семейство шрифтов -->
-            <div class="settings-group">
-                <label class="settings-label">Шрифт</label>
-                <div class="choice-buttons">
-                    <button class="choice-btn active" data-family="Georgia, serif" onclick="changeFontFamily('Georgia, serif')">
-                        Georgia
-                    </button>
-                    <button class="choice-btn" data-family="'Times New Roman', serif" onclick="changeFontFamily('Times New Roman, serif')">
-                        Times
-                    </button>
-                    <button class="choice-btn" data-family="'Helvetica Neue', Arial, sans-serif" onclick="changeFontFamily('Helvetica Neue, Arial, sans-serif')">
-                        Helvetica
-                    </button>
-                    <button class="choice-btn" data-family="'Courier New', monospace" onclick="changeFontFamily('Courier New, monospace')">
-                        Courier
-                    </button>
-                </div>
-            </div>
-
-            <!-- Ширина текста -->
-            <div class="settings-group">
-                <label class="settings-label">Ширина текста</label>
-                <div class="choice-buttons">
-                    <button class="choice-btn" data-width="narrow" onclick="setTextWidth('narrow')">
-                        Узкая
-                    </button>
-                    <button class="choice-btn active" data-width="medium" onclick="setTextWidth('medium')">
-                        Средняя
-                    </button>
-                    <button class="choice-btn" data-width="wide" onclick="setTextWidth('wide')">
-                        Широкая
-                    </button>
-                </div>
-            </div>
-
-            <!-- Межстрочный интервал -->
-            <div class="settings-group">
-                <label class="settings-label">Межстрочный интервал</label>
-                <div class="choice-buttons">
-                    <button class="choice-btn" data-height="1.4" onclick="setLineHeight(1.4)">
-                        1.4
-                    </button>
-                    <button class="choice-btn active" data-height="1.6" onclick="setLineHeight(1.6)">
-                        1.6
-                    </button>
-                    <button class="choice-btn" data-height="1.8" onclick="setLineHeight(1.8)">
-                        1.8
-                    </button>
-                    <button class="choice-btn" data-height="2.0" onclick="setLineHeight(2.0)">
-                        2.0
-                    </button>
-                </div>
-            </div>
-
-            <!-- Тема -->
-            <div class="settings-group">
-                <label class="settings-label">Тема</label>
-                <div class="choice-buttons">
-                    <button class="choice-btn active" data-theme="light" onclick="setTheme('light')">
-                        ☀️ Светлая
-                    </button>
-                    <button class="choice-btn" data-theme="sepia" onclick="setTheme('sepia')">
-                        📜 Сепия
-                    </button>
-                    <button class="choice-btn" data-theme="dark" onclick="setTheme('dark')">
-                        🌙 Темная
-                    </button>
-                    <button class="choice-btn" data-theme="night" onclick="setTheme('night')">
-                        🌃 Ночная
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
-    <!-- Боковая панель оглавления -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h3 class="sidebar-title">Оглавление</h3>
-            <button class="sidebar-close" onclick="closeTableOfContents()">×</button>
-        </div>
-        <div class="chapter-list">
-            <div class="chapter-item" onclick="goToChapter(0)">
-                <h4 class="chapter-title">Глава 1. Начало</h4>
-            </div>
-            <div class="chapter-item" onclick="goToChapter(1)">
-                <h4 class="chapter-title">Глава 2. Развитие</h4>
-            </div>
-            <div class="chapter-item" onclick="goToChapter(2)">
-                <h4 class="chapter-title">Глава 3. Кульминация</h4>
-            </div>
-            <div class="chapter-item" onclick="goToChapter(3)">
-                <h4 class="chapter-title">Глава 4. Развязка</h4>
-            </div>
-            <div class="chapter-item" onclick="goToChapter(4)">
-                <h4 class="chapter-title">Глава 5. Заключение</h4>
-            </div>
-        </div>
-    </div>
 
-    <!-- Футер -->
-    <footer class="site-footer" style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);">
-        <div class="footer-content" style="padding: 10px 20px; text-align: center;">
-            <div class="footer-copyright" style="font-size: 12px; color: #6c757d;">
-                © 2025 Алим Китапхане. Все права защищены.
+    <!-- Футер с реквизитами -->
+    <footer class="site-footer" style="background: #1a1a1a; padding: 0.5rem 0; position: sticky; bottom: 0; z-index: 10;">
+        <div class="footer-content">
+            <div class="requisites-info" style="font-size: 0.7rem; opacity: 0.6;">
+                <p>Куртсеитова Эмине Алимовна | ИНН: 910235108571</p>
             </div>
         </div>
     </footer>
 
-    <!-- Скрипты -->
-    <script src="reader-new.js"></script>
+    <script src="reader.js?v=20251003001"></script>
 </body>
 </html>
