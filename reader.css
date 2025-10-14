@@ -192,30 +192,37 @@ body {
     max-width: 1000px;
 }
 
-/* CSS Columns: Горизонтальный контейнер для перелистывания */
+/* Обертка для текстового контента с горизонтальным скроллом */
 .text-content-wrapper {
     flex: 1;
-    overflow-x: auto; /* Горизонтальный скролл */
-    overflow-y: hidden; /* Вертикальный скролл спрятан */
+    overflow-x: auto;
+    overflow-y: hidden;
     position: relative;
     width: 100%;
-    /* Плавное перелистывание (snap) */
-    scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
-    /* Прячем скроллбар */
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+    /* Скрываем scrollbar */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    cursor: pointer; /* Указатель для кликов по краям */
 }
 
 .text-content-wrapper::-webkit-scrollbar {
-    display: none; /* Прячем скроллбар в Chrome/Safari */
+    display: none; /* Chrome/Safari */
 }
 
-/* CSS Columns: Текстовый контент разбит на колонки */
+/* Текстовый контент с CSS Columns */
 .text-content {
     font-size: 16px;
     line-height: 1.6;
-    padding: 2rem 0;
+    position: relative;
+    height: 100%;
+    padding: 1rem 0;
+    /* CSS Columns для горизонтального разбиения */
+    column-width: 100%; /* Ширина каждой колонки = ширине контейнера */
+    column-gap: 4rem; /* Расстояние между страницами */
+    column-fill: auto; /* Равномерное заполнение колонок */
     /* Дополнительная защита от копирования */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -227,36 +234,21 @@ body {
     -webkit-print-color-adjust: exact !important;
 }
 
-/* Десктоп: CSS Columns с горизонтальным перелистыванием */
-@media (min-width: 769px) {
-    .text-content {
-        column-width: 100vw; /* Каждая колонка = ширина экрана */
-        column-gap: 0;
-        column-fill: auto;
-        height: 100%;
-    }
+/* Snap points для каждой колонки/страницы */
+.text-content > * {
+    scroll-snap-align: start;
 }
 
-/* Мобильные: Обычный вертикальный скролл (БЕЗ columns!) */
-@media (max-width: 768px) {
-    .text-content-wrapper {
-        overflow-y: auto !important; /* Вертикальный скролл */
-        overflow-x: hidden !important; /* НЕТ горизонтального */
-        scroll-snap-type: none !important; /* Без snap */
-    }
-    
-    .text-content {
-        width: 100% !important;
-        height: auto !important; /* НЕ фиксированная высота */
-        column-width: auto !important; /* БЕЗ колонок! */
-        column-count: 1 !important;
-        padding: 1rem 0;
-    }
+/* Каждый блок контента не разрывается между колонками */
+.text-block, .chapter-title, .section-title {
+    break-inside: avoid-column;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
 }
 
-/* Убираем старую анимацию - scroll делает всё плавно */
-.text-content.page-turning {
-    /* Не нужна - scroll-behavior: smooth работает */
+/* Анимация перелистывания страницы */
+.text-content-wrapper.page-turning {
+    scroll-behavior: smooth;
 }
 
 

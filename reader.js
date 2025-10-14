@@ -66,9 +66,10 @@
     }
 })();
 
-// CSS Columns: Глобальные переменные для навигации
+// Глобальные переменные для горизонтальной навигации (как в Apple Books)
 let currentPage = 1;
 let totalPages = 1;
+let pageWidth = 0; // Ширина одной страницы (видимой области)
 let currentChapter = 0;
 let isBookmarked = false;
 let readingSettings = {
@@ -217,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Загружаем весь контент книги
     loadAllContent();
     
-    // CSS Columns: Пересчитываем при изменении размера окна
+    // Пересчитываем размеры при изменении размера окна
     let resizeTimer;
     window.addEventListener('resize', function() {
         const wrapper = document.querySelector('.text-content-wrapper');
@@ -233,6 +234,63 @@ document.addEventListener('DOMContentLoaded', function() {
             calculatePageDimensions();
             console.log('🔄 Window resized, position adjusted');
         }, 300);
+    });
+    
+    // Touch events для свайпов (как в iBooks)
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const wrapper = document.querySelector('.text-content-wrapper');
+    
+    if (wrapper) {
+        wrapper.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        
+        wrapper.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+        
+        function handleSwipe() {
+            const swipeThreshold = 50; // Минимальное расстояние для свайпа
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // Свайп влево → следующая страница
+                    nextPage();
+                } else {
+                    // Свайп вправо → предыдущая страница
+                    previousPage();
+                }
+            }
+        }
+        
+        // Клики по краям экрана для навигации (как в Kindle)
+        wrapper.addEventListener('click', (e) => {
+            const clickX = e.clientX;
+            const wrapperWidth = wrapper.clientWidth;
+            const edgeZone = wrapperWidth * 0.2; // 20% с каждой стороны
+            
+            if (clickX < edgeZone) {
+                // Клик в левой части → предыдущая страница
+                previousPage();
+            } else if (clickX > wrapperWidth - edgeZone) {
+                // Клик в правой части → следующая страница
+                nextPage();
+            }
+        });
+    }
+    
+    // Клавиатурная навигация (стрелки влево/вправо)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            previousPage();
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            nextPage();
+        }
     });
     
     // Добавляем обработчик для сохранения настроек при изменении семейства шрифтов
@@ -491,49 +549,52 @@ function initializeReaderProtection() {
     }
 }
 
-// CSS Columns: Рассчитываем количество страниц по scroll width
+// Рассчитываем размеры страницы
+// Рассчитываем количество страниц для горизонтального скролла
 function calculatePageDimensions() {
     const wrapper = document.querySelector('.text-content-wrapper');
     const textContent = document.getElementById('textContent');
     
     if (!wrapper || !textContent) return;
     
-    // Ждём пока CSS columns пересчитается
+    // Ждём чтобы CSS columns полностью пересчитались
     setTimeout(() => {
-        // Ширина одной страницы = ширина wrapper (видимая область)
-        const pageWidth = wrapper.clientWidth;
+        // Ширина видимой области (одна страница)
+        pageWidth = wrapper.clientWidth;
         
-        // Общая ширина контента (все колонки вместе)
+        // Общая ширина контента (все колонки/страницы вместе)
         const totalWidth = textContent.scrollWidth;
         
         // Количество страниц = общая ширина / ширина одной страницы
         totalPages = Math.max(1, Math.ceil(totalWidth / pageWidth));
         
         // Текущая страница на основе scrollLeft
-        currentPage = Math.max(1, Math.floor(wrapper.scrollLeft / pageWidth) + 1);
+        const scrollLeft = wrapper.scrollLeft;
+        currentPage = Math.max(1, Math.floor(scrollLeft / pageWidth) + 1);
         
-        console.log('📖 CSS Columns pagination:', {
-            pageWidth,
-            totalWidth,
+        console.log('📖 Horizontal pagination:', {
+            pageWidth: Math.round(pageWidth),
+            totalWidth: Math.round(totalWidth),
             totalPages,
             currentPage,
-            scrollLeft: wrapper.scrollLeft
+            scrollLeft: Math.round(scrollLeft)
         });
         
         updateProgressBar();
         updatePageNumbers();
         updateNavigationButtons();
-    }, 100); // Даём время на рендеринг колонок
+    }, 100); // Даём время на рендеринг CSS columns
 }
 
-// CSS Columns: Предыдущая страница (скролл влево)
+// Предыдущая страница (скролл влево)
 function previousPage() {
     const wrapper = document.querySelector('.text-content-wrapper');
     if (!wrapper) return;
     
-    const pageWidth = wrapper.clientWidth;
+    // Добавляем класс для плавной анимации
+    wrapper.classList.add('page-turning');
     
-    // Скроллим на одну страницу влево (плавно, благодаря scroll-behavior: smooth)
+    // Скроллим на одну страницу влево
     wrapper.scrollBy({
         left: -pageWidth,
         behavior: 'smooth'
@@ -541,19 +602,21 @@ function previousPage() {
     
     // Обновляем UI после скролла
     setTimeout(() => {
+        wrapper.classList.remove('page-turning');
         calculatePageDimensions();
         saveReadingProgress();
-    }, 300);
+    }, 400);
 }
 
-// CSS Columns: Следующая страница (скролл вправо)
+// Следующая страница (скролл вправо)
 function nextPage() {
     const wrapper = document.querySelector('.text-content-wrapper');
     if (!wrapper) return;
     
-    const pageWidth = wrapper.clientWidth;
+    // Добавляем класс для плавной анимации
+    wrapper.classList.add('page-turning');
     
-    // Скроллим на одну страницу вправо (плавно, благодаря scroll-behavior: smooth)
+    // Скроллим на одну страницу вправо
     wrapper.scrollBy({
         left: pageWidth,
         behavior: 'smooth'
@@ -561,12 +624,12 @@ function nextPage() {
     
     // Обновляем UI после скролла
     setTimeout(() => {
+        wrapper.classList.remove('page-turning');
         calculatePageDimensions();
         saveReadingProgress();
-    }, 300);
+    }, 400);
 }
 
-// CSS Columns: Обновляем кнопки навигации на основе scrollLeft
 function updateNavigationButtons() {
     const prevBtn = document.querySelector('.prev-btn');
     const nextBtn = document.querySelector('.next-btn');
@@ -578,8 +641,8 @@ function updateNavigationButtons() {
     const scrollLeft = wrapper.scrollLeft;
     const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
     
-    prevBtn.disabled = scrollLeft <= 10; // С небольшим порогом
-    nextBtn.disabled = scrollLeft >= maxScroll - 10; // С небольшим порогом
+    prevBtn.disabled = scrollLeft <= 10; // С небольшим порогом для погрешности
+    nextBtn.disabled = scrollLeft >= maxScroll - 10;
 }
 
 function scrollToTop() {
@@ -611,7 +674,6 @@ function closeSidebar() {
     document.body.style.overflow = 'auto';
 }
 
-// CSS Columns: Переход к главе
 function goToChapter(chapterIndex) {
     currentChapter = chapterIndex;
     
@@ -620,9 +682,12 @@ function goToChapter(chapterIndex) {
     const chapterTitles = textContent.querySelectorAll('.chapter-title, .section-title');
     
     if (chapterTitles[chapterIndex] && wrapper) {
-        // Получаем позицию заголовка главы
+        // Получаем позицию заголовка главы (горизонтальную)
         const chapterElement = chapterTitles[chapterIndex];
         const offsetLeft = chapterElement.offsetLeft;
+        
+        // Добавляем анимацию
+        wrapper.classList.add('page-turning');
         
         // Скроллим к этой позиции
         wrapper.scrollTo({
@@ -631,9 +696,10 @@ function goToChapter(chapterIndex) {
         });
         
         setTimeout(() => {
+            wrapper.classList.remove('page-turning');
             calculatePageDimensions();
             saveReadingProgress();
-        }, 300);
+        }, 400);
     }
     
     updateActiveChapter();
@@ -652,7 +718,7 @@ function updateActiveChapter() {
     });
 }
 
-// CSS Columns: Загружаем весь контент книги сразу
+// Загружаем весь контент книги сразу
 function loadAllContent() {
     const textContent = document.getElementById('textContent');
     
@@ -660,7 +726,7 @@ function loadAllContent() {
     const allContent = chapters.map(chapter => chapter.content).join('');
     textContent.innerHTML = allContent;
     
-    // После загрузки контента пересчитываем размеры колонок
+    // После загрузки контента пересчитываем размеры
     setTimeout(() => {
         calculatePageDimensions();
         updateActiveChapter();
@@ -756,7 +822,6 @@ function closeSettings() {
     saveSettings();
 }
 
-// CSS Columns: Изменение размера шрифта
 function changeFontSize(delta) {
     const wrapper = document.querySelector('.text-content-wrapper');
     if (!wrapper) return;
@@ -782,7 +847,6 @@ function changeFontSize(delta) {
     }, 300);
 }
 
-// CSS Columns: Изменение семейства шрифтов
 function changeFontFamily(family) {
     const wrapper = document.querySelector('.text-content-wrapper');
     if (!wrapper) return;
@@ -813,7 +877,6 @@ function setTheme(theme) {
     saveSettings();
 }
 
-// CSS Columns: Изменение ширины текста
 function setTextWidth(width) {
     const wrapper = document.querySelector('.text-content-wrapper');
     if (!wrapper) return;
@@ -838,7 +901,6 @@ function setTextWidth(width) {
     }, 300);
 }
 
-// CSS Columns: Изменение межстрочного интервала
 function setLineHeight(height) {
     const wrapper = document.querySelector('.text-content-wrapper');
     if (!wrapper) return;
@@ -936,7 +998,8 @@ function saveSettings() {
     localStorage.setItem('readingSettings', JSON.stringify(readingSettings));
 }
 
-// CSS Columns: Сохранение прогресса чтения (scrollLeft)
+// Сохранение прогресса чтения
+// Сохранение прогресса чтения (scrollLeft для горизонтального скролла)
 function saveReadingProgress() {
     const wrapper = document.querySelector('.text-content-wrapper');
     if (!wrapper) return;
@@ -950,21 +1013,23 @@ function saveReadingProgress() {
     localStorage.setItem('readingProgress', JSON.stringify(progressData));
 }
 
-// CSS Columns: Загрузка прогресса чтения
+// Загрузка прогресса чтения
 function loadReadingProgress() {
     const saved = localStorage.getItem('readingProgress');
-    if (saved) {
+    const wrapper = document.querySelector('.text-content-wrapper');
+    
+    if (saved && wrapper) {
         const progressData = JSON.parse(saved);
-        const wrapper = document.querySelector('.text-content-wrapper');
         
-        if (wrapper && progressData.scrollLeft !== undefined) {
-            // Восстанавливаем scrollLeft (без анимации)
+        // Восстанавливаем scrollLeft (без анимации)
+        if (progressData.scrollLeft !== undefined) {
             setTimeout(() => {
                 wrapper.scrollLeft = progressData.scrollLeft;
                 calculatePageDimensions();
             }, 200);
         }
         
+        currentPage = progressData.currentPage || 1;
         currentChapter = progressData.currentChapter || 0;
     }
 }
