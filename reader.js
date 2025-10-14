@@ -293,6 +293,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Обработчик scroll для обновления UI при свайпах
+    if (wrapper) {
+        let scrollTimeout;
+        wrapper.addEventListener('scroll', () => {
+            // Дебаунсим обновление UI
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                const scrollLeft = wrapper.scrollLeft;
+                currentPage = Math.max(1, Math.round(scrollLeft / pageWidth) + 1);
+                
+                // Ограничиваем currentPage в пределах totalPages
+                currentPage = Math.min(currentPage, totalPages);
+                
+                updateProgressBar();
+                updatePageNumbers();
+                updateNavigationButtons();
+                saveReadingProgress();
+                
+                console.log('📄 Page changed by scroll:', currentPage, '/', totalPages);
+            }, 100);
+        }, { passive: true });
+    }
+    
     // Добавляем обработчик для сохранения настроек при изменении семейства шрифтов
     const fontFamilySelect = document.getElementById('fontFamily');
     if (fontFamilySelect) {
@@ -564,17 +587,41 @@ function calculatePageDimensions() {
     textContent.style.columnWidth = `${pageWidth}px`;
     textContent.style.columnGap = `${columnGap}px`;
     
+    // Создаём виртуальные snap-точки для каждой колонки
+    // Это обеспечит правильную фиксацию на страницах
+    const style = document.createElement('style');
+    style.id = 'column-snap-style';
+    const existingStyle = document.getElementById('column-snap-style');
+    if (existingStyle) {
+        existingStyle.remove();
+    }
+    
+    // CSS для создания snap-точек на каждой странице
+    style.textContent = `
+        .text-content-wrapper {
+            scroll-padding-inline: 0;
+        }
+        .text-content::after {
+            content: '';
+            display: block;
+            width: 1px;
+            height: 1px;
+            scroll-snap-align: end;
+        }
+    `;
+    document.head.appendChild(style);
+    
     // Ждём чтобы CSS columns полностью пересчитались
     setTimeout(() => {
         // Общая ширина контента (все колонки/страницы вместе)
         const totalWidth = textContent.scrollWidth;
         
-        // Количество страниц = общая ширина / (ширина страницы + gap)
-        totalPages = Math.max(1, Math.ceil(totalWidth / (pageWidth + columnGap)));
+        // Количество страниц = общая ширина / ширина страницы
+        totalPages = Math.max(1, Math.round(totalWidth / pageWidth));
         
         // Текущая страница на основе scrollLeft
         const scrollLeft = wrapper.scrollLeft;
-        currentPage = Math.max(1, Math.floor(scrollLeft / (pageWidth + columnGap)) + 1);
+        currentPage = Math.max(1, Math.round(scrollLeft / pageWidth) + 1);
         
         console.log('📖 Horizontal pagination:', {
             wrapperWidth: Math.round(pageWidth),
@@ -588,7 +635,7 @@ function calculatePageDimensions() {
         updateProgressBar();
         updatePageNumbers();
         updateNavigationButtons();
-    }, 150); // Увеличиваем задержку для надёжности
+    }, 200); // Увеличиваем задержку для надёжности
 }
 
 // Предыдущая страница (скролл влево)
@@ -599,17 +646,16 @@ function previousPage() {
     // Добавляем класс для плавной анимации
     wrapper.classList.add('page-turning');
     
-    const columnGap = 64; // 4rem
-    // Скроллим на одну страницу влево (ширина + gap)
+    // Скроллим на одну страницу влево
+    // Snap-точки автоматически зафиксируют на нужной позиции
     wrapper.scrollBy({
-        left: -(pageWidth + columnGap),
+        left: -pageWidth,
         behavior: 'smooth'
     });
     
     // Обновляем UI после скролла
     setTimeout(() => {
         wrapper.classList.remove('page-turning');
-        calculatePageDimensions();
         saveReadingProgress();
     }, 400);
 }
@@ -622,17 +668,16 @@ function nextPage() {
     // Добавляем класс для плавной анимации
     wrapper.classList.add('page-turning');
     
-    const columnGap = 64; // 4rem
-    // Скроллим на одну страницу вправо (ширина + gap)
+    // Скроллим на одну страницу вправо
+    // Snap-точки автоматически зафиксируют на нужной позиции
     wrapper.scrollBy({
-        left: (pageWidth + columnGap),
+        left: pageWidth,
         behavior: 'smooth'
     });
     
     // Обновляем UI после скролла
     setTimeout(() => {
         wrapper.classList.remove('page-turning');
-        calculatePageDimensions();
         saveReadingProgress();
     }, 400);
 }

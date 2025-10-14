@@ -200,7 +200,8 @@ body {
     position: relative; /* Для absolute позиционирования text-content */
     width: 100%;
     scroll-behavior: smooth;
-    scroll-snap-type: x mandatory;
+    scroll-snap-type: x mandatory; /* Фиксация на страницах */
+    scroll-snap-stop: always; /* Остановка на каждой странице */
     -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
     /* Скрываем scrollbar */
     scrollbar-width: none; /* Firefox */
@@ -342,6 +343,9 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     backdrop-filter: blur(10px);
     min-width: 100px;
+    position: relative;
+    z-index: 10; /* Всегда поверх текста */
+    pointer-events: auto; /* Всегда кликабельны */
 }
 
 .nav-btn:hover:not(:disabled) {
