@@ -197,7 +197,7 @@ body {
     flex: 1;
     overflow-x: auto;
     overflow-y: hidden;
-    position: relative;
+    position: relative; /* Для absolute позиционирования text-content */
     width: 100%;
     scroll-behavior: smooth;
     scroll-snap-type: x mandatory;
@@ -206,23 +206,28 @@ body {
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE/Edge */
     cursor: pointer; /* Указатель для кликов по краям */
+    min-height: 0; /* Важно для flex-контейнеров */
 }
 
 .text-content-wrapper::-webkit-scrollbar {
     display: none; /* Chrome/Safari */
 }
 
-/* Текстовый контент с CSS Columns */
+/* Текстовый контент с CSS Columns для горизонтального перелистывания */
 .text-content {
     font-size: 16px;
     line-height: 1.6;
-    position: relative;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
     height: 100%;
-    padding: 1rem 0;
+    padding: 1rem 2rem;
     /* CSS Columns для горизонтального разбиения */
-    column-width: 100%; /* Ширина каждой колонки = ширине контейнера */
+    columns: auto; /* Автоматическое количество колонок */
+    column-width: 100%; /* Ширина каждой колонки = ширине wrapper */
     column-gap: 4rem; /* Расстояние между страницами */
-    column-fill: auto; /* Равномерное заполнение колонок */
+    column-fill: auto; /* Заполнение по высоте, потом следующая колонка */
     /* Дополнительная защита от копирования */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -232,11 +237,6 @@ body {
     pointer-events: auto;
     -webkit-user-modify: read-only !important;
     -webkit-print-color-adjust: exact !important;
-}
-
-/* Snap points для каждой колонки/страницы */
-.text-content > * {
-    scroll-snap-align: start;
 }
 
 /* Каждый блок контента не разрывается между колонками */
@@ -726,11 +726,12 @@ body {
     }
     
     .reader-container {
-        padding: 0 0.75rem;
+        padding: 0 0.5rem;
     }
     
     .text-content {
-        padding: 0.35rem 0;
+        padding: 0.5rem 1rem;
+        font-size: 15px;
     }
     
     .chapter-title {
@@ -741,10 +742,6 @@ body {
     .section-title {
         font-size: 1.2rem;
         margin: 1rem 0 0.75rem 0;
-    }
-    
-    .text-content {
-        font-size: 15px;
     }
     
     .text-block {
@@ -825,7 +822,7 @@ body {
 @media (max-width: 480px) {
     .text-content {
         font-size: 14px;
-        padding: 0.25rem 0;
+        padding: 0.5rem 0.75rem;
     }
     
     .text-block {
