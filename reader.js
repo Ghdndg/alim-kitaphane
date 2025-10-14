@@ -283,10 +283,20 @@ function initializeButtons() {
     
     // Кнопки навигации
     const prevBtn = document.querySelector('.prev-btn');
-    if (prevBtn) prevBtn.addEventListener('click', previousPage);
+    if (prevBtn) {
+        prevBtn.addEventListener('click', previousPage);
+        console.log('✅ Previous button handler added');
+    } else {
+        console.error('❌ Previous button not found!');
+    }
     
     const nextBtn = document.querySelector('.next-btn');
-    if (nextBtn) nextBtn.addEventListener('click', nextPage);
+    if (nextBtn) {
+        nextBtn.addEventListener('click', nextPage);
+        console.log('✅ Next button handler added');
+    } else {
+        console.error('❌ Next button not found!');
+    }
     
     // Кнопка закрытия сайдбара
     const closeSidebarBtn = document.querySelector('.close-sidebar');
@@ -509,7 +519,17 @@ function initializeReaderProtection() {
 // Column-based: Рассчитываем количество страниц (колонок)
 function calculateColumnPages() {
     const wrapper = document.querySelector('.text-content-wrapper');
-    if (!wrapper) return;
+    const textContent = document.getElementById('textContent');
+    
+    if (!wrapper) {
+        console.error('❌ text-content-wrapper not found!');
+        return;
+    }
+    
+    if (!textContent) {
+        console.error('❌ textContent not found!');
+        return;
+    }
     
     // Общая ширина контента с учётом всех колонок
     const totalWidth = wrapper.scrollWidth;
@@ -517,11 +537,14 @@ function calculateColumnPages() {
     const pageWidth = wrapper.clientWidth;
     
     // Количество страниц = общая ширина / ширина одной страницы
-    totalPages = Math.max(1, Math.round(totalWidth / pageWidth));
+    const calculatedPages = Math.max(1, Math.round(totalWidth / pageWidth));
+    totalPages = calculatedPages;
     
     console.log('📚 Column pages calculated:', {
-        totalWidth,
-        pageWidth,
+        wrapperScrollWidth: totalWidth,
+        wrapperClientWidth: pageWidth,
+        textContentScrollWidth: textContent.scrollWidth,
+        calculatedPages: calculatedPages,
         totalPages,
         currentPage
     });
@@ -556,15 +579,31 @@ function goToPage(pageNumber, animated = true) {
 
 // Column-based: Предыдущая страница
 function previousPage() {
+    console.log('🔙 Previous page clicked:', {
+        currentPage,
+        totalPages,
+        canGoPrev: currentPage > 1
+    });
+    
     if (currentPage > 1) {
         goToPage(currentPage - 1, true);
+    } else {
+        console.warn('⚠️ Already at first page');
     }
 }
 
 // Column-based: Следующая страница
 function nextPage() {
+    console.log('▶️ Next page clicked:', {
+        currentPage,
+        totalPages,
+        canGoNext: currentPage < totalPages
+    });
+    
     if (currentPage < totalPages) {
         goToPage(currentPage + 1, true);
+    } else {
+        console.warn('⚠️ Already at last page');
     }
 }
 
