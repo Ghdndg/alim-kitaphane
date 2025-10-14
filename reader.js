@@ -549,7 +549,6 @@ function initializeReaderProtection() {
     }
 }
 
-// Рассчитываем размеры страницы
 // Рассчитываем количество страниц для горизонтального скролла
 function calculatePageDimensions() {
     const wrapper = document.querySelector('.text-content-wrapper');
@@ -557,23 +556,29 @@ function calculatePageDimensions() {
     
     if (!wrapper || !textContent) return;
     
+    // Устанавливаем ширину колонки динамически
+    pageWidth = wrapper.clientWidth;
+    const columnGap = 64; // 4rem = 64px
+    
+    // Устанавливаем column-width в пикселях (важно для правильной работы columns)
+    textContent.style.columnWidth = `${pageWidth}px`;
+    textContent.style.columnGap = `${columnGap}px`;
+    
     // Ждём чтобы CSS columns полностью пересчитались
     setTimeout(() => {
-        // Ширина видимой области (одна страница)
-        pageWidth = wrapper.clientWidth;
-        
         // Общая ширина контента (все колонки/страницы вместе)
         const totalWidth = textContent.scrollWidth;
         
-        // Количество страниц = общая ширина / ширина одной страницы
-        totalPages = Math.max(1, Math.ceil(totalWidth / pageWidth));
+        // Количество страниц = общая ширина / (ширина страницы + gap)
+        totalPages = Math.max(1, Math.ceil(totalWidth / (pageWidth + columnGap)));
         
         // Текущая страница на основе scrollLeft
         const scrollLeft = wrapper.scrollLeft;
-        currentPage = Math.max(1, Math.floor(scrollLeft / pageWidth) + 1);
+        currentPage = Math.max(1, Math.floor(scrollLeft / (pageWidth + columnGap)) + 1);
         
         console.log('📖 Horizontal pagination:', {
-            pageWidth: Math.round(pageWidth),
+            wrapperWidth: Math.round(pageWidth),
+            columnGap,
             totalWidth: Math.round(totalWidth),
             totalPages,
             currentPage,
@@ -583,7 +588,7 @@ function calculatePageDimensions() {
         updateProgressBar();
         updatePageNumbers();
         updateNavigationButtons();
-    }, 100); // Даём время на рендеринг CSS columns
+    }, 150); // Увеличиваем задержку для надёжности
 }
 
 // Предыдущая страница (скролл влево)
@@ -594,9 +599,10 @@ function previousPage() {
     // Добавляем класс для плавной анимации
     wrapper.classList.add('page-turning');
     
-    // Скроллим на одну страницу влево
+    const columnGap = 64; // 4rem
+    // Скроллим на одну страницу влево (ширина + gap)
     wrapper.scrollBy({
-        left: -pageWidth,
+        left: -(pageWidth + columnGap),
         behavior: 'smooth'
     });
     
@@ -616,9 +622,10 @@ function nextPage() {
     // Добавляем класс для плавной анимации
     wrapper.classList.add('page-turning');
     
-    // Скроллим на одну страницу вправо
+    const columnGap = 64; // 4rem
+    // Скроллим на одну страницу вправо (ширина + gap)
     wrapper.scrollBy({
-        left: pageWidth,
+        left: (pageWidth + columnGap),
         behavior: 'smooth'
     });
     
