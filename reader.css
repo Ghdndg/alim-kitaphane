@@ -215,14 +215,7 @@ body {
 .text-content {
     font-size: 16px;
     line-height: 1.6;
-    /* CSS Columns - ГЛАВНАЯ МАГИЯ! */
-    column-width: 100vw; /* Каждая колонка = ширина экрана */
-    column-gap: 0; /* Без зазоров между колонками */
-    column-fill: auto; /* Автозаполнение */
-    height: 100%; /* Занимаем всю высоту контейнера */
     padding: 2rem 0;
-    /* Scroll snap для каждой колонки */
-    scroll-snap-align: start;
     /* Дополнительная защита от копирования */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -232,6 +225,33 @@ body {
     pointer-events: auto;
     -webkit-user-modify: read-only !important;
     -webkit-print-color-adjust: exact !important;
+}
+
+/* Десктоп: CSS Columns с горизонтальным перелистыванием */
+@media (min-width: 769px) {
+    .text-content {
+        column-width: 100vw; /* Каждая колонка = ширина экрана */
+        column-gap: 0;
+        column-fill: auto;
+        height: 100%;
+    }
+}
+
+/* Мобильные: Обычный вертикальный скролл (БЕЗ columns!) */
+@media (max-width: 768px) {
+    .text-content-wrapper {
+        overflow-y: auto !important; /* Вертикальный скролл */
+        overflow-x: hidden !important; /* НЕТ горизонтального */
+        scroll-snap-type: none !important; /* Без snap */
+    }
+    
+    .text-content {
+        width: 100% !important;
+        height: auto !important; /* НЕ фиксированная высота */
+        column-width: auto !important; /* БЕЗ колонок! */
+        column-count: 1 !important;
+        padding: 1rem 0;
+    }
 }
 
 /* Убираем старую анимацию - scroll делает всё плавно */
