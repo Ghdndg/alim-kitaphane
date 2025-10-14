@@ -192,50 +192,37 @@ body {
     max-width: 1000px;
 }
 
-/* Обертка для текстового контента с overflow */
-/* Column-based Reader: Горизонтальное перелистывание */
+/* CSS Columns: Горизонтальный контейнер для перелистывания */
 .text-content-wrapper {
     flex: 1;
+    overflow-x: auto; /* Горизонтальный скролл */
+    overflow-y: hidden; /* Вертикальный скролл спрятан */
     position: relative;
     width: 100%;
-    
-    /* КЛЮЧЕВОЕ: Горизонтальный скролл для колонок */
-    overflow-x: auto;
-    overflow-y: hidden;
-    
-    /* Плавная прокрутка */
+    /* Плавное перелистывание (snap) */
+    scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
-    
-    /* Скрываем scrollbar для чистого вида */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    /* Прячем скроллбар */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .text-content-wrapper::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
+    display: none; /* Прячем скроллбар в Chrome/Safari */
 }
 
-/* Column-based: CSS Columns - браузер сам разбивает на колонки! */
+/* CSS Columns: Текстовый контент разбит на колонки */
 .text-content {
     font-size: 16px;
     line-height: 1.6;
-    
-    /* CSS Columns - магия! */
-    column-width: 100vw; /* Ширина одной колонки = ширина экрана */
-    column-gap: 0; /* Нет зазора между колонками */
-    column-fill: auto; /* Заполняем колонки автоматически */
-    
-    /* Высота = вся доступная высота */
-    height: 100%;
-    
-    /* Отключаем transform (больше не нужен) */
-    transform: none !important;
-    
-    /* Убираем старые transitions */
-    transition: none;
-    
+    /* CSS Columns - ГЛАВНАЯ МАГИЯ! */
+    column-width: 100vw; /* Каждая колонка = ширина экрана */
+    column-gap: 0; /* Без зазоров между колонками */
+    column-fill: auto; /* Автозаполнение */
+    height: 100%; /* Занимаем всю высоту контейнера */
     padding: 2rem 0;
-    
+    /* Scroll snap для каждой колонки */
+    scroll-snap-align: start;
     /* Дополнительная защита от копирования */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -247,27 +234,11 @@ body {
     -webkit-print-color-adjust: exact !important;
 }
 
-/* Анимация перелистывания страницы (не используется в column-based) */
+/* Убираем старую анимацию - scroll делает всё плавно */
 .text-content.page-turning {
-    opacity: 0.5;
-    transition: opacity 0.2s ease-in-out;
+    /* Не нужна - scroll-behavior: smooth работает */
 }
 
-/* Column-based: Запрещаем разрывы внутри параграфов */
-.text-content p,
-.text-content .text-block {
-    break-inside: avoid-column;
-    -webkit-column-break-inside: avoid;
-    page-break-inside: avoid;
-}
-
-/* Column-based: Заголовки всегда начинаются с новой колонки */
-.text-content .chapter-title,
-.text-content .section-title {
-    break-before: column;
-    -webkit-column-break-before: always;
-    page-break-before: always;
-}
 
 .chapter-title {
     font-size: 2.5rem;
@@ -748,8 +719,6 @@ body {
     
     .text-content {
         padding: 0.35rem 0;
-        /* Column-based: На мобильных тоже используем колонки */
-        column-width: 100vw;
     }
     
     .chapter-title {
@@ -764,8 +733,6 @@ body {
     
     .text-content {
         font-size: 15px;
-        /* Column-based для средних экранов */
-        column-width: 100vw;
     }
     
     .text-block {
@@ -847,8 +814,6 @@ body {
     .text-content {
         font-size: 14px;
         padding: 0.25rem 0;
-        /* Column-based для маленьких экранов */
-        column-width: 100vw;
     }
     
     .text-block {

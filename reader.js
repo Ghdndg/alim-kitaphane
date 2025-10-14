@@ -66,7 +66,7 @@
     }
 })();
 
-// Глобальные переменные для Column-based читалки
+// CSS Columns: Глобальные переменные для навигации
 let currentPage = 1;
 let totalPages = 1;
 let currentChapter = 0;
@@ -217,16 +217,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Загружаем весь контент книги
     loadAllContent();
     
-    // Column-based: Пересчитываем при изменении размера окна
+    // CSS Columns: Пересчитываем при изменении размера окна
     let resizeTimer;
     window.addEventListener('resize', function() {
-        const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
+        const wrapper = document.querySelector('.text-content-wrapper');
+        if (!wrapper) return;
+        
+        // Запоминаем процент прогресса
+        const progressPercent = wrapper.scrollWidth > 0 ? wrapper.scrollLeft / wrapper.scrollWidth : 0;
         
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-            calculateColumnPages();
-            currentPage = Math.max(1, Math.round(progressPercent * totalPages));
-            goToPage(currentPage, false);
+            // Восстанавливаем позицию по проценту
+            wrapper.scrollLeft = progressPercent * wrapper.scrollWidth;
+            calculatePageDimensions();
+            console.log('🔄 Window resized, position adjusted');
         }, 300);
     });
     
@@ -235,26 +240,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (fontFamilySelect) {
         fontFamilySelect.addEventListener('change', function() {
             changeFontFamily(this.value);
-        });
-    }
-    
-    // Column-based: Отслеживаем ручной свайп/скролл
-    const wrapper = document.querySelector('.text-content-wrapper');
-    if (wrapper) {
-        let scrollTimeout;
-        wrapper.addEventListener('scroll', function() {
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => {
-                // Определяем текущую страницу по позиции скролла
-                const pageWidth = wrapper.clientWidth;
-                const scrollLeft = wrapper.scrollLeft;
-                currentPage = Math.round(scrollLeft / pageWidth) + 1;
-                
-                updatePageNumbers();
-                updateProgressBar();
-                updateNavigationButtons();
-                saveReadingProgress();
-            }, 150);
         });
     }
 });
@@ -283,20 +268,10 @@ function initializeButtons() {
     
     // Кнопки навигации
     const prevBtn = document.querySelector('.prev-btn');
-    if (prevBtn) {
-        prevBtn.addEventListener('click', previousPage);
-        console.log('✅ Previous button handler added');
-    } else {
-        console.error('❌ Previous button not found!');
-    }
+    if (prevBtn) prevBtn.addEventListener('click', previousPage);
     
     const nextBtn = document.querySelector('.next-btn');
-    if (nextBtn) {
-        nextBtn.addEventListener('click', nextPage);
-        console.log('✅ Next button handler added');
-    } else {
-        console.error('❌ Next button not found!');
-    }
+    if (nextBtn) nextBtn.addEventListener('click', nextPage);
     
     // Кнопка закрытия сайдбара
     const closeSidebarBtn = document.querySelector('.close-sidebar');
@@ -516,106 +491,95 @@ function initializeReaderProtection() {
     }
 }
 
-// Column-based: Рассчитываем количество страниц (колонок)
-function calculateColumnPages() {
+// CSS Columns: Рассчитываем количество страниц по scroll width
+function calculatePageDimensions() {
     const wrapper = document.querySelector('.text-content-wrapper');
     const textContent = document.getElementById('textContent');
     
-    if (!wrapper) {
-        console.error('❌ text-content-wrapper not found!');
-        return;
-    }
+    if (!wrapper || !textContent) return;
     
-    if (!textContent) {
-        console.error('❌ textContent not found!');
-        return;
-    }
-    
-    // Общая ширина контента с учётом всех колонок
-    const totalWidth = wrapper.scrollWidth;
-    // Ширина одной колонки (видимой области)
-    const pageWidth = wrapper.clientWidth;
-    
-    // Количество страниц = общая ширина / ширина одной страницы
-    const calculatedPages = Math.max(1, Math.round(totalWidth / pageWidth));
-    totalPages = calculatedPages;
-    
-    console.log('📚 Column pages calculated:', {
-        wrapperScrollWidth: totalWidth,
-        wrapperClientWidth: pageWidth,
-        textContentScrollWidth: textContent.scrollWidth,
-        calculatedPages: calculatedPages,
-        totalPages,
-        currentPage
-    });
-    
-    updatePageNumbers();
-    updateNavigationButtons();
+    // Ждём пока CSS columns пересчитается
+    setTimeout(() => {
+        // Ширина одной страницы = ширина wrapper (видимая область)
+        const pageWidth = wrapper.clientWidth;
+        
+        // Общая ширина контента (все колонки вместе)
+        const totalWidth = textContent.scrollWidth;
+        
+        // Количество страниц = общая ширина / ширина одной страницы
+        totalPages = Math.max(1, Math.ceil(totalWidth / pageWidth));
+        
+        // Текущая страница на основе scrollLeft
+        currentPage = Math.max(1, Math.floor(wrapper.scrollLeft / pageWidth) + 1);
+        
+        console.log('📖 CSS Columns pagination:', {
+            pageWidth,
+            totalWidth,
+            totalPages,
+            currentPage,
+            scrollLeft: wrapper.scrollLeft
+        });
+        
+        updateProgressBar();
+        updatePageNumbers();
+        updateNavigationButtons();
+    }, 100); // Даём время на рендеринг колонок
 }
 
-// Column-based: Переход на страницу
-function goToPage(pageNumber, animated = true) {
+// CSS Columns: Предыдущая страница (скролл влево)
+function previousPage() {
     const wrapper = document.querySelector('.text-content-wrapper');
     if (!wrapper) return;
     
-    currentPage = Math.max(1, Math.min(pageNumber, totalPages));
-    
-    // Горизонтальный скролл к нужной колонке
     const pageWidth = wrapper.clientWidth;
-    const scrollLeft = (currentPage - 1) * pageWidth;
     
-    wrapper.scrollTo({
-        left: scrollLeft,
-        behavior: animated ? 'smooth' : 'auto'
+    // Скроллим на одну страницу влево (плавно, благодаря scroll-behavior: smooth)
+    wrapper.scrollBy({
+        left: -pageWidth,
+        behavior: 'smooth'
     });
     
-    updateProgressBar();
-    updatePageNumbers();
-    updateNavigationButtons();
-    saveReadingProgress();
-    
-    console.log('📄 Scrolled to page:', currentPage);
+    // Обновляем UI после скролла
+    setTimeout(() => {
+        calculatePageDimensions();
+        saveReadingProgress();
+    }, 300);
 }
 
-// Column-based: Предыдущая страница
-function previousPage() {
-    console.log('🔙 Previous page clicked:', {
-        currentPage,
-        totalPages,
-        canGoPrev: currentPage > 1
-    });
-    
-    if (currentPage > 1) {
-        goToPage(currentPage - 1, true);
-    } else {
-        console.warn('⚠️ Already at first page');
-    }
-}
-
-// Column-based: Следующая страница
+// CSS Columns: Следующая страница (скролл вправо)
 function nextPage() {
-    console.log('▶️ Next page clicked:', {
-        currentPage,
-        totalPages,
-        canGoNext: currentPage < totalPages
+    const wrapper = document.querySelector('.text-content-wrapper');
+    if (!wrapper) return;
+    
+    const pageWidth = wrapper.clientWidth;
+    
+    // Скроллим на одну страницу вправо (плавно, благодаря scroll-behavior: smooth)
+    wrapper.scrollBy({
+        left: pageWidth,
+        behavior: 'smooth'
     });
     
-    if (currentPage < totalPages) {
-        goToPage(currentPage + 1, true);
-    } else {
-        console.warn('⚠️ Already at last page');
-    }
+    // Обновляем UI после скролла
+    setTimeout(() => {
+        calculatePageDimensions();
+        saveReadingProgress();
+    }, 300);
 }
 
-// Column-based: Обновляем кнопки навигации
+// CSS Columns: Обновляем кнопки навигации на основе scrollLeft
 function updateNavigationButtons() {
     const prevBtn = document.querySelector('.prev-btn');
     const nextBtn = document.querySelector('.next-btn');
+    const wrapper = document.querySelector('.text-content-wrapper');
     
-    if (!prevBtn || !nextBtn) return;
+    if (!prevBtn || !nextBtn || !wrapper) return;
     
-    prevBtn.disabled = currentPage <= 1;
-    nextBtn.disabled = currentPage >= totalPages;
+    // Проверяем можем ли ещё листать
+    const scrollLeft = wrapper.scrollLeft;
+    const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
+    
+    prevBtn.disabled = scrollLeft <= 10; // С небольшим порогом
+    nextBtn.disabled = scrollLeft >= maxScroll - 10; // С небольшим порогом
 }
 
 function scrollToTop() {
@@ -647,7 +611,7 @@ function closeSidebar() {
     document.body.style.overflow = 'auto';
 }
 
-// Column-based: Переход к главе
+// CSS Columns: Переход к главе
 function goToChapter(chapterIndex) {
     currentChapter = chapterIndex;
     
@@ -658,15 +622,18 @@ function goToChapter(chapterIndex) {
     if (chapterTitles[chapterIndex] && wrapper) {
         // Получаем позицию заголовка главы
         const chapterElement = chapterTitles[chapterIndex];
-        const rect = chapterElement.getBoundingClientRect();
-        const wrapperRect = wrapper.getBoundingClientRect();
-        
-        // Вычисляем на какой странице (колонке) находится глава
-        const pageWidth = wrapper.clientWidth;
         const offsetLeft = chapterElement.offsetLeft;
-        const targetPage = Math.floor(offsetLeft / pageWidth) + 1;
         
-        goToPage(targetPage, true);
+        // Скроллим к этой позиции
+        wrapper.scrollTo({
+            left: offsetLeft,
+            behavior: 'smooth'
+        });
+        
+        setTimeout(() => {
+            calculatePageDimensions();
+            saveReadingProgress();
+        }, 300);
     }
     
     updateActiveChapter();
@@ -685,7 +652,7 @@ function updateActiveChapter() {
     });
 }
 
-// Column-based: Загружаем весь контент
+// CSS Columns: Загружаем весь контент книги сразу
 function loadAllContent() {
     const textContent = document.getElementById('textContent');
     
@@ -693,10 +660,9 @@ function loadAllContent() {
     const allContent = chapters.map(chapter => chapter.content).join('');
     textContent.innerHTML = allContent;
     
-    // После загрузки пересчитываем колонки
+    // После загрузки контента пересчитываем размеры колонок
     setTimeout(() => {
-        calculateColumnPages();
-        goToPage(currentPage, false);
+        calculatePageDimensions();
         updateActiveChapter();
     }, 100);
 }
@@ -790,36 +756,47 @@ function closeSettings() {
     saveSettings();
 }
 
-// Column-based: Изменение размера шрифта
+// CSS Columns: Изменение размера шрифта
 function changeFontSize(delta) {
-    const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
+    const wrapper = document.querySelector('.text-content-wrapper');
+    if (!wrapper) return;
+    
+    // Запоминаем процент прогресса ПЕРЕД изменением
+    const oldScrollLeft = wrapper.scrollLeft;
+    const oldScrollWidth = wrapper.scrollWidth;
+    const progressPercent = oldScrollWidth > 0 ? oldScrollLeft / oldScrollWidth : 0;
     
     readingSettings.fontSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
     document.getElementById('fontSizeDisplay').textContent = readingSettings.fontSize + 'px';
     applySettings();
     saveSettings();
     
+    // Ждём пока CSS columns пересчитается после изменения шрифта
     setTimeout(() => {
-        calculateColumnPages();
-        currentPage = Math.max(1, Math.round(progressPercent * totalPages));
-        goToPage(currentPage, false);
-        console.log('🔤 Font size changed, page:', currentPage, '/', totalPages);
+        // Восстанавливаем позицию по проценту от НОВОГО scrollWidth
+        const newScrollLeft = progressPercent * wrapper.scrollWidth;
+        wrapper.scrollLeft = newScrollLeft;
+        
+        calculatePageDimensions();
+        console.log('🔤 Font size changed, progress:', Math.round(progressPercent * 100) + '%');
     }, 300);
 }
 
-// Column-based: Изменение шрифта
+// CSS Columns: Изменение семейства шрифтов
 function changeFontFamily(family) {
-    const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
+    const wrapper = document.querySelector('.text-content-wrapper');
+    if (!wrapper) return;
+    
+    const progressPercent = wrapper.scrollWidth > 0 ? wrapper.scrollLeft / wrapper.scrollWidth : 0;
     
     readingSettings.fontFamily = family;
     applySettings();
     saveSettings();
     
     setTimeout(() => {
-        calculateColumnPages();
-        currentPage = Math.max(1, Math.round(progressPercent * totalPages));
-        goToPage(currentPage, false);
-        console.log('📝 Font family changed, page:', currentPage, '/', totalPages);
+        wrapper.scrollLeft = progressPercent * wrapper.scrollWidth;
+        calculatePageDimensions();
+        console.log('📝 Font family changed, progress:', Math.round(progressPercent * 100) + '%');
     }, 300);
 }
 
@@ -836,12 +813,16 @@ function setTheme(theme) {
     saveSettings();
 }
 
-// Column-based: Изменение ширины текста
+// CSS Columns: Изменение ширины текста
 function setTextWidth(width) {
-    const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
+    const wrapper = document.querySelector('.text-content-wrapper');
+    if (!wrapper) return;
+    
+    const progressPercent = wrapper.scrollWidth > 0 ? wrapper.scrollLeft / wrapper.scrollWidth : 0;
     
     readingSettings.textWidth = width;
     
+    // Обновляем активную кнопку
     const widthButtons = document.querySelectorAll('.width-btn');
     widthButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.width === width);
@@ -851,19 +832,22 @@ function setTextWidth(width) {
     saveSettings();
     
     setTimeout(() => {
-        calculateColumnPages();
-        currentPage = Math.max(1, Math.round(progressPercent * totalPages));
-        goToPage(currentPage, false);
-        console.log('📏 Text width changed, page:', currentPage, '/', totalPages);
+        wrapper.scrollLeft = progressPercent * wrapper.scrollWidth;
+        calculatePageDimensions();
+        console.log('📏 Text width changed, progress:', Math.round(progressPercent * 100) + '%');
     }, 300);
 }
 
-// Column-based: Изменение межстрочного интервала
+// CSS Columns: Изменение межстрочного интервала
 function setLineHeight(height) {
-    const progressPercent = totalPages > 0 ? (currentPage - 1) / totalPages : 0;
+    const wrapper = document.querySelector('.text-content-wrapper');
+    if (!wrapper) return;
+    
+    const progressPercent = wrapper.scrollWidth > 0 ? wrapper.scrollLeft / wrapper.scrollWidth : 0;
     
     readingSettings.lineHeight = height;
     
+    // Обновляем активную кнопку
     const heightButtons = document.querySelectorAll('.lh-btn');
     heightButtons.forEach(btn => {
         btn.classList.toggle('active', parseFloat(btn.dataset.height) === height);
@@ -873,10 +857,9 @@ function setLineHeight(height) {
     saveSettings();
     
     setTimeout(() => {
-        calculateColumnPages();
-        currentPage = Math.max(1, Math.round(progressPercent * totalPages));
-        goToPage(currentPage, false);
-        console.log('📐 Line height changed, page:', currentPage, '/', totalPages);
+        wrapper.scrollLeft = progressPercent * wrapper.scrollWidth;
+        calculatePageDimensions();
+        console.log('📐 Line height changed, progress:', Math.round(progressPercent * 100) + '%');
     }, 300);
 }
 
@@ -953,9 +936,13 @@ function saveSettings() {
     localStorage.setItem('readingSettings', JSON.stringify(readingSettings));
 }
 
-// Column-based: Сохранение прогресса
+// CSS Columns: Сохранение прогресса чтения (scrollLeft)
 function saveReadingProgress() {
+    const wrapper = document.querySelector('.text-content-wrapper');
+    if (!wrapper) return;
+    
     const progressData = {
+        scrollLeft: wrapper.scrollLeft,
         currentPage: currentPage,
         currentChapter: currentChapter,
         lastReadTime: new Date().toISOString()
@@ -963,12 +950,21 @@ function saveReadingProgress() {
     localStorage.setItem('readingProgress', JSON.stringify(progressData));
 }
 
-// Column-based: Загрузка прогресса
+// CSS Columns: Загрузка прогресса чтения
 function loadReadingProgress() {
     const saved = localStorage.getItem('readingProgress');
     if (saved) {
         const progressData = JSON.parse(saved);
-        currentPage = progressData.currentPage || 1;
+        const wrapper = document.querySelector('.text-content-wrapper');
+        
+        if (wrapper && progressData.scrollLeft !== undefined) {
+            // Восстанавливаем scrollLeft (без анимации)
+            setTimeout(() => {
+                wrapper.scrollLeft = progressData.scrollLeft;
+                calculatePageDimensions();
+            }, 200);
+        }
+        
         currentChapter = progressData.currentChapter || 0;
     }
 }
