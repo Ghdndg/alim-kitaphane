@@ -293,6 +293,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Обработчик прокрутки для обновления UI
+    const textContent = document.getElementById('textContent');
+    if (textContent) {
+        let scrollTimeout;
+        textContent.addEventListener('scroll', () => {
+            // Дебаунсим обновление UI
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                calculatePageDimensions();
+            }, 150);
+        }, { passive: true });
+    }
+    
     // Добавляем обработчик для сохранения настроек при изменении семейства шрифтов
     const fontFamilySelect = document.getElementById('fontFamily');
     if (fontFamilySelect) {
@@ -578,6 +591,7 @@ function calculatePageDimensions() {
         updateProgressBar();
         updatePageNumbers();
         updateNavigationButtons();
+        updateActiveChapter();
     }, 200);
 }
 
@@ -670,26 +684,21 @@ function closeSidebar() {
 function goToChapter(chapterIndex) {
     currentChapter = chapterIndex;
     
-    const wrapper = document.querySelector('.text-content-wrapper');
     const textContent = document.getElementById('textContent');
     const chapterTitles = textContent.querySelectorAll('.chapter-title, .section-title');
     
-    if (chapterTitles[chapterIndex] && wrapper) {
-        // Получаем позицию заголовка главы (горизонтальную)
+    if (chapterTitles[chapterIndex]) {
+        // Получаем позицию заголовка главы (вертикальную)
         const chapterElement = chapterTitles[chapterIndex];
-        const offsetLeft = chapterElement.offsetLeft;
-        
-        // Добавляем анимацию
-        wrapper.classList.add('page-turning');
+        const offsetTop = chapterElement.offsetTop;
         
         // Скроллим к этой позиции
-        wrapper.scrollTo({
-            left: offsetLeft,
+        textContent.scrollTo({
+            top: offsetTop - 20, // Небольшой отступ сверху
             behavior: 'smooth'
         });
         
         setTimeout(() => {
-            wrapper.classList.remove('page-turning');
             calculatePageDimensions();
             saveReadingProgress();
         }, 400);
@@ -705,6 +714,23 @@ function getChapterStartPage(chapterIndex) {
 }
 
 function updateActiveChapter() {
+    const textContent = document.getElementById('textContent');
+    if (!textContent) return;
+    
+    const scrollTop = textContent.scrollTop;
+    const chapterTitles = textContent.querySelectorAll('.chapter-title, .section-title');
+    
+    // Определяем текущую главу на основе позиции прокрутки
+    let activeChapterIndex = 0;
+    chapterTitles.forEach((title, index) => {
+        if (title.offsetTop <= scrollTop + 100) { // 100px порог
+            activeChapterIndex = index;
+        }
+    });
+    
+    currentChapter = activeChapterIndex;
+    
+    // Подсвечиваем активную главу в содержании
     const tocItems = document.querySelectorAll('.toc-item');
     tocItems.forEach((item, index) => {
         item.classList.toggle('active', index === currentChapter);
@@ -743,31 +769,39 @@ function getCurrentChapterByPage(page) {
 
 // Функции закладок
 function toggleBookmark() {
+    const textContent = document.getElementById('textContent');
+    if (!textContent) return;
+    
     isBookmarked = !isBookmarked;
     const bookmarkBtn = document.querySelector('.bookmark-btn');
     bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
     
     // Сохраняем закладку
     if (isBookmarked) {
-        saveBookmark(currentPage);
+        const scrollTop = textContent.scrollTop;
+        saveBookmark(scrollTop);
         showNotification('Закладка добавлена', 'success');
     } else {
-        removeBookmark(currentPage);
+        const scrollTop = textContent.scrollTop;
+        removeBookmark(scrollTop);
         showNotification('Закладка удалена', 'info');
     }
 }
 
-function saveBookmark(page) {
+function saveBookmark(scrollPosition) {
     let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    if (!bookmarks.includes(page)) {
-        bookmarks.push(page);
+    // Проверяем, нет ли уже близкой закладки (в пределах 50px)
+    const existingBookmark = bookmarks.find(b => Math.abs(b - scrollPosition) < 50);
+    if (!existingBookmark) {
+        bookmarks.push(scrollPosition);
         localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
     }
 }
 
-function removeBookmark(page) {
+function removeBookmark(scrollPosition) {
     let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    bookmarks = bookmarks.filter(p => p !== page);
+    // Удаляем закладку в пределах 50px от текущей позиции
+    bookmarks = bookmarks.filter(b => Math.abs(b - scrollPosition) >= 50);
     localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
 }
 
