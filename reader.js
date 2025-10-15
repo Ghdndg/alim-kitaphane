@@ -70,7 +70,6 @@
 let currentPage = 1;
 let totalPages = 1;
 let currentChapter = 0;
-let isBookmarked = false;
 let readingSettings = {
     fontSize: 16,
     fontFamily: 'Inter',
@@ -325,38 +324,6 @@ function initializeButtons() {
     const settingsBtn = document.querySelector('.settings-btn');
     if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
     
-    // Кнопка закладки
-    const bookmarkBtn = document.querySelector('.bookmark-btn');
-    if (bookmarkBtn) {
-        bookmarkBtn.addEventListener('click', toggleBookmark);
-        
-        // Долгий клик для показа меню закладок
-        let longPressTimer;
-        bookmarkBtn.addEventListener('mousedown', () => {
-            longPressTimer = setTimeout(() => {
-                showBookmarksMenu();
-            }, 500); // 500ms для долгого клика
-        });
-        
-        bookmarkBtn.addEventListener('mouseup', () => {
-            clearTimeout(longPressTimer);
-        });
-        
-        bookmarkBtn.addEventListener('mouseleave', () => {
-            clearTimeout(longPressTimer);
-        });
-        
-        // Для мобильных устройств
-        bookmarkBtn.addEventListener('touchstart', () => {
-            longPressTimer = setTimeout(() => {
-                showBookmarksMenu();
-            }, 500);
-        });
-        
-        bookmarkBtn.addEventListener('touchend', () => {
-            clearTimeout(longPressTimer);
-        });
-    }
     
     // Кнопка меню содержания
     const menuBtn = document.querySelector('.menu-btn');
@@ -607,7 +574,7 @@ function calculatePageDimensions() {
         
         // Текущая страница на основе scrollTop
         const scrollTop = textContent.scrollTop;
-        currentPage = Math.max(1, Math.min(Math.ceil((scrollTop + 1) / pageHeight), totalPages));
+        currentPage = Math.max(1, Math.min(Math.ceil((scrollTop + 1) / pageHeight) + 1, totalPages));
         
         console.log('📖 Page calculation:', {
             pageHeight: Math.round(pageHeight),
@@ -621,7 +588,6 @@ function calculatePageDimensions() {
         updatePageNumbers();
         updateNavigationButtons();
         updateActiveChapter();
-        checkCurrentPageBookmark();
     }, 200);
 }
 
@@ -797,140 +763,6 @@ function getCurrentChapterByPage(page) {
     return 0;
 }
 
-// Функции закладок
-function toggleBookmark() {
-    isBookmarked = !isBookmarked;
-    const bookmarkBtn = document.querySelector('.bookmark-btn');
-    bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
-    
-    // Сохраняем закладку на текущую страницу
-    if (isBookmarked) {
-        saveBookmark(currentPage);
-        showNotification(`Закладка добавлена на страницу ${currentPage}`, 'success');
-    } else {
-        removeBookmark(currentPage);
-        showNotification(`Закладка удалена со страницы ${currentPage}`, 'info');
-    }
-}
-
-function saveBookmark(pageNumber) {
-    let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    // Проверяем, нет ли уже закладки на эту страницу
-    if (!bookmarks.includes(pageNumber)) {
-        bookmarks.push(pageNumber);
-        bookmarks.sort((a, b) => a - b); // Сортируем по номеру страницы
-        localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-    }
-}
-
-function removeBookmark(pageNumber) {
-    let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    bookmarks = bookmarks.filter(p => p !== pageNumber);
-    localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-}
-
-// Проверяем, есть ли закладка на текущей странице
-function checkCurrentPageBookmark() {
-    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    isBookmarked = bookmarks.includes(currentPage);
-    
-    const bookmarkBtn = document.querySelector('.bookmark-btn');
-    if (bookmarkBtn) {
-        bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
-    }
-}
-
-// Переход к закладке
-function goToBookmark(pageNumber) {
-    const textContent = document.getElementById('textContent');
-    if (!textContent) return;
-    
-    const pageHeight = textContent.clientHeight;
-    const targetScrollTop = (pageNumber - 1) * pageHeight;
-    
-    textContent.scrollTo({
-        top: targetScrollTop,
-        behavior: 'smooth'
-    });
-    
-    setTimeout(() => {
-        calculatePageDimensions();
-        showNotification(`Переход к странице ${pageNumber}`, 'info');
-    }, 400);
-}
-
-// Показать меню закладок снизу
-function showBookmarksMenu() {
-    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    
-    // Создаём меню снизу
-    const menu = document.createElement('div');
-    menu.id = 'bookmarksMenu';
-    menu.style.cssText = `
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: white;
-        border-top: 1px solid #ddd;
-        padding: 1rem;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-        z-index: 1000;
-        transform: translateY(100%);
-        transition: transform 0.3s ease;
-        max-height: 50vh;
-        overflow-y: auto;
-    `;
-    
-    if (bookmarks.length === 0) {
-        menu.innerHTML = `
-            <div style="text-align: center; color: #666;">
-                <p>Закладок пока нет</p>
-                <button onclick="closeBookmarksMenu()" 
-                        style="padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    Закрыть
-                </button>
-            </div>
-        `;
-    } else {
-        menu.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3 style="margin: 0; color: #333;">Закладки (${bookmarks.length})</h3>
-                <button onclick="closeBookmarksMenu()" 
-                        style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">
-                    ✕
-                </button>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem;">
-                ${bookmarks.map(pageNum => `
-                    <div onclick="goToBookmark(${pageNum}); closeBookmarksMenu();" 
-                         style="padding: 0.75rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; cursor: pointer; text-align: center; transition: background 0.2s;">
-                        <div style="font-weight: bold; color: #333;">Страница ${pageNum}</div>
-                        <div style="font-size: 0.8em; color: #666; margin-top: 0.25rem;">Нажмите для перехода</div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
-    
-    document.body.appendChild(menu);
-    
-    // Анимация появления
-    setTimeout(() => {
-        menu.style.transform = 'translateY(0)';
-    }, 10);
-}
-
-// Закрыть меню закладок
-function closeBookmarksMenu() {
-    const menu = document.getElementById('bookmarksMenu');
-    if (menu) {
-        menu.style.transform = 'translateY(100%)';
-        setTimeout(() => {
-            menu.remove();
-        }, 300);
-    }
-}
 
 // Функции настроек
 function openSettings() {
@@ -1268,7 +1100,6 @@ window.addEventListener('load', function() {
         updatePageNumbers();
         updateNavigationButtons();
         updateActiveChapter();
-        checkCurrentPageBookmark();
     }
 });
 
