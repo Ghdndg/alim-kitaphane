@@ -578,7 +578,7 @@ function calculatePageDimensions() {
         
         // Текущая страница на основе scrollTop
         const scrollTop = textContent.scrollTop;
-        currentPage = Math.max(1, Math.min(Math.floor(scrollTop / pageHeight) + 1, totalPages));
+        currentPage = Math.max(1, Math.min(Math.ceil((scrollTop + 1) / pageHeight), totalPages));
         
         console.log('📖 Page calculation:', {
             pageHeight: Math.round(pageHeight),
@@ -889,12 +889,21 @@ function showBookmarks() {
             border-radius: 5px;
             cursor: pointer;
             border: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         `;
         item.innerHTML = `
-            <strong>Страница ${pageNum}</strong>
-            <div style="font-size: 0.9em; color: #666; margin-top: 0.25rem;">
-                Нажмите для перехода
+            <div>
+                <strong>Страница ${pageNum}</strong>
+                <div style="font-size: 0.9em; color: #666; margin-top: 0.25rem;">
+                    Нажмите для перехода
+                </div>
             </div>
+            <button onclick="event.stopPropagation(); removeBookmark(${pageNum}); this.closest('.bookmark-modal').remove(); showBookmarks();" 
+                    style="background: #dc3545; color: white; border: none; border-radius: 3px; padding: 0.25rem 0.5rem; cursor: pointer; font-size: 0.8em;">
+                ✕
+            </button>
         `;
         
         item.addEventListener('click', () => {
