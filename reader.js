@@ -799,30 +799,18 @@ function getCurrentChapterByPage(page) {
 
 // Функции закладок
 function toggleBookmark() {
-    // Проверяем, есть ли уже закладка на текущей странице
-    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    const hasBookmark = bookmarks.includes(currentPage);
-    
-    if (hasBookmark) {
-        // Если закладка есть - удаляем её
-        removeBookmark(currentPage);
-        isBookmarked = false;
-        showNotification(`Закладка удалена со страницы ${currentPage}`, 'info');
-    } else {
-        // Если закладки нет - добавляем её
-        saveBookmark(currentPage);
-        isBookmarked = true;
-        showNotification(`Закладка добавлена на страницу ${currentPage}`, 'success');
-    }
-    
-    // Обновляем состояние кнопки
+    isBookmarked = !isBookmarked;
     const bookmarkBtn = document.querySelector('.bookmark-btn');
     bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
-}
-
-// Показать меню закладок (долгий клик или отдельная кнопка)
-function showBookmarks() {
-    showBookmarksMenu();
+    
+    // Сохраняем закладку на текущую страницу
+    if (isBookmarked) {
+        saveBookmark(currentPage);
+        showNotification(`Закладка добавлена на страницу ${currentPage}`, 'success');
+    } else {
+        removeBookmark(currentPage);
+        showNotification(`Закладка удалена со страницы ${currentPage}`, 'info');
+    }
 }
 
 function saveBookmark(pageNumber) {
@@ -890,6 +878,8 @@ function showBookmarksMenu() {
         z-index: 1000;
         transform: translateY(100%);
         transition: transform 0.3s ease;
+        max-height: 50vh;
+        overflow-y: auto;
     `;
     
     if (bookmarks.length === 0) {
@@ -911,7 +901,7 @@ function showBookmarksMenu() {
                     ✕
                 </button>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; max-height: 200px; overflow-y: auto;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem;">
                 ${bookmarks.map(pageNum => `
                     <div onclick="goToBookmark(${pageNum}); closeBookmarksMenu();" 
                          style="padding: 0.75rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; cursor: pointer; text-align: center; transition: background 0.2s;">
