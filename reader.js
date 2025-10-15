@@ -592,6 +592,7 @@ function calculatePageDimensions() {
         updatePageNumbers();
         updateNavigationButtons();
         updateActiveChapter();
+        checkCurrentPageBookmark();
     }, 200);
 }
 
@@ -769,40 +770,64 @@ function getCurrentChapterByPage(page) {
 
 // Функции закладок
 function toggleBookmark() {
-    const textContent = document.getElementById('textContent');
-    if (!textContent) return;
-    
     isBookmarked = !isBookmarked;
     const bookmarkBtn = document.querySelector('.bookmark-btn');
     bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
     
-    // Сохраняем закладку
+    // Сохраняем закладку на текущую страницу
     if (isBookmarked) {
-        const scrollTop = textContent.scrollTop;
-        saveBookmark(scrollTop);
-        showNotification('Закладка добавлена', 'success');
+        saveBookmark(currentPage);
+        showNotification(`Закладка добавлена на страницу ${currentPage}`, 'success');
     } else {
-        const scrollTop = textContent.scrollTop;
-        removeBookmark(scrollTop);
-        showNotification('Закладка удалена', 'info');
+        removeBookmark(currentPage);
+        showNotification(`Закладка удалена со страницы ${currentPage}`, 'info');
     }
 }
 
-function saveBookmark(scrollPosition) {
+function saveBookmark(pageNumber) {
     let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    // Проверяем, нет ли уже близкой закладки (в пределах 50px)
-    const existingBookmark = bookmarks.find(b => Math.abs(b - scrollPosition) < 50);
-    if (!existingBookmark) {
-        bookmarks.push(scrollPosition);
+    // Проверяем, нет ли уже закладки на эту страницу
+    if (!bookmarks.includes(pageNumber)) {
+        bookmarks.push(pageNumber);
+        bookmarks.sort((a, b) => a - b); // Сортируем по номеру страницы
         localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
     }
 }
 
-function removeBookmark(scrollPosition) {
+function removeBookmark(pageNumber) {
     let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    // Удаляем закладку в пределах 50px от текущей позиции
-    bookmarks = bookmarks.filter(b => Math.abs(b - scrollPosition) >= 50);
+    bookmarks = bookmarks.filter(p => p !== pageNumber);
     localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+}
+
+// Проверяем, есть ли закладка на текущей странице
+function checkCurrentPageBookmark() {
+    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+    isBookmarked = bookmarks.includes(currentPage);
+    
+    const bookmarkBtn = document.querySelector('.bookmark-btn');
+    if (bookmarkBtn) {
+        bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
+    }
+}
+
+// Переход к закладке
+function goToBookmark(pageNumber) {
+    const textContent = document.getElementById('textContent');
+    if (!textContent) return;
+    
+    const pageHeight = textContent.clientHeight;
+    const targetScrollTop = (pageNumber - 1) * pageHeight;
+    
+    textContent.scrollTo({
+        top: targetScrollTop,
+        behavior: 'smooth'
+    });
+    
+    setTimeout(() => {
+        calculatePageDimensions();
+        showNotification(`Переход к странице ${pageNumber}`, 'info');
+    }, 400);
 }
 
 // Функции настроек
@@ -1141,6 +1166,7 @@ window.addEventListener('load', function() {
         updatePageNumbers();
         updateNavigationButtons();
         updateActiveChapter();
+        checkCurrentPageBookmark();
     }
 });
 
