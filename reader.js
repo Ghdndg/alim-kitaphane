@@ -217,6 +217,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Загружаем весь контент книги
     loadAllContent();
     
+    // Обновляем счётчик закладок при загрузке
+    updateBookmarkCount();
+    
     // Пересчитываем размеры при изменении размера окна
     let resizeTimer;
     window.addEventListener('resize', function() {
@@ -808,6 +811,19 @@ function checkCurrentPageBookmark() {
     const bookmarkBtn = document.querySelector('.bookmark-btn');
     if (bookmarkBtn) {
         bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
+    }
+    
+    // Обновляем счётчик закладок
+    updateBookmarkCount();
+}
+
+// Обновляем счётчик закладок
+function updateBookmarkCount() {
+    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+    const countElement = document.querySelector('.bookmark-count');
+    if (countElement) {
+        countElement.textContent = bookmarks.length;
+        countElement.style.display = bookmarks.length > 0 ? 'flex' : 'none';
     }
 }
 

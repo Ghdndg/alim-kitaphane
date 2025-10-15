@@ -134,7 +134,6 @@ body {
 
 .settings-btn,
 .bookmark-btn,
-.bookmarks-list-btn,
 .menu-btn,
 .logout-btn {
     background: none;
@@ -149,7 +148,6 @@ body {
 
 .settings-btn:hover,
 .bookmark-btn:hover,
-.bookmarks-list-btn:hover,
 .menu-btn:hover,
 .logout-btn:hover {
     background: var(--button-hover);
@@ -158,6 +156,40 @@ body {
 
 .bookmark-btn.bookmarked {
     color: var(--accent-color);
+}
+
+.bookmarks-list-btn {
+    position: relative;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.bookmarks-list-btn:hover {
+    color: #007bff;
+    background: var(--button-hover);
+    transform: translateY(-1px);
+}
+
+.bookmark-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
 }
 
 /* Основная область */
@@ -690,7 +722,6 @@ body {
     .back-btn,
     .settings-btn,
     .bookmark-btn,
-    .bookmarks-list-btn,
     .menu-btn,
     .logout-btn {
         padding: 0.4rem;
