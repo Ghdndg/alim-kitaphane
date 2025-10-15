@@ -578,7 +578,7 @@ function calculatePageDimensions() {
         
         // Текущая страница на основе scrollTop
         const scrollTop = textContent.scrollTop;
-        currentPage = Math.max(1, Math.min(Math.ceil((scrollTop + 1) / pageHeight) + 1, totalPages));
+        currentPage = Math.max(1, Math.min(Math.floor(scrollTop / pageHeight) + 1, totalPages));
         
         console.log('📖 Page calculation:', {
             pageHeight: Math.round(pageHeight),
@@ -828,6 +828,89 @@ function goToBookmark(pageNumber) {
         calculatePageDimensions();
         showNotification(`Переход к странице ${pageNumber}`, 'info');
     }, 400);
+}
+
+// Показать список закладок
+function showBookmarks() {
+    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+    
+    if (bookmarks.length === 0) {
+        showNotification('Закладок пока нет', 'info');
+        return;
+    }
+    
+    // Создаём модальное окно со списком закладок
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        max-width: 400px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    `;
+    
+    content.innerHTML = `
+        <h3 style="margin: 0 0 1rem 0; color: #333;">Закладки</h3>
+        <div id="bookmarksList"></div>
+        <button onclick="this.closest('.bookmark-modal').remove()" 
+                style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Закрыть
+        </button>
+    `;
+    
+    modal.className = 'bookmark-modal';
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    // Заполняем список закладок
+    const bookmarksList = content.querySelector('#bookmarksList');
+    bookmarks.forEach(pageNum => {
+        const item = document.createElement('div');
+        item.style.cssText = `
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            background: #f8f9fa;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 1px solid #dee2e6;
+        `;
+        item.innerHTML = `
+            <strong>Страница ${pageNum}</strong>
+            <div style="font-size: 0.9em; color: #666; margin-top: 0.25rem;">
+                Нажмите для перехода
+            </div>
+        `;
+        
+        item.addEventListener('click', () => {
+            modal.remove();
+            goToBookmark(pageNum);
+        });
+        
+        bookmarksList.appendChild(item);
+    });
+    
+    // Закрытие по клику вне модального окна
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
 }
 
 // Функции настроек

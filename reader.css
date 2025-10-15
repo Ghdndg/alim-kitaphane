@@ -134,6 +134,7 @@ body {
 
 .settings-btn,
 .bookmark-btn,
+.bookmarks-list-btn,
 .menu-btn,
 .logout-btn {
     background: none;
@@ -148,6 +149,7 @@ body {
 
 .settings-btn:hover,
 .bookmark-btn:hover,
+.bookmarks-list-btn:hover,
 .menu-btn:hover,
 .logout-btn:hover {
     background: var(--button-hover);
@@ -688,6 +690,7 @@ body {
     .back-btn,
     .settings-btn,
     .bookmark-btn,
+    .bookmarks-list-btn,
     .menu-btn,
     .logout-btn {
         padding: 0.4rem;
