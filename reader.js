@@ -566,18 +566,29 @@ function calculatePageDimensions() {
     
     // Ждём, пока контент полностью отрендерится
     setTimeout(() => {
-        const pageHeight = textContent.clientHeight; // Высота видимой области
-        const contentHeight = textContent.scrollHeight; // Полная высота контента
+        // Получаем стили для точного расчёта
+        const computedStyle = window.getComputedStyle(textContent);
+        const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+        const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+        const lineHeight = parseFloat(computedStyle.lineHeight) || 16;
         
-        // Количество "экранов" = полная высота / высота экрана
-        totalPages = Math.max(1, Math.ceil(contentHeight / pageHeight));
+        // Высота видимой области БЕЗ padding
+        const visibleHeight = textContent.clientHeight - paddingTop - paddingBottom;
+        const contentHeight = textContent.scrollHeight;
+        
+        // Количество "экранов" = полная высота / высота видимой области
+        totalPages = Math.max(1, Math.ceil(contentHeight / visibleHeight));
         
         // Текущая страница на основе scrollTop
         const scrollTop = textContent.scrollTop;
-        currentPage = Math.max(1, Math.min(Math.ceil((scrollTop + 1) / pageHeight), totalPages));
+        currentPage = Math.max(1, Math.min(Math.ceil((scrollTop + 1) / visibleHeight), totalPages));
         
         console.log('📖 Page calculation:', {
-            pageHeight: Math.round(pageHeight),
+            clientHeight: Math.round(textContent.clientHeight),
+            visibleHeight: Math.round(visibleHeight),
+            paddingTop: Math.round(paddingTop),
+            paddingBottom: Math.round(paddingBottom),
+            lineHeight: Math.round(lineHeight),
             contentHeight: Math.round(contentHeight),
             totalPages,
             currentPage,
@@ -596,7 +607,12 @@ function previousPage() {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    const pageHeight = textContent.clientHeight;
+    // Получаем точную высоту видимой области
+    const computedStyle = window.getComputedStyle(textContent);
+    const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+    const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+    const pageHeight = textContent.clientHeight - paddingTop - paddingBottom;
+    
     const newScrollTop = Math.max(0, textContent.scrollTop - pageHeight);
     
     // Плавная прокрутка
@@ -617,7 +633,12 @@ function nextPage() {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    const pageHeight = textContent.clientHeight;
+    // Получаем точную высоту видимой области
+    const computedStyle = window.getComputedStyle(textContent);
+    const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+    const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+    const pageHeight = textContent.clientHeight - paddingTop - paddingBottom;
+    
     const maxScroll = textContent.scrollHeight - textContent.clientHeight;
     const newScrollTop = Math.min(maxScroll, textContent.scrollTop + pageHeight);
     
