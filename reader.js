@@ -1,19 +1,26 @@
 // Проверка доступа к книге при загрузке
 (async function checkAccess() {
+    console.log('🔍 Starting reader access check...');
+    
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
     const accessToken = localStorage.getItem('accessToken');
     
-    console.log('Reader access check:', {
+    console.log('📋 Reader access check:', {
         hasUser: !!currentUser.email,
         userEmail: currentUser.email,
         hasToken: !!accessToken,
-        tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none'
+        tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none',
+        currentUserObject: currentUser,
+        localStorageKeys: Object.keys(localStorage)
     });
     
     // Проверяем авторизацию
     if (!currentUser.email || !accessToken) {
-        console.error('Access denied: No user or token');
-        window.location.replace('/index.html');
+        console.error('❌ Access denied: No user or token');
+        console.log('Will redirect to index.html in 3 seconds...');
+        setTimeout(() => {
+            window.location.replace('/index.html');
+        }, 3000);
         return;
     }
     
@@ -44,8 +51,11 @@
             });
             
             if (!data.library || data.library.length === 0 || !data.library.some(book => book.id === bookId)) {
-                console.error('Access denied: Book not in library');
-                window.location.replace('/index.html');
+                console.error('❌ Access denied: Book not in library');
+                console.log('Will redirect to index.html in 3 seconds...');
+                setTimeout(() => {
+                    window.location.replace('/index.html');
+                }, 3000);
                 return;
             }
             // Проверка прошла успешно - продолжаем загрузку
@@ -57,7 +67,10 @@
                 statusText: response.statusText,
                 error: errorText
             });
-            window.location.replace('/index.html');
+            console.log('Will redirect to index.html in 3 seconds...');
+            setTimeout(() => {
+                window.location.replace('/index.html');
+            }, 3000);
             return;
         }
     } catch (error) {
