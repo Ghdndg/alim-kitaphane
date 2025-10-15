@@ -192,28 +192,26 @@ body {
     max-width: 1000px;
 }
 
-/* Обертка для текстового контента - как карусель */
+/* Обертка для текстового контента */
 .text-content-wrapper {
     flex: 1;
-    overflow: hidden; /* Скрываем всё что не на текущей странице */
+    overflow: hidden;
     position: relative;
     width: 100%;
-    cursor: pointer;
     min-height: 0;
 }
 
-/* Текстовый контент - текущая видимая страница */
+/* Текстовый контент с прокруткой */
 .text-content {
     font-size: 16px;
     line-height: 1.6;
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
     height: 100%;
     padding: 1.5rem 2rem;
-    overflow-y: auto;
+    overflow-y: auto; /* Разрешаем вертикальную прокрутку */
     overflow-x: hidden;
+    /* Плавная прокрутка */
+    scroll-behavior: smooth;
     /* Скрываем scrollbar */
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -226,16 +224,10 @@ body {
     pointer-events: auto;
     -webkit-user-modify: read-only !important;
     -webkit-print-color-adjust: exact !important;
-    transition: opacity 0.3s ease;
 }
 
 .text-content::-webkit-scrollbar {
     display: none;
-}
-
-/* Анимация перелистывания */
-.text-content.page-turning {
-    opacity: 0.5;
 }
 
 
