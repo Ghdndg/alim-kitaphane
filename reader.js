@@ -327,7 +327,36 @@ function initializeButtons() {
     
     // Кнопка закладки
     const bookmarkBtn = document.querySelector('.bookmark-btn');
-    if (bookmarkBtn) bookmarkBtn.addEventListener('click', toggleBookmark);
+    if (bookmarkBtn) {
+        bookmarkBtn.addEventListener('click', toggleBookmark);
+        
+        // Долгий клик для показа меню закладок
+        let longPressTimer;
+        bookmarkBtn.addEventListener('mousedown', () => {
+            longPressTimer = setTimeout(() => {
+                showBookmarksMenu();
+            }, 500); // 500ms для долгого клика
+        });
+        
+        bookmarkBtn.addEventListener('mouseup', () => {
+            clearTimeout(longPressTimer);
+        });
+        
+        bookmarkBtn.addEventListener('mouseleave', () => {
+            clearTimeout(longPressTimer);
+        });
+        
+        // Для мобильных устройств
+        bookmarkBtn.addEventListener('touchstart', () => {
+            longPressTimer = setTimeout(() => {
+                showBookmarksMenu();
+            }, 500);
+        });
+        
+        bookmarkBtn.addEventListener('touchend', () => {
+            clearTimeout(longPressTimer);
+        });
+    }
     
     // Кнопка меню содержания
     const menuBtn = document.querySelector('.menu-btn');
@@ -770,18 +799,30 @@ function getCurrentChapterByPage(page) {
 
 // Функции закладок
 function toggleBookmark() {
-    isBookmarked = !isBookmarked;
+    // Проверяем, есть ли уже закладка на текущей странице
+    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+    const hasBookmark = bookmarks.includes(currentPage);
+    
+    if (hasBookmark) {
+        // Если закладка есть - удаляем её
+        removeBookmark(currentPage);
+        isBookmarked = false;
+        showNotification(`Закладка удалена со страницы ${currentPage}`, 'info');
+    } else {
+        // Если закладки нет - добавляем её
+        saveBookmark(currentPage);
+        isBookmarked = true;
+        showNotification(`Закладка добавлена на страницу ${currentPage}`, 'success');
+    }
+    
+    // Обновляем состояние кнопки
     const bookmarkBtn = document.querySelector('.bookmark-btn');
     bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
-    
-    // Сохраняем закладку на текущую страницу
-    if (isBookmarked) {
-        saveBookmark(currentPage);
-        showNotification(`Закладка добавлена на страницу ${currentPage}`, 'success');
-    } else {
-        removeBookmark(currentPage);
-        showNotification(`Закладка удалена со страницы ${currentPage}`, 'info');
-    }
+}
+
+// Показать меню закладок (долгий клик или отдельная кнопка)
+function showBookmarks() {
+    showBookmarksMenu();
 }
 
 function saveBookmark(pageNumber) {
@@ -830,96 +871,75 @@ function goToBookmark(pageNumber) {
     }, 400);
 }
 
-// Показать список закладок
-function showBookmarks() {
+// Показать меню закладок снизу
+function showBookmarksMenu() {
     const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
     
+    // Создаём меню снизу
+    const menu = document.createElement('div');
+    menu.id = 'bookmarksMenu';
+    menu.style.cssText = `
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 1px solid #ddd;
+        padding: 1rem;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+    `;
+    
     if (bookmarks.length === 0) {
-        showNotification('Закладок пока нет', 'info');
-        return;
+        menu.innerHTML = `
+            <div style="text-align: center; color: #666;">
+                <p>Закладок пока нет</p>
+                <button onclick="closeBookmarksMenu()" 
+                        style="padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    Закрыть
+                </button>
+            </div>
+        `;
+    } else {
+        menu.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0; color: #333;">Закладки (${bookmarks.length})</h3>
+                <button onclick="closeBookmarksMenu()" 
+                        style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">
+                    ✕
+                </button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; max-height: 200px; overflow-y: auto;">
+                ${bookmarks.map(pageNum => `
+                    <div onclick="goToBookmark(${pageNum}); closeBookmarksMenu();" 
+                         style="padding: 0.75rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; cursor: pointer; text-align: center; transition: background 0.2s;">
+                        <div style="font-weight: bold; color: #333;">Страница ${pageNum}</div>
+                        <div style="font-size: 0.8em; color: #666; margin-top: 0.25rem;">Нажмите для перехода</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
     }
     
-    // Создаём модальное окно со списком закладок
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-    `;
+    document.body.appendChild(menu);
     
-    const content = document.createElement('div');
-    content.style.cssText = `
-        background: white;
-        padding: 2rem;
-        border-radius: 10px;
-        max-width: 400px;
-        width: 90%;
-        max-height: 80vh;
-        overflow-y: auto;
-    `;
-    
-    content.innerHTML = `
-        <h3 style="margin: 0 0 1rem 0; color: #333;">Закладки</h3>
-        <div id="bookmarksList"></div>
-        <button onclick="this.closest('.bookmark-modal').remove()" 
-                style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
-            Закрыть
-        </button>
-    `;
-    
-    modal.className = 'bookmark-modal';
-    modal.appendChild(content);
-    document.body.appendChild(modal);
-    
-    // Заполняем список закладок
-    const bookmarksList = content.querySelector('#bookmarksList');
-    bookmarks.forEach(pageNum => {
-        const item = document.createElement('div');
-        item.style.cssText = `
-            padding: 0.75rem;
-            margin: 0.5rem 0;
-            background: #f8f9fa;
-            border-radius: 5px;
-            cursor: pointer;
-            border: 1px solid #dee2e6;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        `;
-        item.innerHTML = `
-            <div>
-                <strong>Страница ${pageNum}</strong>
-                <div style="font-size: 0.9em; color: #666; margin-top: 0.25rem;">
-                    Нажмите для перехода
-                </div>
-            </div>
-            <button onclick="event.stopPropagation(); removeBookmark(${pageNum}); this.closest('.bookmark-modal').remove(); showBookmarks();" 
-                    style="background: #dc3545; color: white; border: none; border-radius: 3px; padding: 0.25rem 0.5rem; cursor: pointer; font-size: 0.8em;">
-                ✕
-            </button>
-        `;
-        
-        item.addEventListener('click', () => {
-            modal.remove();
-            goToBookmark(pageNum);
-        });
-        
-        bookmarksList.appendChild(item);
-    });
-    
-    // Закрытие по клику вне модального окна
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
+    // Анимация появления
+    setTimeout(() => {
+        menu.style.transform = 'translateY(0)';
+    }, 10);
+}
+
+// Закрыть меню закладок
+function closeBookmarksMenu() {
+    const menu = document.getElementById('bookmarksMenu');
+    if (menu) {
+        menu.style.transform = 'translateY(100%)';
+        setTimeout(() => {
+            menu.remove();
+        }, 300);
+    }
 }
 
 // Функции настроек
