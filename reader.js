@@ -574,7 +574,7 @@ function calculatePageDimensions() {
         
         // Текущая страница на основе scrollTop
         const scrollTop = textContent.scrollTop;
-        currentPage = Math.max(1, Math.min(Math.ceil((scrollTop + 1) / pageHeight) + 1, totalPages));
+        currentPage = Math.max(1, Math.min(Math.ceil((scrollTop + 1) / pageHeight), totalPages));
         
         console.log('📖 Page calculation:', {
             pageHeight: Math.round(pageHeight),
