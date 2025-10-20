@@ -297,11 +297,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (textContent) {
         let scrollTimeout;
         textContent.addEventListener('scroll', () => {
-            // Дебаунсим обновление UI
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => {
                 calculatePageDimensions();
-            }, 150);
+            }, 100);
         }, { passive: true });
     }
     
@@ -561,38 +560,33 @@ function initializeReaderProtection() {
 // Рассчитываем количество страниц (экранов)
 function calculatePageDimensions() {
     const textContent = document.getElementById('textContent');
-    
     if (!textContent) return;
     
-    // Ждём, пока контент полностью отрендерится
-    setTimeout(() => {
-        // Простые и надёжные расчёты
-        const pageHeight = textContent.clientHeight; // Высота видимой области
-        const contentHeight = textContent.scrollHeight; // Полная высота контента
-        const scrollTop = textContent.scrollTop; // Текущая позиция скролла
+    requestAnimationFrame(() => {
+        const viewHeight = textContent.clientHeight;
+        const fullHeight = textContent.scrollHeight;
+        const scroll = textContent.scrollTop;
         
-        // Количество страниц
-        totalPages = Math.max(1, Math.ceil(contentHeight / pageHeight));
+        // Простой расчёт
+        totalPages = Math.max(1, Math.ceil(fullHeight / viewHeight));
         
-        // Текущая страница (простая формула)
-        if (scrollTop === 0) {
+        // Вычисляем текущую страницу
+        if (scroll <= 5) {
             currentPage = 1;
+        } else if (scroll >= fullHeight - viewHeight - 5) {
+            currentPage = totalPages;
         } else {
-            currentPage = Math.min(Math.floor(scrollTop / pageHeight) + 1, totalPages);
+            currentPage = Math.ceil(scroll / viewHeight) + 1;
         }
         
-        console.log('📖 Page:', {
-            page: currentPage + '/' + totalPages,
-            scrollTop: Math.round(scrollTop),
-            pageHeight: Math.round(pageHeight),
-            contentHeight: Math.round(contentHeight)
-        });
+        // Проверяем границы
+        currentPage = Math.max(1, Math.min(currentPage, totalPages));
         
         updateProgressBar();
         updatePageNumbers();
         updateNavigationButtons();
         updateActiveChapter();
-    }, 100);
+    });
 }
 
 // Предыдущая страница (прокрутка на экран вверх)
@@ -600,18 +594,22 @@ function previousPage() {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    const pageHeight = textContent.clientHeight;
-    const newScrollTop = Math.max(0, textContent.scrollTop - pageHeight);
+    const scrollAmount = textContent.clientHeight;
+    const targetScroll = Math.max(0, textContent.scrollTop - scrollAmount);
     
     textContent.scrollTo({
-        top: newScrollTop,
+        top: targetScroll,
         behavior: 'smooth'
     });
     
+    // Сразу обновляем UI
+    calculatePageDimensions();
+    
+    // Сохраняем прогресс после анимации
     setTimeout(() => {
-        calculatePageDimensions();
         saveReadingProgress();
-    }, 300);
+        calculatePageDimensions();
+    }, 350);
 }
 
 // Следующая страница (прокрутка на экран вниз)
@@ -619,19 +617,23 @@ function nextPage() {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    const pageHeight = textContent.clientHeight;
+    const scrollAmount = textContent.clientHeight;
     const maxScroll = textContent.scrollHeight - textContent.clientHeight;
-    const newScrollTop = Math.min(maxScroll, textContent.scrollTop + pageHeight);
+    const targetScroll = Math.min(maxScroll, textContent.scrollTop + scrollAmount);
     
     textContent.scrollTo({
-        top: newScrollTop,
+        top: targetScroll,
         behavior: 'smooth'
     });
     
+    // Сразу обновляем UI
+    calculatePageDimensions();
+    
+    // Сохраняем прогресс после анимации
     setTimeout(() => {
-        calculatePageDimensions();
         saveReadingProgress();
-    }, 300);
+        calculatePageDimensions();
+    }, 350);
 }
 
 function updateNavigationButtons() {
@@ -684,20 +686,21 @@ function goToChapter(chapterIndex) {
     const chapterTitles = textContent.querySelectorAll('.chapter-title, .section-title');
     
     if (chapterTitles[chapterIndex]) {
-        // Получаем позицию заголовка главы (вертикальную)
         const chapterElement = chapterTitles[chapterIndex];
         const offsetTop = chapterElement.offsetTop;
         
-        // Скроллим к этой позиции
         textContent.scrollTo({
-            top: offsetTop - 20, // Небольшой отступ сверху
+            top: offsetTop - 20,
             behavior: 'smooth'
         });
         
+        // Сразу обновляем UI
+        calculatePageDimensions();
+        
         setTimeout(() => {
-            calculatePageDimensions();
             saveReadingProgress();
-        }, 400);
+            calculatePageDimensions();
+        }, 350);
     }
     
     updateActiveChapter();
@@ -812,39 +815,41 @@ function changeFontSize(delta) {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    // Запоминаем процент прогресса
-    const scrollPercent = textContent.scrollHeight > 0 ? 
-        textContent.scrollTop / textContent.scrollHeight : 0;
+    // Запоминаем текущую позицию
+    const currentScroll = textContent.scrollTop;
+    const currentHeight = textContent.scrollHeight;
     
     readingSettings.fontSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
     document.getElementById('fontSizeDisplay').textContent = readingSettings.fontSize + 'px';
     applySettings();
     saveSettings();
     
-    // Восстанавливаем позицию после изменения шрифта
-    setTimeout(() => {
-        textContent.scrollTop = scrollPercent * textContent.scrollHeight;
+    // Восстанавливаем позицию
+    requestAnimationFrame(() => {
+        const newHeight = textContent.scrollHeight;
+        const scrollPercent = currentHeight > 0 ? currentScroll / currentHeight : 0;
+        textContent.scrollTop = scrollPercent * newHeight;
         calculatePageDimensions();
-        console.log('🔤 Font size changed, scroll:', Math.round(scrollPercent * 100) + '%');
-    }, 300);
+    });
 }
 
 function changeFontFamily(family) {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    const scrollPercent = textContent.scrollHeight > 0 ? 
-        textContent.scrollTop / textContent.scrollHeight : 0;
+    const currentScroll = textContent.scrollTop;
+    const currentHeight = textContent.scrollHeight;
     
     readingSettings.fontFamily = family;
     applySettings();
     saveSettings();
     
-    setTimeout(() => {
-        textContent.scrollTop = scrollPercent * textContent.scrollHeight;
+    requestAnimationFrame(() => {
+        const newHeight = textContent.scrollHeight;
+        const scrollPercent = currentHeight > 0 ? currentScroll / currentHeight : 0;
+        textContent.scrollTop = scrollPercent * newHeight;
         calculatePageDimensions();
-        console.log('📝 Font family changed, scroll:', Math.round(scrollPercent * 100) + '%');
-    }, 300);
+    });
 }
 
 function setTheme(theme) {
@@ -864,8 +869,8 @@ function setTextWidth(width) {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    const scrollPercent = textContent.scrollHeight > 0 ? 
-        textContent.scrollTop / textContent.scrollHeight : 0;
+    const currentScroll = textContent.scrollTop;
+    const currentHeight = textContent.scrollHeight;
     
     readingSettings.textWidth = width;
     
@@ -878,19 +883,20 @@ function setTextWidth(width) {
     applySettings();
     saveSettings();
     
-    setTimeout(() => {
-        textContent.scrollTop = scrollPercent * textContent.scrollHeight;
+    requestAnimationFrame(() => {
+        const newHeight = textContent.scrollHeight;
+        const scrollPercent = currentHeight > 0 ? currentScroll / currentHeight : 0;
+        textContent.scrollTop = scrollPercent * newHeight;
         calculatePageDimensions();
-        console.log('📏 Text width changed, scroll:', Math.round(scrollPercent * 100) + '%');
-    }, 300);
+    });
 }
 
 function setLineHeight(height) {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    const scrollPercent = textContent.scrollHeight > 0 ? 
-        textContent.scrollTop / textContent.scrollHeight : 0;
+    const currentScroll = textContent.scrollTop;
+    const currentHeight = textContent.scrollHeight;
     
     readingSettings.lineHeight = height;
     
@@ -903,11 +909,12 @@ function setLineHeight(height) {
     applySettings();
     saveSettings();
     
-    setTimeout(() => {
-        textContent.scrollTop = scrollPercent * textContent.scrollHeight;
+    requestAnimationFrame(() => {
+        const newHeight = textContent.scrollHeight;
+        const scrollPercent = currentHeight > 0 ? currentScroll / currentHeight : 0;
+        textContent.scrollTop = scrollPercent * newHeight;
         calculatePageDimensions();
-        console.log('📐 Line height changed, scroll:', Math.round(scrollPercent * 100) + '%');
-    }, 300);
+    });
 }
 
 function applySettings() {
