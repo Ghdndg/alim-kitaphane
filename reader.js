@@ -566,47 +566,33 @@ function calculatePageDimensions() {
     
     // Ждём, пока контент полностью отрендерится
     setTimeout(() => {
-        // Получаем размеры с учётом padding
-        const computedStyle = window.getComputedStyle(textContent);
-        const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
-        const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+        // Простые и надёжные расчёты
+        const pageHeight = textContent.clientHeight; // Высота видимой области
+        const contentHeight = textContent.scrollHeight; // Полная высота контента
+        const scrollTop = textContent.scrollTop; // Текущая позиция скролла
         
-        // Высота видимой области БЕЗ учёта padding (чистая высота для контента)
-        const clientHeight = textContent.clientHeight;
-        const viewportHeight = clientHeight - paddingTop - paddingBottom;
+        // Количество страниц
+        totalPages = Math.max(1, Math.ceil(contentHeight / pageHeight));
         
-        // Полная высота контента
-        const contentHeight = textContent.scrollHeight;
-        
-        // Количество "экранов" = полная высота / высота видимой области
-        totalPages = Math.max(1, Math.ceil(contentHeight / clientHeight));
-        
-        // Текущая страница на основе scrollTop
-        const scrollTop = textContent.scrollTop;
-        
-        // Если в самом начале (scrollTop почти 0), то страница 1
-        if (scrollTop < 10) {
+        // Текущая страница (простая формула)
+        if (scrollTop === 0) {
             currentPage = 1;
         } else {
-            currentPage = Math.max(1, Math.min(Math.ceil(scrollTop / clientHeight) + 1, totalPages));
+            currentPage = Math.min(Math.floor(scrollTop / pageHeight) + 1, totalPages);
         }
         
-        console.log('📖 Page calculation:', {
-            clientHeight: Math.round(clientHeight),
-            viewportHeight: Math.round(viewportHeight),
-            paddingTop: Math.round(paddingTop),
-            paddingBottom: Math.round(paddingBottom),
-            contentHeight: Math.round(contentHeight),
-            totalPages,
-            currentPage,
-            scrollTop: Math.round(scrollTop)
+        console.log('📖 Page:', {
+            page: currentPage + '/' + totalPages,
+            scrollTop: Math.round(scrollTop),
+            pageHeight: Math.round(pageHeight),
+            contentHeight: Math.round(contentHeight)
         });
         
         updateProgressBar();
         updatePageNumbers();
         updateNavigationButtons();
         updateActiveChapter();
-    }, 200);
+    }, 100);
 }
 
 // Предыдущая страница (прокрутка на экран вверх)
@@ -614,30 +600,18 @@ function previousPage() {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    // Используем clientHeight для скролла (это полная высота видимой области)
     const pageHeight = textContent.clientHeight;
-    const currentScroll = textContent.scrollTop;
+    const newScrollTop = Math.max(0, textContent.scrollTop - pageHeight);
     
-    // Скроллим ровно на одну высоту экрана вверх
-    const newScrollTop = Math.max(0, currentScroll - pageHeight);
-    
-    console.log('⬅️ Previous page:', {
-        currentScroll: Math.round(currentScroll),
-        pageHeight: Math.round(pageHeight),
-        newScrollTop: Math.round(newScrollTop)
-    });
-    
-    // Плавная прокрутка
     textContent.scrollTo({
         top: newScrollTop,
         behavior: 'smooth'
     });
     
-    // Обновляем UI после прокрутки
     setTimeout(() => {
         calculatePageDimensions();
         saveReadingProgress();
-    }, 400);
+    }, 300);
 }
 
 // Следующая страница (прокрутка на экран вниз)
@@ -645,32 +619,19 @@ function nextPage() {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    // Используем clientHeight для скролла (это полная высота видимой области)
     const pageHeight = textContent.clientHeight;
-    const currentScroll = textContent.scrollTop;
     const maxScroll = textContent.scrollHeight - textContent.clientHeight;
+    const newScrollTop = Math.min(maxScroll, textContent.scrollTop + pageHeight);
     
-    // Скроллим ровно на одну высоту экрана вниз
-    const newScrollTop = Math.min(maxScroll, currentScroll + pageHeight);
-    
-    console.log('➡️ Next page:', {
-        currentScroll: Math.round(currentScroll),
-        pageHeight: Math.round(pageHeight),
-        maxScroll: Math.round(maxScroll),
-        newScrollTop: Math.round(newScrollTop)
-    });
-    
-    // Плавная прокрутка
     textContent.scrollTo({
         top: newScrollTop,
         behavior: 'smooth'
     });
     
-    // Обновляем UI после прокрутки
     setTimeout(() => {
         calculatePageDimensions();
         saveReadingProgress();
-    }, 400);
+    }, 300);
 }
 
 function updateNavigationButtons() {

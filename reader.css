@@ -199,25 +199,23 @@ body {
 /* Текстовый контент с прокруткой */
 .text-content {
     font-size: 16px;
-    line-height: 1.6;
+    line-height: 1.8;
     width: 100%;
     height: 100%;
-    padding: 1rem 1.5rem;
-    overflow-y: auto; /* Разрешаем вертикальную прокрутку */
+    padding: 2rem;
+    overflow-y: auto;
     overflow-x: hidden;
-    /* Плавная прокрутка */
     scroll-behavior: smooth;
     /* Скрываем scrollbar */
     scrollbar-width: none;
     -ms-overflow-style: none;
-    /* Дополнительная защита от копирования */
+    /* Защита от копирования */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
     user-select: none !important;
     -webkit-user-drag: none !important;
     -webkit-touch-callout: none !important;
     pointer-events: auto;
-    /* Точный box-sizing для корректного расчёта */
     box-sizing: border-box;
     -webkit-user-modify: read-only !important;
     -webkit-print-color-adjust: exact !important;
@@ -229,7 +227,7 @@ body {
 
 
 .chapter-title {
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 700;
     color: var(--accent-color);
     margin: 0 0 1.5rem 0;
@@ -247,13 +245,13 @@ body {
 }
 
 .text-block {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.2rem;
 }
 
 .text-block p {
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
     text-align: justify;
-    text-indent: 2rem;
+    text-indent: 1.5rem;
 }
 
 .text-block p:first-child {
@@ -708,8 +706,9 @@ body {
     }
     
     .text-content {
-        padding: 0.75rem 1rem;
+        padding: 1rem;
         font-size: 15px;
+        line-height: 1.7;
     }
     
     .chapter-title {
@@ -800,7 +799,8 @@ body {
 @media (max-width: 480px) {
     .text-content {
         font-size: 14px;
-        padding: 0.6rem 0.75rem;
+        padding: 0.75rem;
+        line-height: 1.6;
     }
     
     .text-block {
