@@ -740,20 +740,107 @@ function updateActiveChapter() {
 function loadAllContent() {
     const textContent = document.getElementById('textContent');
     
-    // Объединяем весь контент всех глав
-    const allContent = chapters.map(chapter => chapter.content).join('');
-    textContent.innerHTML = allContent;
-    
-    // После загрузки контента рассчитываем размеры
-    setTimeout(() => {
-        calculatePageDimensions();
-        updateActiveChapter();
-    }, 100);
+    // Проверяем, есть ли уже содержимое
+    if (textContent.innerHTML.trim() === '') {
+        // Если содержимого нет, загружаем из файла
+        loadBookContentFromFile();
+    } else {
+        // Если содержимое уже есть, просто пересчитываем размеры
+        setTimeout(() => {
+            calculatePageDimensions();
+            updateActiveChapter();
+        }, 100);
+    }
+}
+
+async function loadBookContentFromFile() {
+    try {
+        const response = await fetch('Хаджи Гирай.txt');
+        if (!response.ok) {
+            throw new Error('Не удалось загрузить файл книги');
+        }
+        
+        const text = await response.text();
+        const lines = text.split('\n');
+        
+        // Создаем HTML структуру
+        let htmlContent = '';
+        let chapterIndex = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            if (!line) {
+                htmlContent += '<br>';
+                continue;
+            }
+            
+            // Проверяем, является ли строка заголовком части
+            if (line.match(/^[А-Я].*КЪЫСЫМ$/)) {
+                htmlContent += `<div class="section-title">${line}</div>`;
+                continue;
+            }
+            
+            // Проверяем, является ли строка заголовком баба (главы)
+            if (line.match(/^[А-Я].*баб$/)) {
+                chapterIndex++;
+                htmlContent += `<div class="chapter-title" data-chapter="${chapterIndex}">${line}</div>`;
+                continue;
+            }
+            
+            // Обычный текст
+            htmlContent += `<div class="text-block"><p>${line}</p></div>`;
+        }
+        
+        const textContent = document.getElementById('textContent');
+        textContent.innerHTML = htmlContent;
+        
+        // Создаем содержание
+        updateTableOfContents();
+        
+        // После загрузки контента рассчитываем размеры
+        setTimeout(() => {
+            calculatePageDimensions();
+            updateActiveChapter();
+        }, 100);
+        
+    } catch (error) {
+        console.error('Ошибка загрузки книги:', error);
+        const textContent = document.getElementById('textContent');
+        textContent.innerHTML = '<div class="text-block"><p>Ошибка загрузки содержимого книги.</p></div>';
+    }
 }
 
 function updateContent() {
     // Функция для обратной совместимости
     loadAllContent();
+}
+
+function updateTableOfContents() {
+    const sidebarContent = document.getElementById('sidebarContent');
+    if (!sidebarContent) return;
+    
+    const textContent = document.getElementById('textContent');
+    const chapters = textContent.querySelectorAll('.chapter-title');
+    
+    let tocHtml = '<ul class="toc-list">';
+    
+    chapters.forEach((chapter, index) => {
+        const chapterText = chapter.textContent;
+        tocHtml += `<li><a href="#" class="toc-link" data-chapter="${index}">${chapterText}</a></li>`;
+    });
+    
+    tocHtml += '</ul>';
+    sidebarContent.innerHTML = tocHtml;
+    
+    // Добавляем обработчики кликов для содержания
+    const tocLinks = sidebarContent.querySelectorAll('.toc-link');
+    tocLinks.forEach((link, index) => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            goToChapter(index);
+        });
+    });
 }
 
 function getCurrentChapterByPage(page) {
