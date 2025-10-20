@@ -3,9 +3,10 @@
 async function loadBookContent() {
     try {
         // Читаем файл по частям
-        const response = await fetch('Хаджи Гирай.txt');
+        // Важно: используем encodeURI для кириллицы и пробела в имени файла
+        const response = await fetch(encodeURI('./Хаджи Гирай.txt'));
         if (!response.ok) {
-            throw new Error('Не удалось загрузить файл книги');
+            throw new Error('Не удалось загрузить файл книги: HTTP ' + response.status);
         }
         
         const text = await response.text();
@@ -45,7 +46,7 @@ async function loadBookContent() {
         return htmlContent;
         
     } catch (error) {
-        console.error('Ошибка загрузки книги:', error);
+        console.error('Ошибка загрузки книги (load_book_content.js):', error);
         return '<div class="text-block"><p>Ошибка загрузки содержимого книги.</p></div>';
     }
 }

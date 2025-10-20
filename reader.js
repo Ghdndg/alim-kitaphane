@@ -755,9 +755,10 @@ function loadAllContent() {
 
 async function loadBookContentFromFile() {
     try {
-        const response = await fetch('Хаджи Гирай.txt');
+        // Используем encodeURI для корректной загрузки файла с кириллицей и пробелом
+        const response = await fetch(encodeURI('./Хаджи Гирай.txt'));
         if (!response.ok) {
-            throw new Error('Не удалось загрузить файл книги');
+            throw new Error('Не удалось загрузить файл книги: HTTP ' + response.status);
         }
         
         const text = await response.text();
@@ -805,7 +806,7 @@ async function loadBookContentFromFile() {
         }, 100);
         
     } catch (error) {
-        console.error('Ошибка загрузки книги:', error);
+        console.error('Ошибка загрузки книги (reader.js):', error);
         const textContent = document.getElementById('textContent');
         textContent.innerHTML = '<div class="text-block"><p>Ошибка загрузки содержимого книги.</p></div>';
     }
