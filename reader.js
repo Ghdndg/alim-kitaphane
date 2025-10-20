@@ -756,12 +756,16 @@ function loadAllContent() {
 async function loadBookContentFromFile() {
     try {
         // Используем encodeURI для корректной загрузки файла с кириллицей и пробелом
-        const response = await fetch(encodeURI('./Хаджи Гирай.txt'));
+        const cacheBust = Date.now();
+        const response = await fetch(encodeURI('./Хаджи Гирай.txt') + '?v=' + cacheBust, { cache: 'no-store' });
         if (!response.ok) {
             throw new Error('Не удалось загрузить файл книги: HTTP ' + response.status);
         }
         
         const text = await response.text();
+        if (!/БИРИНДЖИ\s+КЪЫСЫМ|Биринджи\s+баб/i.test(text)) {
+            console.warn('Загружен текст без ожидаемых маркеров глав. Проверьте файл Хаджи Гирай.txt');
+        }
         const lines = text.split('\n');
         
         // Создаем HTML структуру
