@@ -1,26 +1,19 @@
 // Проверка доступа к книге при загрузке
 (async function checkAccess() {
-    console.log('🔍 Starting reader access check...');
-    
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
     const accessToken = localStorage.getItem('accessToken');
     
-    console.log('📋 Reader access check:', {
+    console.log('Reader access check:', {
         hasUser: !!currentUser.email,
         userEmail: currentUser.email,
         hasToken: !!accessToken,
-        tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none',
-        currentUserObject: currentUser,
-        localStorageKeys: Object.keys(localStorage)
+        tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none'
     });
     
     // Проверяем авторизацию
     if (!currentUser.email || !accessToken) {
-        console.error('❌ Access denied: No user or token');
-        console.log('Will redirect to index.html in 3 seconds...');
-        setTimeout(() => {
-            window.location.replace('/index.html');
-        }, 3000);
+        console.error('Access denied: No user or token');
+        window.location.replace('/index.html');
         return;
     }
     
@@ -51,11 +44,8 @@
             });
             
             if (!data.library || data.library.length === 0 || !data.library.some(book => book.id === bookId)) {
-                console.error('❌ Access denied: Book not in library');
-                console.log('Will redirect to index.html in 3 seconds...');
-                setTimeout(() => {
-                    window.location.replace('/index.html');
-                }, 3000);
+                console.error('Access denied: Book not in library');
+                window.location.replace('/index.html');
                 return;
             }
             // Проверка прошла успешно - продолжаем загрузку
@@ -67,10 +57,7 @@
                 statusText: response.statusText,
                 error: errorText
             });
-            console.log('Will redirect to index.html in 3 seconds...');
-            setTimeout(() => {
-                window.location.replace('/index.html');
-            }, 3000);
+            window.location.replace('/index.html');
             return;
         }
     } catch (error) {
@@ -579,29 +566,36 @@ function calculatePageDimensions() {
     
     // Ждём, пока контент полностью отрендерится
     setTimeout(() => {
-        // Получаем стили для точного расчёта
+        // Получаем размеры с учётом padding
         const computedStyle = window.getComputedStyle(textContent);
         const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
         const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
-        const lineHeight = parseFloat(computedStyle.lineHeight) || 16;
         
-        // Высота видимой области БЕЗ padding
-        const visibleHeight = textContent.clientHeight - paddingTop - paddingBottom;
+        // Высота видимой области БЕЗ учёта padding (чистая высота для контента)
+        const clientHeight = textContent.clientHeight;
+        const viewportHeight = clientHeight - paddingTop - paddingBottom;
+        
+        // Полная высота контента
         const contentHeight = textContent.scrollHeight;
         
         // Количество "экранов" = полная высота / высота видимой области
-        totalPages = Math.max(1, Math.ceil(contentHeight / visibleHeight));
+        totalPages = Math.max(1, Math.ceil(contentHeight / clientHeight));
         
         // Текущая страница на основе scrollTop
         const scrollTop = textContent.scrollTop;
-        currentPage = Math.max(1, Math.min(Math.ceil((scrollTop + 1) / visibleHeight), totalPages));
+        
+        // Если в самом начале (scrollTop почти 0), то страница 1
+        if (scrollTop < 10) {
+            currentPage = 1;
+        } else {
+            currentPage = Math.max(1, Math.min(Math.ceil(scrollTop / clientHeight) + 1, totalPages));
+        }
         
         console.log('📖 Page calculation:', {
-            clientHeight: Math.round(textContent.clientHeight),
-            visibleHeight: Math.round(visibleHeight),
+            clientHeight: Math.round(clientHeight),
+            viewportHeight: Math.round(viewportHeight),
             paddingTop: Math.round(paddingTop),
             paddingBottom: Math.round(paddingBottom),
-            lineHeight: Math.round(lineHeight),
             contentHeight: Math.round(contentHeight),
             totalPages,
             currentPage,
@@ -620,13 +614,18 @@ function previousPage() {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    // Получаем точную высоту видимой области
-    const computedStyle = window.getComputedStyle(textContent);
-    const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
-    const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
-    const pageHeight = textContent.clientHeight - paddingTop - paddingBottom;
+    // Используем clientHeight для скролла (это полная высота видимой области)
+    const pageHeight = textContent.clientHeight;
+    const currentScroll = textContent.scrollTop;
     
-    const newScrollTop = Math.max(0, textContent.scrollTop - pageHeight);
+    // Скроллим ровно на одну высоту экрана вверх
+    const newScrollTop = Math.max(0, currentScroll - pageHeight);
+    
+    console.log('⬅️ Previous page:', {
+        currentScroll: Math.round(currentScroll),
+        pageHeight: Math.round(pageHeight),
+        newScrollTop: Math.round(newScrollTop)
+    });
     
     // Плавная прокрутка
     textContent.scrollTo({
@@ -646,14 +645,20 @@ function nextPage() {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    // Получаем точную высоту видимой области
-    const computedStyle = window.getComputedStyle(textContent);
-    const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
-    const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
-    const pageHeight = textContent.clientHeight - paddingTop - paddingBottom;
-    
+    // Используем clientHeight для скролла (это полная высота видимой области)
+    const pageHeight = textContent.clientHeight;
+    const currentScroll = textContent.scrollTop;
     const maxScroll = textContent.scrollHeight - textContent.clientHeight;
-    const newScrollTop = Math.min(maxScroll, textContent.scrollTop + pageHeight);
+    
+    // Скроллим ровно на одну высоту экрана вниз
+    const newScrollTop = Math.min(maxScroll, currentScroll + pageHeight);
+    
+    console.log('➡️ Next page:', {
+        currentScroll: Math.round(currentScroll),
+        pageHeight: Math.round(pageHeight),
+        maxScroll: Math.round(maxScroll),
+        newScrollTop: Math.round(newScrollTop)
+    });
     
     // Плавная прокрутка
     textContent.scrollTo({

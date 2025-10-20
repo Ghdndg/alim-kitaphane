@@ -202,7 +202,7 @@ body {
     line-height: 1.6;
     width: 100%;
     height: 100%;
-    padding: 1.5rem 2rem;
+    padding: 1rem 1.5rem;
     overflow-y: auto; /* Разрешаем вертикальную прокрутку */
     overflow-x: hidden;
     /* Плавная прокрутка */
@@ -217,6 +217,8 @@ body {
     -webkit-user-drag: none !important;
     -webkit-touch-callout: none !important;
     pointer-events: auto;
+    /* Точный box-sizing для корректного расчёта */
+    box-sizing: border-box;
     -webkit-user-modify: read-only !important;
     -webkit-print-color-adjust: exact !important;
 }
@@ -706,7 +708,7 @@ body {
     }
     
     .text-content {
-        padding: 0.5rem 1rem;
+        padding: 0.75rem 1rem;
         font-size: 15px;
     }
     
@@ -798,7 +800,7 @@ body {
 @media (max-width: 480px) {
     .text-content {
         font-size: 14px;
-        padding: 0.5rem 0.75rem;
+        padding: 0.6rem 0.75rem;
     }
     
     .text-block {
