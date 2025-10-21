@@ -206,10 +206,8 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     scroll-behavior: smooth;
-    /* Скрываем scrollbar */
     scrollbar-width: none;
     -ms-overflow-style: none;
-    /* Защита от копирования */
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
     user-select: none !important;
@@ -236,7 +234,7 @@ body {
 }
 
 .section-title {
-    font-size: 1.8rem;
+    font-size: 1.75rem;
     font-weight: 600;
     color: var(--accent-color);
     margin: 2rem 0 1.5rem 0;
@@ -713,7 +711,7 @@ body {
     
     .chapter-title {
         font-size: 1.5rem;
-        margin: 0 0 0.75rem 0;
+        margin: 0 0 1rem 0;
     }
     
     .section-title {

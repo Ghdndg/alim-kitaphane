@@ -562,31 +562,33 @@ function calculatePageDimensions() {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    requestAnimationFrame(() => {
-        const viewHeight = textContent.clientHeight;
-        const fullHeight = textContent.scrollHeight;
-        const scroll = textContent.scrollTop;
-        
-        // Простой расчёт
-        totalPages = Math.max(1, Math.ceil(fullHeight / viewHeight));
-        
-        // Вычисляем текущую страницу
-        if (scroll <= 5) {
-            currentPage = 1;
-        } else if (scroll >= fullHeight - viewHeight - 5) {
-            currentPage = totalPages;
-        } else {
-            currentPage = Math.ceil(scroll / viewHeight) + 1;
-        }
-        
-        // Проверяем границы
-        currentPage = Math.max(1, Math.min(currentPage, totalPages));
-        
-        updateProgressBar();
-        updatePageNumbers();
-        updateNavigationButtons();
-        updateActiveChapter();
-    });
+    // Простой и надёжный расчёт
+    const viewHeight = textContent.clientHeight; // Высота видимой области
+    const fullHeight = textContent.scrollHeight; // Полная высота контента
+    const scrollTop = textContent.scrollTop; // Текущая позиция скролла
+    
+    // Количество экранов
+    totalPages = Math.max(1, Math.ceil(fullHeight / viewHeight));
+    
+    // Текущая страница (экран)
+    if (scrollTop < 5) {
+        // В самом начале
+        currentPage = 1;
+    } else if (scrollTop >= fullHeight - viewHeight - 5) {
+        // В самом конце
+        currentPage = totalPages;
+    } else {
+        // В середине: какой экран сейчас виден
+        currentPage = Math.floor(scrollTop / viewHeight) + 1;
+    }
+    
+    // Ограничиваем значения
+    currentPage = Math.max(1, Math.min(currentPage, totalPages));
+    
+    updateProgressBar();
+    updatePageNumbers();
+    updateNavigationButtons();
+    updateActiveChapter();
 }
 
 // Предыдущая страница (прокрутка на экран вверх)
@@ -595,21 +597,17 @@ function previousPage() {
     if (!textContent) return;
     
     const scrollAmount = textContent.clientHeight;
-    const targetScroll = Math.max(0, textContent.scrollTop - scrollAmount);
+    const newScroll = Math.max(0, textContent.scrollTop - scrollAmount);
     
     textContent.scrollTo({
-        top: targetScroll,
+        top: newScroll,
         behavior: 'smooth'
     });
     
-    // Сразу обновляем UI
-    calculatePageDimensions();
-    
-    // Сохраняем прогресс после анимации
     setTimeout(() => {
-        saveReadingProgress();
         calculatePageDimensions();
-    }, 350);
+        saveReadingProgress();
+    }, 300);
 }
 
 // Следующая страница (прокрутка на экран вниз)
@@ -619,21 +617,17 @@ function nextPage() {
     
     const scrollAmount = textContent.clientHeight;
     const maxScroll = textContent.scrollHeight - textContent.clientHeight;
-    const targetScroll = Math.min(maxScroll, textContent.scrollTop + scrollAmount);
+    const newScroll = Math.min(maxScroll, textContent.scrollTop + scrollAmount);
     
     textContent.scrollTo({
-        top: targetScroll,
+        top: newScroll,
         behavior: 'smooth'
     });
     
-    // Сразу обновляем UI
-    calculatePageDimensions();
-    
-    // Сохраняем прогресс после анимации
     setTimeout(() => {
-        saveReadingProgress();
         calculatePageDimensions();
-    }, 350);
+        saveReadingProgress();
+    }, 300);
 }
 
 function updateNavigationButtons() {
@@ -686,21 +680,20 @@ function goToChapter(chapterIndex) {
     const chapterTitles = textContent.querySelectorAll('.chapter-title, .section-title');
     
     if (chapterTitles[chapterIndex]) {
+        // Получаем позицию заголовка главы (вертикальную)
         const chapterElement = chapterTitles[chapterIndex];
         const offsetTop = chapterElement.offsetTop;
         
+        // Скроллим к этой позиции
         textContent.scrollTo({
-            top: offsetTop - 20,
+            top: offsetTop - 20, // Небольшой отступ сверху
             behavior: 'smooth'
         });
         
-        // Сразу обновляем UI
-        calculatePageDimensions();
-        
         setTimeout(() => {
-            saveReadingProgress();
             calculatePageDimensions();
-        }, 350);
+            saveReadingProgress();
+        }, 400);
     }
     
     updateActiveChapter();
@@ -740,112 +733,20 @@ function updateActiveChapter() {
 function loadAllContent() {
     const textContent = document.getElementById('textContent');
     
-    // Проверяем, есть ли уже содержимое
-    if (textContent.innerHTML.trim() === '') {
-        // Если содержимого нет, загружаем из файла
-        loadBookContentFromFile();
-    } else {
-        // Если содержимое уже есть, просто пересчитываем размеры
-        setTimeout(() => {
-            calculatePageDimensions();
-            updateActiveChapter();
-        }, 100);
-    }
-}
-
-async function loadBookContentFromFile() {
-    try {
-        // Используем encodeURI для корректной загрузки файла с кириллицей и пробелом
-        const cacheBust = Date.now();
-        const response = await fetch(encodeURI('./Хаджи Гирай.txt') + '?v=' + cacheBust, { cache: 'no-store' });
-        if (!response.ok) {
-            throw new Error('Не удалось загрузить файл книги: HTTP ' + response.status);
-        }
-        
-        const text = await response.text();
-        if (!/БИРИНДЖИ\s+КЪЫСЫМ|Биринджи\s+баб/i.test(text)) {
-            console.warn('Загружен текст без ожидаемых маркеров глав. Проверьте файл Хаджи Гирай.txt');
-        }
-        const lines = text.split('\n');
-        
-        // Создаем HTML структуру
-        let htmlContent = '';
-        let chapterIndex = 0;
-        
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            
-            if (!line) {
-                htmlContent += '<br>';
-                continue;
-            }
-            
-            // Проверяем, является ли строка заголовком части
-            if (line.match(/^[А-Я].*КЪЫСЫМ$/)) {
-                htmlContent += `<div class="section-title">${line}</div>`;
-                continue;
-            }
-            
-            // Проверяем, является ли строка заголовком баба (главы)
-            if (line.match(/^[А-Я].*баб$/)) {
-                chapterIndex++;
-                htmlContent += `<div class="chapter-title" data-chapter="${chapterIndex}">${line}</div>`;
-                continue;
-            }
-            
-            // Обычный текст
-            htmlContent += `<div class="text-block"><p>${line}</p></div>`;
-        }
-        
-        const textContent = document.getElementById('textContent');
-        textContent.innerHTML = htmlContent;
-        
-        // Создаем содержание
-        updateTableOfContents();
-        
-        // После загрузки контента рассчитываем размеры
-        setTimeout(() => {
-            calculatePageDimensions();
-            updateActiveChapter();
-        }, 100);
-        
-    } catch (error) {
-        console.error('Ошибка загрузки книги (reader.js):', error);
-        const textContent = document.getElementById('textContent');
-        textContent.innerHTML = '<div class="text-block"><p>Ошибка загрузки содержимого книги.</p></div>';
-    }
+    // Объединяем весь контент всех глав
+    const allContent = chapters.map(chapter => chapter.content).join('');
+    textContent.innerHTML = allContent;
+    
+    // После загрузки контента рассчитываем размеры
+    setTimeout(() => {
+        calculatePageDimensions();
+        updateActiveChapter();
+    }, 100);
 }
 
 function updateContent() {
     // Функция для обратной совместимости
     loadAllContent();
-}
-
-function updateTableOfContents() {
-    const sidebarContent = document.getElementById('sidebarContent');
-    if (!sidebarContent) return;
-    
-    const textContent = document.getElementById('textContent');
-    const chapters = textContent.querySelectorAll('.chapter-title');
-    
-    let tocHtml = '<ul class="toc-list">';
-    
-    chapters.forEach((chapter, index) => {
-        const chapterText = chapter.textContent;
-        tocHtml += `<li><a href="#" class="toc-link" data-chapter="${index}">${chapterText}</a></li>`;
-    });
-    
-    tocHtml += '</ul>';
-    sidebarContent.innerHTML = tocHtml;
-    
-    // Добавляем обработчики кликов для содержания
-    const tocLinks = sidebarContent.querySelectorAll('.toc-link');
-    tocLinks.forEach((link, index) => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            goToChapter(index);
-        });
-    });
 }
 
 function getCurrentChapterByPage(page) {
@@ -907,41 +808,33 @@ function changeFontSize(delta) {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    // Запоминаем текущую позицию
-    const currentScroll = textContent.scrollTop;
-    const currentHeight = textContent.scrollHeight;
+    const scrollPercent = textContent.scrollTop / textContent.scrollHeight;
     
     readingSettings.fontSize = Math.max(12, Math.min(24, readingSettings.fontSize + delta));
     document.getElementById('fontSizeDisplay').textContent = readingSettings.fontSize + 'px';
     applySettings();
     saveSettings();
     
-    // Восстанавливаем позицию
-    requestAnimationFrame(() => {
-        const newHeight = textContent.scrollHeight;
-        const scrollPercent = currentHeight > 0 ? currentScroll / currentHeight : 0;
-        textContent.scrollTop = scrollPercent * newHeight;
+    setTimeout(() => {
+        textContent.scrollTop = scrollPercent * textContent.scrollHeight;
         calculatePageDimensions();
-    });
+    }, 100);
 }
 
 function changeFontFamily(family) {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    const currentScroll = textContent.scrollTop;
-    const currentHeight = textContent.scrollHeight;
+    const scrollPercent = textContent.scrollTop / textContent.scrollHeight;
     
     readingSettings.fontFamily = family;
     applySettings();
     saveSettings();
     
-    requestAnimationFrame(() => {
-        const newHeight = textContent.scrollHeight;
-        const scrollPercent = currentHeight > 0 ? currentScroll / currentHeight : 0;
-        textContent.scrollTop = scrollPercent * newHeight;
+    setTimeout(() => {
+        textContent.scrollTop = scrollPercent * textContent.scrollHeight;
         calculatePageDimensions();
-    });
+    }, 100);
 }
 
 function setTheme(theme) {
@@ -961,12 +854,10 @@ function setTextWidth(width) {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    const currentScroll = textContent.scrollTop;
-    const currentHeight = textContent.scrollHeight;
+    const scrollPercent = textContent.scrollTop / textContent.scrollHeight;
     
     readingSettings.textWidth = width;
     
-    // Обновляем активную кнопку
     const widthButtons = document.querySelectorAll('.width-btn');
     widthButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.width === width);
@@ -975,24 +866,20 @@ function setTextWidth(width) {
     applySettings();
     saveSettings();
     
-    requestAnimationFrame(() => {
-        const newHeight = textContent.scrollHeight;
-        const scrollPercent = currentHeight > 0 ? currentScroll / currentHeight : 0;
-        textContent.scrollTop = scrollPercent * newHeight;
+    setTimeout(() => {
+        textContent.scrollTop = scrollPercent * textContent.scrollHeight;
         calculatePageDimensions();
-    });
+    }, 100);
 }
 
 function setLineHeight(height) {
     const textContent = document.getElementById('textContent');
     if (!textContent) return;
     
-    const currentScroll = textContent.scrollTop;
-    const currentHeight = textContent.scrollHeight;
+    const scrollPercent = textContent.scrollTop / textContent.scrollHeight;
     
     readingSettings.lineHeight = height;
     
-    // Обновляем активную кнопку
     const heightButtons = document.querySelectorAll('.lh-btn');
     heightButtons.forEach(btn => {
         btn.classList.toggle('active', parseFloat(btn.dataset.height) === height);
@@ -1001,12 +888,10 @@ function setLineHeight(height) {
     applySettings();
     saveSettings();
     
-    requestAnimationFrame(() => {
-        const newHeight = textContent.scrollHeight;
-        const scrollPercent = currentHeight > 0 ? currentScroll / currentHeight : 0;
-        textContent.scrollTop = scrollPercent * newHeight;
+    setTimeout(() => {
+        textContent.scrollTop = scrollPercent * textContent.scrollHeight;
         calculatePageDimensions();
-    });
+    }, 100);
 }
 
 function applySettings() {
