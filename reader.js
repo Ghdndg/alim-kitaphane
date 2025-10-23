@@ -1,322 +1,327 @@
+// Premium paging reader with swipe, tap zones, smart pagination and top-tier UX
+import 'https://cdn.jsdelivr.net/npm/pepjs@0.4.3/dist/pep.min.js';
+
 (() => {
-  'use strict';
+  const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const on=(e,t,h)=>e.addEventListener(t,h,{passive:true});
 
-  const $ = (s, r = document) => r.querySelector(s);
-  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-  const on = (el, ev, cb) => el.addEventListener(ev, cb);
+  const fmt = (n)=>n.toLocaleString('ru-RU');
 
-  const storage = {
-    get(k, f = null) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch { return f; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
-  };
-
-  const toast = (msg, type='info') => {
-    const c = $('#toast-container'); if (!c) return;
-    const t = document.createElement('div'); t.className = `toast toast-${type}`; t.textContent = msg;
-    c.appendChild(t); requestAnimationFrame(()=>t.classList.add('show'));
-    setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),200); }, 2500);
-  };
-
-  const DEFAULTS = {
-    theme:'light', fontFamily:'crimson', fontSize:18, lineHeight:1.7, textWidth:'medium', readingMode:'paginated'
-  };
-
-  const STATE = {
-    bookId:'hadji-giray',
-    chapters:[],
-    content:[],
-    currentChapter:0,
-    currentPage:1,
-    totalPages:1,
-    globalPage:1,
-    totalGlobalPages:1,
-    chapterPages:[],
-    chapterStart:[],
-    readingStart:Date.now()
-  };
+  const settingsKey='premium_reader_settings';
+  const progressKey='premium_reader_progress_hadji';
 
   const Settings = {
-    load(){ this.val = {...DEFAULTS, ...(storage.get('reader_settings')||{})}; this.apply(); this.bind(); },
+    val: { theme:'auto', font:'crimson', size:18, lh:1.7, width:'medium', mode:'page' },
+    load(){ try{ this.val={...this.val, ...(JSON.parse(localStorage.getItem(settingsKey)||'{}'))}; }catch{} this.apply(); },
+    save(){ localStorage.setItem(settingsKey, JSON.stringify(this.val)); },
     apply(){
       document.body.dataset.theme = this.val.theme;
-      const rc = $('#reader-content').style;
-      rc.setProperty('--font-size-reading', `${this.val.fontSize}px`);
-      rc.setProperty('--line-height-reading', this.val.lineHeight);
-      const fam = this.val.fontFamily;
-      const reading =
-        fam==='crimson' ? '"Crimson Text", Georgia, serif' :
-        fam==='georgia' ? 'Georgia, serif' :
-        fam==='times' ? '"Times New Roman", Times, serif' :
-        fam==='arial' ? 'Arial, Helvetica, sans-serif' :
-        'Inter, system-ui, sans-serif';
-      rc.setProperty('--font-reading', reading);
-      $('#reader-content').dataset.width = this.val.textWidth;
-      $('#reader-content').dataset.mode  = this.val.readingMode;
-      storage.set('reader_settings', this.val);
-    },
-    bind(){
-      on($('#settings-btn'),'click',()=>UI.openModal('settings-modal'));
-      on($('#font-family'),'change',e=>{ this.val.fontFamily=e.target.value; this.apply(); Reader.recalcAll(); });
-      on($('#font-size'),'input',e=>{ $('#font-size-value').textContent=`${e.target.value}px`; this.val.fontSize=+e.target.value; this.apply(); Reader.recalcAll(); });
-      on($('#line-height'),'input',e=>{ $('#line-height-value').textContent=e.target.value; this.val.lineHeight=+e.target.value; this.apply(); Reader.recalcAll(); });
-      on($('#text-width'),'change',e=>{ this.val.textWidth=e.target.value; this.apply(); Reader.recalcAll(); });
-      on($('#reading-mode'),'change',e=>{ this.val.readingMode=e.target.value; this.apply(); Reader.recalcAll(); });
-      $$('.theme-btn').forEach(b=>on(b,'click',()=>{ $$('.theme-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); this.val.theme=b.dataset.theme; this.apply(); }));
+      document.documentElement.style.setProperty('--fs', `${this.val.size}px`);
+      document.documentElement.style.setProperty('--lh', this.val.lh);
+      document.documentElement.style.setProperty('--mw', this.val.width==='narrow'?'58ch': this.val.width==='wide'?'78ch':'68ch');
+      const serif = this.val.font==='crimson' ? '"Crimson Text", Georgia, serif'
+                   : this.val.font==='georgia' ? 'Georgia, serif'
+                   : '"Crimson Text", Georgia, serif';
+      document.documentElement.style.setProperty('--serif', serif);
+      this.save();
     }
+  };
+
+  const State = {
+    chapters:[], html:[],
+    pages:[], // array of page HTML strings
+    pageIndex:0, // 0-based
+    totalPages:1,
+    wordsPerMin:220,
+    chapterStarts:[], // global page start per chapter
+    surface: $('#surface'),
+    pager: $('#pager'),
+    topbar: $('#topbar'),
+    sidebar: $('#sidebar'),
+    overlay: $('#overlay'),
+    floats: $('.floats'),
+    loading: $('#loading'),
   };
 
   const Progress = {
-    key:`reader_progress_${STATE.bookId}`,
-    save(){ storage.set(this.key,{chapter:STATE.currentChapter,page:STATE.currentPage,global:STATE.globalPage}); },
-    load(){ return storage.get(this.key,{chapter:0,page:1,global:1}); }
+    save(){ localStorage.setItem(progressKey, JSON.stringify({page:State.pageIndex})); },
+    load(){ try{ const p=JSON.parse(localStorage.getItem(progressKey)||'{}'); if(typeof p.page==='number') State.pageIndex=p.page; }catch{} }
   };
 
-  const UI = {
-    openModal(id){ const m = document.getElementById(id); if(!m) return; m.classList.add('active'); $('#reader-overlay').classList.add('active'); },
-    closeAll(){ $$('.modal').forEach(m=>m.classList.remove('active')); $('#reader-overlay').classList.remove('active'); },
-    toggleSidebar(force){ const s = $('#reader-sidebar'); const want = typeof force==='boolean'?force:!s.classList.contains('active'); s.classList.toggle('active', want); },
-    showMenu(x,y){ const m=$('#context-menu'); m.style.left=`${x}px`; m.style.top=`${y}px`; m.classList.add('active'); },
-    hideMenu(){ $('#context-menu').classList.remove('active'); }
-  };
+  async function loadBook(){
+    const meta = await fetch('book/chapters.json',{cache:'no-store'}).then(r=>r.json());
+    State.chapters = meta;
+    State.html = await Promise.all(meta.map(async c=>{
+      try{ return await fetch(c.href,{cache:'no-store'}).then(r=>r.text()); }
+      catch{ return `<h1>${c.title||''}</h1><p>Ошибка загрузки.</p>`; }
+    }));
+  }
 
-  const Reader = {
-    async init(){
-      this.cache();
-      this.bind();
-      Settings.load();
-      await this.loadAll();
-      this.restore();
-      $('#loading-screen').classList.add('hidden');
-    },
-    cache(){
-      this.el = {
-        content: $('#reader-content'),
-        chapter: $('#chapter-content'),
-        tocBtn: $('#toc-btn'),
-        next: $('#next-page'),
-        prev: $('#prev-page'),
-        pageInput: $('#page-input'),
-        cur: $('#current-page'),
-        total: $('#total-pages'),
-        fill: $('#progress-fill'),
-        thumb: $('#progress-thumb')
-      };
-    },
-    bind(){
-      on(this.el.tocBtn,'click',()=>UI.toggleSidebar());
-      on(this.el.next,'click',()=>this.nextPage());
-      on(this.el.prev,'click',()=>this.prevPage());
-      on(this.el.pageInput,'change',e=>this.goGlobal(+e.target.value));
-      on($('#progress-bar'),'click',e=>{
-        const r=e.currentTarget.getBoundingClientRect();
-        const ratio = (e.clientX-r.left)/r.width;
-        const g = Math.max(1, Math.round(ratio*STATE.totalGlobalPages));
-        this.goGlobal(g);
-      });
-      on(document,'keydown',e=>{
-        if (e.target.tagName==='INPUT') return;
-        if (e.ctrlKey && e.key.toLowerCase()==='s'){ e.preventDefault(); UI.openModal('settings-modal'); }
-        if (e.ctrlKey && e.key.toLowerCase()==='t'){ e.preventDefault(); UI.toggleSidebar(true); }
-        if (e.ctrlKey && e.key.toLowerCase()==='b'){ e.preventDefault(); $('#bookmark-btn').click(); }
-        if (e.key==='ArrowRight' || e.key==='PageDown' || e.key===' ') { e.preventDefault(); this.nextPage(); }
-        if (e.key==='ArrowLeft'  || e.key==='PageUp')                   { e.preventDefault(); this.prevPage(); }
-        if (e.key==='Escape'){ UI.closeAll(); UI.toggleSidebar(false); }
-        if (e.key==='Home'){ e.preventDefault(); this.goGlobal(1); }
-        if (e.key==='End'){  e.preventDefault(); this.goGlobal(STATE.totalGlobalPages); }
-      });
+  function splitToPages(){
+    // Create a hidden measuring container
+    const probe = document.createElement('div');
+    probe.style.position='absolute'; probe.style.inset='0 -9999px auto 0';
+    probe.style.width='100%'; probe.style.height='100%';
+    probe.style.overflow='hidden';
+    probe.innerHTML = `<div class="page"><div class="sheet"></div></div>`;
+    document.body.appendChild(probe);
+    const sheet = $('.sheet', probe);
 
-      on($('#search-btn'),'click',()=>UI.openModal('search-modal'));
-      on($('#search-submit'),'click',()=>Search.run());
-      on($('#search-input'),'keydown',e=>{ if(e.key==='Enter') Search.run(); });
+    // Build one flow of all chapters with markers
+    const parts=[];
+    State.chapterStarts=[]; let pageStart=0;
+    State.chapters.forEach((ch,i)=>{ parts.push(`<h1>${ch.title||('Глава '+(i+1))}</h1>`); parts.push(State.html[i]); });
+    const flow = `<div class="flow">${parts.join('\n')}</div>`;
+    // We will paginate by iteratively filling sheet height
+    const tmp = document.createElement('div'); tmp.style.visibility='hidden'; tmp.style.position='absolute'; tmp.style.inset='0 -9999px auto 0';
+    tmp.innerHTML = flow; document.body.appendChild(tmp);
 
-      on(this.el.content,'mouseup',e=>{
-        const t = getSelection().toString().trim(); if (!t) return UI.hideMenu(); UI.showMenu(e.clientX,e.clientY);
-      });
-      on(document,'click',e=>{ if(!e.target.closest('#context-menu')) UI.hideMenu(); });
+    const nodes = Array.from(tmp.querySelector('.flow').childNodes);
+    let cur = document.createElement('div');
 
-      on($('#highlight-text'),'click',()=>this.highlight());
-      on($('#add-note'),'click',()=>this.addNote());
-      on($('#copy-text'),'click',()=>document.execCommand('copy'));
-      on($('#lookup-word'),'click',()=>toast('Словарь скоро будет','info'));
-
-      on($('#back-btn'),'click',()=>history.back());
-    },
-    async loadAll(){
-      try{
-        const meta = await fetch('book/chapters.json',{cache:'no-store'}).then(r=>r.json());
-        STATE.chapters = meta;
-        STATE.content = [];
-        for (let i=0;i<meta.length;i++){
-          try{
-            const html = await fetch(meta[i].href,{cache:'no-store'}).then(r=>r.text());
-            STATE.content[i]=html;
-            $('#loading-screen p').textContent = `Загружено глав: ${i+1} из ${meta.length}`;
-          }catch{ STATE.content[i]=`<h2>${meta[i].title||('Глава '+(i+1))}</h2><p>Не удалось загрузить.</p>`; }
-        }
-        this.renderTOC();
-        await this.display(0);
-        this.calcAll();
-      }catch(e){
-        this.el.chapter.innerHTML = `<h2>Ошибка</h2><p>Не удалось загрузить book/chapters.json</p>`;
-      }
-    },
-    renderTOC(){
-      const box = $('#toc-list'); box.innerHTML='';
-      STATE.chapters.forEach((ch,i)=>{
-        const a=document.createElement('a');
-        a.className='toc-link'; a.dataset.index=i;
-        a.href='javascript:void(0)'; a.innerHTML = `${ch.title||('Глава '+(i+1))}<div style="color:var(--text-muted);font-size:12px;margin-top:2px" class="toc-start">стр. …</div>`;
-        on(a,'click',()=>this.go(i,1));
-        const item=document.createElement('div'); item.className='toc-item'; item.appendChild(a);
-        box.appendChild(item);
-      });
-    },
-    async display(index){
-      STATE.currentChapter=index;
-      $('#book-title').textContent = STATE.chapters[index].bookTitle || $('#book-title').textContent;
-      this.el.chapter.innerHTML = STATE.content[index] || '';
-      // форсируем рефлоу перед измерением
-      void this.el.chapter.offsetHeight;
-      this.paginate();
-      this.update();
-      this.highlightTOC();
-    },
-    paginate(){
-      const mode = $('#reader-content').dataset.mode;
-      if (mode==='scroll'){
-        const pageH = this.el.content.clientHeight;
-        const totalH = this.el.chapter.scrollHeight;
-        STATE.totalPages = Math.max(1, Math.ceil(totalH/pageH));
-        STATE.currentPage = Math.min(STATE.currentPage, STATE.totalPages);
-      }else{
-        STATE.totalPages = STATE.chapterPages[STATE.currentChapter] || 1;
-        STATE.currentPage = Math.min(STATE.currentPage, STATE.totalPages);
-        this.scrollTo(STATE.currentPage);
-      }
-      STATE.globalPage = this.chapterToGlobal(STATE.currentChapter, STATE.currentPage);
-    },
-    calcAll(){
-      const savedHTML = this.el.chapter.innerHTML;
-      const savedIndex = STATE.currentChapter;
-      STATE.chapterPages=[]; STATE.chapterStart=[];
-      let total=0;
-      STATE.chapters.forEach((_,i)=>{
-        this.el.chapter.innerHTML = STATE.content[i] || '';
-        void this.el.chapter.offsetHeight; // рефлоу
-        const pageH = this.el.content.clientHeight;
-        const totalH = this.el.chapter.scrollHeight;
-        const pages = Math.max(1, Math.ceil(totalH/pageH));
-        STATE.chapterPages[i]=pages;
-        STATE.chapterStart[i]=total+1;
-        total+=pages;
-      });
-      STATE.totalGlobalPages = total;
-      // подпишем в TOC стартовые страницы
-      $$('#toc-list .toc-item .toc-start').forEach((el,idx)=>{ el.textContent = `стр. ${STATE.chapterStart[idx]||1}`; });
-      // восстановим
-      this.el.chapter.innerHTML = savedHTML;
-      STATE.currentChapter = savedIndex;
-      this.update();
-    },
-    recalcAll(){ setTimeout(()=>{ this.calcAll(); this.paginate(); this.update(); }, 50); },
-    scrollTo(page){
-      const pageH = this.el.content.clientHeight;
-      const top = (page-1)*pageH;
-      this.el.content.scrollTo({top, behavior:'smooth'});
-    },
-    nextPage(){
-      if (STATE.currentPage < STATE.totalPages) this.goPage(STATE.currentPage+1);
-      else if (STATE.currentChapter < STATE.chapters.length-1) this.go(STATE.currentChapter+1,1);
-    },
-    prevPage(){
-      if (STATE.currentPage > 1) this.goPage(STATE.currentPage-1);
-      else if (STATE.currentChapter>0){ const p=STATE.chapterPages[STATE.currentChapter-1]||1; this.go(STATE.currentChapter-1,p); }
-    },
-    go(chapter,page){ this.display(chapter).then(()=>this.goPage(page)); },
-    goPage(page){
-      STATE.currentPage = Math.max(1, Math.min(page, STATE.totalPages));
-      this.scrollTo(STATE.currentPage);
-      STATE.globalPage = this.chapterToGlobal(STATE.currentChapter, STATE.currentPage);
-      this.update(); Progress.save();
-    },
-    goGlobal(g){
-      const m = this.globalToChapter(g); if (!m) return;
-      this.go(m.chapter, m.page);
-    },
-    chapterToGlobal(ch,p){ return (STATE.chapterStart[ch]||1)+p-1; },
-    globalToChapter(g){
-      for (let i=0;i<STATE.chapterStart.length;i++){
-        const s=STATE.chapterStart[i]; const e = s + (STATE.chapterPages[i]||1) - 1;
-        if (g>=s && g<=e) return {chapter:i,page:g-s+1};
-      }
-      return null;
-    },
-    update(){
-      this.el.cur.textContent = STATE.globalPage;
-      this.el.total.textContent = STATE.totalGlobalPages;
-      this.el.pageInput.max = String(STATE.totalGlobalPages);
-      this.el.pageInput.value = String(STATE.globalPage);
-      const ratio = (STATE.globalPage-1)/Math.max(1,STATE.totalGlobalPages-1);
-      this.el.fill.style.width = `${ratio*100}%`;
-      this.el.thumb.style.left = `${ratio*100}%`;
-      const mins = Math.max(0, Math.round((Date.now()-STATE.readingStart)/60000));
-      $('#reading-time').textContent = `${mins} мин`;
-      this.highlightTOC();
-    },
-    highlightTOC(){
-      $$('#toc-list .toc-link').forEach(a=>a.classList.remove('active'));
-      const act = $(`#toc-list .toc-link[data-index="${STATE.currentChapter}"]`); if (act) act.classList.add('active');
-    },
-    restore(){
-      const p = Progress.load();
-      if (p && p.global) this.goGlobal(p.global);
-      else this.go(0,1);
-    },
-    highlight(){
-      const sel=window.getSelection(); if(!sel || sel.isCollapsed) return UI.hideMenu();
-      const r = sel.getRangeAt(0); const mark=document.createElement('mark'); mark.className='highlight';
-      try{ r.surroundContents(mark); }catch{}
-      sel.removeAllRanges(); UI.hideMenu(); toast('Выделено','success');
-    },
-    addNote(){
-      const t = window.getSelection().toString().trim(); if(!t) return UI.hideMenu();
-      const note = prompt('Заметка к выделению:',''); if (note===null) return;
-      const key=`reader_annotations_${STATE.bookId}`;
-      const list = storage.get(key,[]); list.push({chapter:STATE.currentChapter,global:STATE.globalPage,text:t,note,ts:Date.now()});
-      storage.set(key,list); UI.hideMenu(); toast('Заметка сохранена','success');
-      // simple render
-      const box = $('#annotations-list'); if (box) box.innerHTML = list.map(a=>`<div class="annotation-item"><div class="annotation-head"><strong>Гл. ${a.chapter+1}</strong> • стр. ${a.global}</div><div class="annotation-text">${a.text}</div><div class="annotation-note">${a.note}</div></div>`).join('');
+    const pages=[];
+    function pushPage(){
+      pages.push(`<div class="page"><div class="sheet">${cur.innerHTML}</div></div>`);
+      cur = document.createElement('div');
     }
-  };
 
-  const Search = {
-    async run(){
-      const q = ($('#search-input').value||'').trim(); if(!q) return;
-      const cs = $('#case-sensitive').checked; const ww = $('#whole-words').checked;
-      const flags = cs?'g':'gi';
-      const esc = s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-      const re = new RegExp(ww?`\\b${esc(q)}\\b`:esc(q), flags);
-      const box = $('#search-results'); box.innerHTML='';
-      let out=[];
-      for (let i=0;i<STATE.content.length;i++){
-        const tmp=document.createElement('div'); tmp.innerHTML=STATE.content[i]||''; const text=tmp.textContent||'';
-        let m; let count=0;
-        while((m=re.exec(text)) && count<20){
-          const s=Math.max(0,m.index-60), e=Math.min(text.length,m.index+m[0].length+60);
-          const snippet = text.slice(s,e).replace(/\s+/g,' ').trim();
-          out.push({chapter:i,global:STATE.chapterStart[i]||1,snippet}); count++;
+    // naive streaming layout: append nodes until overflow, then back off by paragraph
+    sheet.innerHTML=''; cur.innerHTML='';
+    let chapterIdx=-1; let currentChapterStartSet=false;
+
+    nodes.forEach(node=>{
+      // detect chapter headings to mark chapter start
+      if (node.nodeType===1 && node.tagName==='H1'){ chapterIdx+=1; currentChapterStartSet=false; }
+      const clone = node.cloneNode(true);
+      cur.appendChild(clone); sheet.innerHTML = cur.innerHTML;
+      // measure
+      const tooHigh = sheet.scrollHeight > sheet.clientHeight;
+      if (tooHigh){
+        // remove last node, push page, start new with it
+        cur.removeChild(clone);
+        pushPage();
+        // mark chapter start on first page where chapter appears
+        if (chapterIdx>=0 && !currentChapterStartSet){ State.chapterStarts[chapterIdx]=pages.length; currentChapterStartSet=true; }
+        cur.appendChild(clone);
+        sheet.innerHTML = cur.innerHTML;
+        // if still too high (very long element) split by paragraph text
+        if (sheet.scrollHeight > sheet.clientHeight){
+          // split paragraph by sentences roughly
+          if (clone.textContent && clone.textContent.length>200){
+            let text = clone.textContent;
+            let chunks = text.split(/(?<=[.!?…])\s+/);
+            cur.removeChild(clone);
+            let acc='';
+            for (let i=0;i<chunks.length;i++){
+              const part = chunks[i];
+              const span = document.createElement('p'); span.textContent = (acc?acc+' ':'')+part;
+              cur.appendChild(span); sheet.innerHTML=cur.innerHTML;
+              if (sheet.scrollHeight > sheet.clientHeight){
+                // back off
+                cur.removeChild(span);
+                pushPage();
+                cur.appendChild(span);
+                sheet.innerHTML = cur.innerHTML;
+              }
+              acc='';
+            }
+          }
         }
       }
-      if (!out.length){ box.innerHTML='<p class="empty-state">Ничего не найдено</p>'; return; }
-      out.slice(0,100).forEach(r=>{
-        const el=document.createElement('div'); el.className='search-result';
-        const safe = r.snippet.replace(new RegExp(q,'gi'), m=>`<span class="search-highlight">${m}</span>`);
-        el.innerHTML = `<div class="search-result-chapter">Глава ${r.chapter+1} • стр. ${r.global}</div><div class="search-result-text">${safe}</div>`;
-        on(el,'click',()=>Reader.goGlobal(r.global));
-        box.appendChild(el);
-      });
-    }
-  };
+      // mark chapter start if just added h1
+      if (node.nodeType===1 && node.tagName==='H1'){
+        if (chapterIdx>=0 && !currentChapterStartSet){ State.chapterStarts[chapterIdx]=pages.length-1; currentChapterStartSet=true; }
+      }
+    });
+    // last page
+    if (cur.innerHTML.trim().length) pushPage();
 
-  window.addEventListener('load',()=>Reader.init());
+    document.body.removeChild(probe);
+    document.body.removeChild(tmp);
+
+    State.pages = pages;
+    State.totalPages = pages.length || 1;
+  }
+
+  function renderPager(){
+    const p = State.pager;
+    p.innerHTML = State.pages.join('');
+    $('#total').textContent = `/${fmt(State.totalPages)}`;
+    updateProgress();
+    goTo(State.pageIndex, false);
+  }
+
+  function updateProgress(){
+    const cur = State.pageIndex+1;
+    $('#goto').value = cur;
+    const ratio = (cur-1)/Math.max(1, State.totalPages-1);
+    $('#progress-fill').style.width = `${ratio*100}%`;
+    const words = Math.round(State.pages[State.pageIndex]?.replace(/<[^>]+>/g,' ').split(/\s+/).filter(Boolean).length || 0);
+    const mins = Math.max(1, Math.round(words/State.wordsPerMin));
+    $('#progress-text').textContent = `${fmt(cur)} из ${fmt(State.totalPages)} • ~${fmt(mins)} мин`;
+    // active chapter in TOC
+    highlightTOC();
+  }
+
+  function goTo(idx, smooth=true){
+    State.pageIndex = Math.max(0, Math.min(idx, State.totalPages-1));
+    const x = State.pageIndex * State.pager.clientWidth;
+    State.pager.scrollTo({left:x, behavior: smooth?'smooth':'auto'});
+    updateProgress(); Progress.save();
+  }
+
+  function next(){ goTo(State.pageIndex+1); }
+  function prev(){ goTo(State.pageIndex-1); }
+
+  function buildTOC(){
+    const box = $('#toc-list'); box.innerHTML='';
+    State.chapters.forEach((ch,i)=>{
+      const a=document.createElement('a');
+      a.href='javascript:void(0)';
+      const start = (State.chapterStarts[i]||0)+1;
+      a.innerHTML=`<div>${ch.title||('Глава '+(i+1))}</div><div class="meta">стр. ${fmt(start)}</div>`;
+      a.addEventListener('click',()=>{ goTo(start-1); toggleSidebar(false); });
+      box.appendChild(a);
+    });
+  }
+  function highlightTOC(){
+    const cur = State.pageIndex;
+    const idx = [...(State.chapterStarts||[])].reduce((acc,st,i)=> (st<=cur ? i : acc), 0);
+    $$('#toc-list a').forEach((a,i)=> a.classList.toggle('active', i===idx));
+  }
+
+  function toggleTopbar(show){
+    const tb = State.topbar;
+    const b = typeof show==='boolean' ? show : !tb.classList.contains('show');
+    tb.classList.toggle('show', b);
+  }
+  function toggleSidebar(show){
+    const s = State.sidebar, o = State.overlay;
+    const b = typeof show==='boolean' ? show : !s.classList.contains('show');
+    s.classList.toggle('show', b);
+    o.classList.toggle('show', b);
+  }
+
+  function bindUI(){
+    // panels
+    on($('#tap-center'),'click',()=>toggleTopbar());
+    on(State.overlay,'click',()=>toggleSidebar(false));
+    on($('#btn-toc'),'click',()=>toggleSidebar(true));
+    on($('#btn-back'),'click',()=>history.back());
+
+    // nav
+    on($('#tap-right'),'click',next);
+    on($('#tap-left'),'click',prev);
+    on($('#btn-next'),'click',next);
+    on($('#btn-prev'),'click',prev);
+
+    on($('#goto'),'change',e=>goTo(+e.target.value-1,false));
+
+    // keyboard
+    document.addEventListener('keydown',e=>{
+      if (e.key==='ArrowRight' || e.key==='PageDown' || e.key===' ') { e.preventDefault(); next(); }
+      if (e.key==='ArrowLeft'  || e.key==='PageUp') { e.preventDefault(); prev(); }
+      if (e.key==='t' && e.ctrlKey){ e.preventDefault(); toggleSidebar(true); }
+      if (e.key==='s' && (e.ctrlKey || !e.ctrlKey)){ e.preventDefault(); openSettings(); }
+      if (e.key==='Escape'){ toggleSidebar(false); toggleTopbar(false); }
+      if (e.key==='Home'){ e.preventDefault(); goTo(0); }
+      if (e.key==='End'){ e.preventDefault(); goTo(State.totalPages-1); }
+    });
+
+    // sidebar tabs
+    $$('.tab').forEach(t=>t.addEventListener('click',()=>{
+      $$('.tab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+      const panel = t.dataset.tab;
+      $$('.panel').forEach(p=>p.classList.toggle('active', p.dataset.panel===panel));
+    }));
+
+    // settings
+    on($('#btn-settings'),'click',openSettings);
+    $('#ctrl-size').addEventListener('input',e=>{ Settings.val.size=+e.target.value; Settings.apply(); reflow(); });
+    $('#ctrl-lh').addEventListener('input',e=>{ Settings.val.lh=+e.target.value; Settings.apply(); reflow(); });
+    $$('.segmented .seg').forEach(seg=>seg.addEventListener('click',()=>{
+      const group = seg.parentElement;
+      group.querySelectorAll('.seg').forEach(x=>x.classList.remove('active'));
+      seg.classList.add('active');
+      if (seg.dataset.theme){ Settings.val.theme=seg.dataset.theme; }
+      if (seg.dataset.font){ Settings.val.font=seg.dataset.font; }
+      if (seg.dataset.width){ Settings.val.width=seg.dataset.width; }
+      if (seg.dataset.mode){ Settings.val.mode=seg.dataset.mode; }
+      Settings.apply(); reflow();
+    }));
+
+    // search
+    on($('#btn-search'),'click',openSearch);
+    on($('#do-search'),'click',runSearch);
+    $('#q').addEventListener('keydown',e=>{ if(e.key==='Enter') runSearch(); });
+
+    // swipe with mouse/touch
+    let sx=0, dx=0, dragging=false;
+    State.pager.addEventListener('pointerdown',e=>{ dragging=true; sx=e.clientX; dx=0; State.pager.setPointerCapture(e.pointerId); });
+    State.pager.addEventListener('pointermove',e=>{ if(!dragging) return; dx=e.clientX-sx; });
+    State.pager.addEventListener('pointerup',e=>{
+      if(!dragging) return; dragging=false;
+      if (dx<-40) next(); else if (dx>40) prev();
+    });
+  }
+
+  function openSettings(){ const d=$('#modal-settings'); d.showModal(); d.addEventListener('close',()=>Settings.save(),{once:true}); }
+  function openSearch(){ $('#modal-search').showModal(); }
+
+  function runSearch(){
+    const q = ($('#q').value||'').trim(); if(!q) return;
+    const cs = $('#cs').checked, ww = $('#ww').checked;
+    const flags = cs?'g':'gi';
+    const esc = s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const re = new RegExp(ww?`\\b${esc(q)}\\b`:esc(q), flags);
+    const box = $('#search-results'); box.innerHTML='';
+
+    let results=[];
+    State.html.forEach((h,i)=>{
+      const text = h.replace(/<[^>]+>/g,' ');
+      let m, cnt=0;
+      while((m=re.exec(text)) && cnt<30){
+        const s=Math.max(0,m.index-60), e=Math.min(text.length,m.index+m[0].length+60);
+        results.push({chapter:i, snippet:text.slice(s,e).replace(/\s+/g,' ').trim()});
+        cnt++;
+      }
+    });
+    if (!results.length){ box.innerHTML='<div class="item">Ничего не найдено</div>'; return; }
+    results.slice(0,120).forEach(r=>{
+      const start = (State.chapterStarts[r.chapter]||0)+1;
+      const el=document.createElement('div'); el.className='item';
+      const safe = r.snippet.replace(new RegExp(q,'gi'), m=>`<mark>${m}</mark>`);
+      el.innerHTML=`<div class="cap">Глава ${r.chapter+1} • стр. ${fmt(start)}</div><div>${safe}</div>`;
+      el.addEventListener('click',()=>{ $('#modal-search').close(); goTo(start-1); });
+      box.appendChild(el);
+    });
+  }
+
+  async function reflow(){
+    // rebuild pagination preserving approximate reading position
+    const oldRatio = State.totalPages>1 ? State.pageIndex/(State.totalPages-1) : 0;
+    await paginateRender();
+    const target = Math.round(oldRatio*(State.totalPages-1));
+    goTo(target,false);
+  }
+
+  async function paginateRender(){
+    $('#loading .loading__hint').textContent = 'Вёрстка страниц…';
+    splitToPages();
+    renderPager();
+    buildTOC();
+  }
+
+  async function start(){
+    Settings.load();
+    $('#loading .loading__hint').textContent='Загрузка глав…';
+    await loadBook();
+    Progress.load();
+    await paginateRender();
+    State.loading.classList.add('hidden');
+    // show topbar shortly then hide for immersion
+    toggleTopbar(true); setTimeout(()=>toggleTopbar(false), 900);
+  }
+
+  start();
 })();
