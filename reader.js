@@ -499,31 +499,38 @@ const createPages = () => {
   };
 
   // Initialize app
-  const init = async () => {
-    try {
-      loadSettings();
-      
-      const success = await loadBook();
-      if (!success) return;
+const init = async () => {
+  try {
+    loadSettings();
+    
+    const success = await loadBook();
+    if (!success) return;
 
-      createPages();
-      load(); // Load saved position
-      buildTOC();
-      render();
-      bindEvents();
+    createPages();
+    load(); // Load saved position
+    buildTOC();
+    render();
+    bindEvents();
 
-      // Hide loading
-      $('#loading')?.classList.add('hidden');
+    // Hide loading
+    $('#loading')?.classList.add('hidden');
 
-      // Show UI briefly then hide
+    // На мобильных показать UI и не скрывать footer
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      showUI();
+      // Footer остается видимым на мобильных
+    } else {
+      // На десктопе показать UI ненадолго
       showUI();
       setTimeout(hideUI, 3000);
-
-    } catch (err) {
-      $('#loading-status').textContent = 'Критическая ошибка: ' + err.message;
-      console.error('Init failed:', err);
     }
-  };
+
+  } catch (err) {
+    $('#loading-status').textContent = 'Критическая ошибка: ' + err.message;
+    console.error('Init failed:', err);
+  }
+};
 
   // Start
   if (document.readyState === 'loading') {
