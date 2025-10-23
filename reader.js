@@ -117,39 +117,173 @@
   };
 
   // Real pagination - split text into pages that fit screen height
+// ПРАВИЛЬНАЯ пагинация - измеряем реальный overflow
 const createPages = () => {
   $('#loading-status').textContent = 'Разбиение на страницы...';
+  
   pages = [];
-  const isMobile = window.innerWidth <= 768;
-  
-  // Фиксированные размеры для каждого типа устройства
-  const wordsPerPage = isMobile ? 150 : 250;
-  
-  console.log('Words per page:', wordsPerPage, 'Mobile:', isMobile);
 
+  // Создаем точную копию page-content для измерений
+  const measureContainer = document.createElement('div');
+  measureContainer.style.cssText = `
+    position: absolute;
+    visibility: hidden;
+    top: 0;
+    left: -9999px;
+    width: 100%;
+    height: 100%;
+  `;
+  
+  // Копируем структуру app
+  const appClone = document.createElement('div');
+  appClone.className = 'app';
+  appClone.style.cssText = `
+    display: grid;
+    grid-template-rows: var(--header-height) 1fr var(--footer-height);
+    height: 100vh;
+    width: 100vw;
+  `;
+  
+  const readerClone = document.createElement('div');
+  readerClone.className = 'reader';
+  readerClone.style.gridRow = '2';
+  
+  const pageContainerClone = document.createElement('div');
+  pageContainerClone.className = 'page-container';
+  
+  const pageClone = document.createElement('div');
+  pageClone.className = 'page';
+  
+  const contentClone = document.createElement('div');
+  contentClone.className = 'page-content';
+  
+  pageClone.appendChild(contentClone);
+  pageContainerClone.appendChild(pageClone);
+  readerClone.appendChild(pageContainerClone);
+  appClone.appendChild(readerClone);
+  measureContainer.appendChild(appClone);
+  document.body.appendChild(measureContainer);
+
+  // Принудительно применяем стили
+  measureContainer.offsetHeight;
+  
+  console.log('Content height:', contentClone.clientHeight, 'Scroll height will be measured per content');
+
+  // Убираем измерительный контейнер
+  document.body.removeChild(measureContainer);
+
+  // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
+    
+    // Извлекаем чистый текст
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = chapterContent;
     const textContent = tempDiv.textContent || '';
-    const words = textContent.split(/\s+/).filter(word => word.length > 0);
     
+    // Разбиваем на предложения для лучшего контроля
+    const sentences = textContent.split(/(?<=[.!?…])\s+/).filter(s => s.trim().length > 0);
+    
+    let currentPageText = '';
     let isFirstPageOfChapter = true;
     
-    for (let i = 0; i < words.length; i += wordsPerPage) {
-      const pageWords = words.slice(i, i + wordsPerPage);
+    sentences.forEach(sentence => {
+      // Тестируем добавление предложения
+      const testText = currentPageText + (currentPageText ? ' ' : '') + sentence;
+      
+      // Создаем тестовую страницу для измерения
+      let testHTML = '';
+      if (isFirstPageOfChapter) {
+        testHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+      }
+      
+      // Разбиваем тестовый текст на абзацы 
+      const testWords = testText.split(/\s+/);
+      const wordsPerParagraph = 30;
+      const testParagraphs = [];
+      
+      for (let i = 0; i < testWords.length; i += wordsPerParagraph) {
+        const paragraphWords = testWords.slice(i, i + wordsPerParagraph);
+        if (paragraphWords.length > 0) {
+          testParagraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
+        }
+      }
+      
+      testHTML += testParagraphs.join('');
+      
+      // Создаем временный элемент для проверки overflow
+      const testElement = document.createElement('div');
+      testElement.className = 'page-content';
+      testElement.style.cssText = `
+        position: absolute;
+        visibility: hidden;
+        top: 0;
+        left: -9999px;
+        width: 680px;
+        max-width: 680px;
+        height: calc(100vh - var(--header-height) - var(--footer-height) - 32px);
+        padding: 20px 16px;
+        font-family: var(--font-reading);
+        font-size: var(--font-size-reading);
+        line-height: var(--line-height-reading);
+        overflow: hidden;
+        box-sizing: border-box;
+      `;
+      testElement.innerHTML = testHTML;
+      document.body.appendChild(testElement);
+      
+      const isOverflowing = testElement.scrollHeight > testElement.clientHeight;
+      document.body.removeChild(testElement);
+      
+      if (isOverflowing && currentPageText.length > 0) {
+        // Создаем страницу с текущим текстом
+        let pageHTML = '';
+        
+        if (isFirstPageOfChapter) {
+          pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+          isFirstPageOfChapter = false;
+        }
+        
+        // Формируем абзацы из текущего текста
+        const currentWords = currentPageText.split(/\s+/);
+        const paragraphs = [];
+        
+        for (let i = 0; i < currentWords.length; i += wordsPerParagraph) {
+          const paragraphWords = currentWords.slice(i, i + wordsPerParagraph);
+          if (paragraphWords.length > 0) {
+            paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
+          }
+        }
+        
+        pageHTML += paragraphs.join('');
+        
+        pages.push({
+          content: pageHTML,
+          chapterIndex: chapterIndex
+        });
+        
+        // Начинаем новую страницу с текущего предложения
+        currentPageText = sentence;
+      } else {
+        // Добавляем предложение к текущей странице
+        currentPageText = testText;
+      }
+    });
+    
+    // Добавляем последнюю страницу главы
+    if (currentPageText.trim()) {
       let pageHTML = '';
       
       if (isFirstPageOfChapter) {
         pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
-        isFirstPageOfChapter = false;
       }
       
-      const wordsPerParagraph = isMobile ? 20 : 30;
+      const currentWords = currentPageText.split(/\s+/);
+      const wordsPerParagraph = 30;
       const paragraphs = [];
       
-      for (let j = 0; j < pageWords.length; j += wordsPerParagraph) {
-        const paragraphWords = pageWords.slice(j, j + wordsPerParagraph);
+      for (let i = 0; i < currentWords.length; i += wordsPerParagraph) {
+        const paragraphWords = currentWords.slice(i, i + wordsPerParagraph);
         if (paragraphWords.length > 0) {
           paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
         }
@@ -169,8 +303,9 @@ const createPages = () => {
     currentPageIndex = Math.max(0, totalPages - 1);
   }
   
-  console.log(`Created ${totalPages} pages with fixed boundaries`);
+  console.log(`Created ${totalPages} pages using DOM overflow detection`);
 };
+
 
 
 
