@@ -197,7 +197,7 @@ body {
 
 .page-content {
   flex: 1;
-  padding: 20px 16px 50px 16px; /* Большой отступ снизу - 50px */
+  padding: 20px 16px 80px 16px; /* ОГРОМНЫЙ отступ снизу - 80px */
   font-family: var(--font-reading);
   font-size: var(--font-size-reading);
   line-height: var(--line-height-reading);
@@ -207,6 +207,7 @@ body {
   flex-direction: column;
   justify-content: flex-start;
 }
+
 
 
 /* Typography */
