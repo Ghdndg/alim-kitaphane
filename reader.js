@@ -117,80 +117,80 @@
   };
 
   // Real pagination - split text into pages that fit screen height
-// КОНСЕРВАТИВНАЯ пагинация - гарантированно без обрезания
 const createPages = () => {
   $('#loading-status').textContent = 'Создание безопасной пагинации...';
-  
+
   pages = [];
   const isMobile = window.innerWidth <= 768;
-  
+
   // ОЧЕНЬ консервативные размеры - лучше недозаполнить чем обрезать
-  const charsPerPage = isMobile ? 600 : 1000; // Еще меньше символов
-  
+  const charsPerPage = isMobile ? 600 : 1000;
+
   console.log('SAFE chars per page:', charsPerPage, 'Mobile:', isMobile);
 
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
-    
+
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = chapterContent;
     const textContent = tempDiv.textContent || '';
-    
+
     const words = textContent.split(/\s+/).filter(word => word.length > 0);
-    
+
     let isFirstPageOfChapter = true;
     let currentText = '';
-    
+
     words.forEach((word, index) => {
       const testText = currentText + (currentText ? ' ' : '') + word;
-      
+
+      // Разделяем, когда длина текста на странице превышает лимит
       if (testText.length > charsPerPage && currentText.length > 0) {
         let pageHTML = '';
-        
+
         if (isFirstPageOfChapter) {
           pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
           isFirstPageOfChapter = false;
         }
-        
-        // Меньше слов в абзаце для экономии места
+
+        // Разбиваем текст на абзацы с меньшим количеством слов
         const pageWords = currentText.split(/\s+/);
-        const wordsPerParagraph = isMobile ? 20 : 25; // Еще меньше
-        
+        const wordsPerParagraph = isMobile ? 20 : 25;
+
         for (let i = 0; i < pageWords.length; i += wordsPerParagraph) {
           const paragraphWords = pageWords.slice(i, i + wordsPerParagraph);
           if (paragraphWords.length > 0) {
             pageHTML += `<p>${paragraphWords.join(' ')}</p>`;
           }
         }
-        
+
         pages.push({
           content: pageHTML,
           chapterIndex: chapterIndex
         });
-        
+
         currentText = word;
       } else {
         currentText = testText;
       }
     });
-    
+
     if (currentText.trim()) {
       let pageHTML = '';
-      
+
       if (isFirstPageOfChapter) {
         pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
       }
-      
+
       const pageWords = currentText.split(/\s+/);
       const wordsPerParagraph = isMobile ? 20 : 25;
-      
+
       for (let i = 0; i < pageWords.length; i += wordsPerParagraph) {
         const paragraphWords = pageWords.slice(i, i + wordsPerParagraph);
         if (paragraphWords.length > 0) {
           pageHTML += `<p>${paragraphWords.join(' ')}</p>`;
         }
       }
-      
+
       pages.push({
         content: pageHTML,
         chapterIndex: chapterIndex
@@ -202,9 +202,10 @@ const createPages = () => {
   if (currentPageIndex >= totalPages) {
     currentPageIndex = Math.max(0, totalPages - 1);
   }
-  
+
   console.log(`Created ${totalPages} SAFE pages`);
 };
+
 
 
 
