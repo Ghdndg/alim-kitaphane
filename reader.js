@@ -1,429 +1,519 @@
 (() => {
   'use strict';
 
-  const $ = (s, r = document) => r.querySelector(s);
-  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-  const on = (el, evt, cb) => el.addEventListener(evt, cb);
+  // Utility functions
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+  const on = (element, event, handler) => element.addEventListener(event, handler);
 
+  // Storage utilities
   const storage = {
     get(key, fallback = null) {
       try {
-        const v = localStorage.getItem(key);
-        return v ? JSON.parse(v) : fallback;
-      } catch (e) {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : fallback;
+      } catch {
         return fallback;
       }
     },
+    
     set(key, value) {
       try {
         localStorage.setItem(key, JSON.stringify(value));
-      } catch (e) {
-        // ignore
-      }
-    },
-  };
-
-  const DEFAULTS = {
-    theme: 'auto',
-    font: 'crimson',
-    size: 18,
-    lh: 1.7,
-    width: 'medium',
-    mode: 'page'
-  };
-
-  const STATE = {
-    chapters: [],
-    content: [],
-    currentChapter: 0,
-    currentPage: 1,
-    totalPages: 1,
-    globalPage: 1,
-    totalGlobalPages: 1,
-    chapterPages: [],
-    chapterStart: [],
-    settings: { ...DEFAULTS }
-  };
-
-  const Settings = {
-    load() {
-      STATE.settings = { ...DEFAULTS, ...(storage.get('premium_reader_settings') || {}) };
-      this.apply();
-    },
-    
-    apply() {
-      document.body.dataset.theme = STATE.settings.theme;
-      document.documentElement.style.setProperty('--fs', `${STATE.settings.size}px`);
-      document.documentElement.style.setProperty('--lh', STATE.settings.lh);
-      
-      const widths = { narrow: '58ch', medium: '68ch', wide: '78ch' };
-      document.documentElement.style.setProperty('--mw', widths[STATE.settings.width] || '68ch');
-      
-      const fonts = {
-        crimson: '"Crimson Text", Georgia, serif',
-        inter: 'Inter, system-ui, sans-serif',
-        georgia: 'Georgia, serif'
-      };
-      document.documentElement.style.setProperty('--serif', fonts[STATE.settings.font] || fonts.crimson);
-      
-      storage.set('premium_reader_settings', STATE.settings);
-    },
-
-    bindUI() {
-      // Theme buttons
-      $$('[data-theme]').forEach(btn => {
-        on(btn, 'click', () => {
-          $$('[data-theme]').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          STATE.settings.theme = btn.dataset.theme;
-          this.apply();
-        });
-      });
-
-      // Font buttons
-      $$('[data-font]').forEach(btn => {
-        on(btn, 'click', () => {
-          $$('[data-font]').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          STATE.settings.font = btn.dataset.font;
-          this.apply();
-        });
-      });
-
-      // Width buttons
-      $$('[data-width]').forEach(btn => {
-        on(btn, 'click', () => {
-          $$('[data-width]').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          STATE.settings.width = btn.dataset.width;
-          this.apply();
-        });
-      });
-
-      // Range inputs
-      const sizeSlider = $('#ctrl-size');
-      const lhSlider = $('#ctrl-lh');
-      
-      if (sizeSlider) {
-        sizeSlider.value = STATE.settings.size;
-        on(sizeSlider, 'input', (e) => {
-          STATE.settings.size = +e.target.value;
-          this.apply();
-        });
-      }
-      
-      if (lhSlider) {
-        lhSlider.value = STATE.settings.lh;
-        on(lhSlider, 'input', (e) => {
-          STATE.settings.lh = +e.target.value;
-          this.apply();
-        });
+      } catch {
+        // Ignore storage errors
       }
     }
   };
 
-  const Reader = {
+  // Application state
+  const state = {
+    // Book data
+    chapters: [],
+    content: [],
+    
+    // Reading position
+    currentChapter: 0,
+    currentPage: 1,
+    totalPages: 1,
+    
+    // UI state
+    uiVisible: false,
+    sidebarVisible: false,
+    settingsVisible: false,
+    
+    // Settings
+    settings: {
+      theme: 'light',
+      font: 'crimson',
+      fontSize: 18,
+      lineHeight: 1.6,
+      textWidth: 'medium'
+    },
+    
+    // Cache
+    pageCache: new Map(),
+    
+    // Reading stats
+    readingStartTime: Date.now(),
+    wordsPerMinute: 200
+  };
+
+  // Settings management
+  const settings = {
+    load() {
+      const saved = storage.get('crimchitalka_settings');
+      if (saved) {
+        Object.assign(state.settings, saved);
+      }
+      this.apply();
+    },
+    
+    save() {
+      storage.set('crimchitalka_settings', state.settings);
+    },
+    
+    apply() {
+      // Apply theme
+      document.body.setAttribute('data-theme', state.settings.theme);
+      document.body.setAttribute('data-width', state.settings.textWidth);
+      
+      // Apply typography
+      document.documentElement.style.setProperty('--font-size-reading', `${state.settings.fontSize}px`);
+      document.documentElement.style.setProperty('--line-height-reading', state.settings.lineHeight);
+      
+      // Apply font family
+      const fontMap = {
+        crimson: '"Crimson Text", Georgia, "Times New Roman", serif',
+        inter: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+        georgia: 'Georgia, "Times New Roman", serif'
+      };
+      document.documentElement.style.setProperty('--font-reading', fontMap[state.settings.font] || fontMap.crimson);
+      
+      this.save();
+    },
+    
+    update(key, value) {
+      state.settings[key] = value;
+      this.apply();
+      // Trigger page recalculation if typography changed
+      if (['fontSize', 'lineHeight', 'textWidth'].includes(key)) {
+        reader.calculatePages();
+        reader.renderCurrentPage();
+      }
+    }
+  };
+
+  // Progress management
+  const progress = {
+    save() {
+      storage.set('crimchitalka_progress', {
+        chapter: state.currentChapter,
+        page: state.currentPage,
+        timestamp: Date.now()
+      });
+    },
+    
+    load() {
+      const saved = storage.get('crimchitalka_progress');
+      if (saved) {
+        state.currentChapter = Math.max(0, Math.min(saved.chapter || 0, state.chapters.length - 1));
+        state.currentPage = Math.max(1, saved.page || 1);
+      }
+    }
+  };
+
+  // UI management
+  const ui = {
+    showLoading(message = 'Загрузка...') {
+      const loading = $('#loading');
+      const status = $('#loading-status');
+      if (status) status.textContent = message;
+      if (loading) loading.classList.remove('hidden');
+    },
+    
+    hideLoading() {
+      const loading = $('#loading');
+      if (loading) loading.classList.add('hidden');
+    },
+    
+    toggleUI() {
+      state.uiVisible = !state.uiVisible;
+      const header = $('#header');
+      const footer = $('#footer');
+      
+      if (header) header.classList.toggle('visible', state.uiVisible);
+      if (footer) footer.classList.toggle('visible', state.uiVisible);
+    },
+    
+    showSidebar() {
+      state.sidebarVisible = true;
+      const sidebar = $('#sidebar');
+      const overlay = $('#overlay');
+      
+      if (sidebar) sidebar.classList.add('visible');
+      if (overlay) overlay.classList.add('visible');
+    },
+    
+    hideSidebar() {
+      state.sidebarVisible = false;
+      const sidebar = $('#sidebar');
+      const overlay = $('#overlay');
+      
+      if (sidebar) sidebar.classList.remove('visible');
+      if (overlay) overlay.classList.remove('visible');
+    },
+    
+    showSettings() {
+      state.settingsVisible = true;
+      const modal = $('#settings-modal');
+      if (modal) modal.classList.add('visible');
+    },
+    
+    hideSettings() {
+      state.settingsVisible = false;
+      const modal = $('#settings-modal');
+      if (modal) modal.classList.remove('visible');
+    },
+    
+    updateProgress() {
+      const currentPos = $('#current-pos');
+      const totalPos = $('#total-pos');
+      const readingTime = $('#reading-time');
+      const progressFill = $('#progress-fill');
+      const progressHandle = $('#progress-handle');
+      const pageInput = $('#page-input');
+      
+      if (currentPos) currentPos.textContent = state.currentPage;
+      if (totalPos) totalPos.textContent = state.totalPages;
+      if (pageInput) {
+        pageInput.value = state.currentPage;
+        pageInput.max = state.totalPages;
+      }
+      
+      // Calculate reading time
+      const chapter = state.chapters[state.currentChapter];
+      if (chapter && readingTime) {
+        const content = state.content[state.currentChapter] || '';
+        const wordCount = content.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length;
+        const minutes = Math.ceil(wordCount / state.wordsPerMinute);
+        readingTime.textContent = `~${minutes} мин`;
+      }
+      
+      // Update progress bar
+      const progress = state.totalPages > 1 ? (state.currentPage - 1) / (state.totalPages - 1) : 0;
+      if (progressFill) progressFill.style.width = `${progress * 100}%`;
+      if (progressHandle) progressHandle.style.left = `${progress * 100}%`;
+    },
+    
+    renderTOC() {
+      const tocList = $('#toc-list');
+      if (!tocList) return;
+      
+      tocList.innerHTML = '';
+      state.chapters.forEach((chapter, index) => {
+        const item = document.createElement('div');
+        item.className = 'toc-item';
+        if (index === state.currentChapter) item.classList.add('active');
+        
+        item.innerHTML = `
+          <div class="toc-title">${chapter.title || `Глава ${index + 1}`}</div>
+          <div class="toc-page">Страница ${index + 1}</div>
+        `;
+        
+        on(item, 'click', () => reader.goToChapter(index));
+        tocList.appendChild(item);
+      });
+    }
+  };
+
+  // Main reader functionality
+  const reader = {
     async init() {
       try {
-        Settings.load();
-        await this.loadBook();
-        this.buildSimplePages();
-        this.renderUI();
-        this.bindEvents();
-        Settings.bindUI();
-        this.hideLoading();
+        ui.showLoading('Инициализация...');
         
-        // Restore progress
-        const progress = storage.get('premium_reader_progress_hadji');
-        if (progress && progress.page) {
-          this.goToPage(progress.page);
-        }
+        // Load settings
+        settings.load();
+        
+        // Load book content
+        await this.loadBook();
+        
+        // Calculate pages
+        this.calculatePages();
+        
+        // Restore reading position
+        progress.load();
+        
+        // Render UI
+        this.renderCurrentPage();
+        ui.renderTOC();
+        ui.updateProgress();
+        
+        // Bind events
+        this.bindEvents();
+        
+        // Hide loading
+        ui.hideLoading();
+        
+        // Show UI briefly then hide
+        setTimeout(() => {
+          ui.toggleUI();
+          setTimeout(() => ui.toggleUI(), 2000);
+        }, 500);
+        
       } catch (error) {
-        console.error('Reader init error:', error);
-        this.showError('Ошибка инициализации ридера');
+        console.error('Failed to initialize reader:', error);
+        ui.showLoading('Ошибка загрузки. Проверьте подключение.');
       }
     },
-
+    
     async loadBook() {
       try {
+        ui.showLoading('Загрузка оглавления...');
+        
+        // Load chapters metadata
         const response = await fetch('book/chapters.json', { cache: 'no-store' });
         if (!response.ok) throw new Error('Failed to load chapters.json');
         
-        STATE.chapters = await response.json();
+        state.chapters = await response.json();
+        state.content = new Array(state.chapters.length);
         
         // Load all chapters
-        for (let i = 0; i < STATE.chapters.length; i++) {
+        for (let i = 0; i < state.chapters.length; i++) {
+          ui.showLoading(`Загрузка главы ${i + 1} из ${state.chapters.length}...`);
+          
           try {
-            const chapterResponse = await fetch(STATE.chapters[i].href, { cache: 'no-store' });
-            const html = await chapterResponse.text();
-            STATE.content[i] = html;
-            
-            // Update loading text
-            const loadingHint = $('#loading .loading__hint');
-            if (loadingHint) {
-              loadingHint.textContent = `Загружено глав: ${i + 1} из ${STATE.chapters.length}`;
+            const chapterResponse = await fetch(state.chapters[i].href, { cache: 'no-store' });
+            if (chapterResponse.ok) {
+              state.content[i] = await chapterResponse.text();
+            } else {
+              throw new Error(`HTTP ${chapterResponse.status}`);
             }
-          } catch (e) {
-            console.warn(`Failed to load chapter ${i}:`, e);
-            STATE.content[i] = `<h1>${STATE.chapters[i].title || `Глава ${i + 1}`}</h1><p>Ошибка загрузки главы.</p>`;
+          } catch (error) {
+            console.warn(`Failed to load chapter ${i}:`, error);
+            state.content[i] = `
+              <h1>${state.chapters[i].title || `Глава ${i + 1}`}</h1>
+              <p>Ошибка загрузки главы. Попробуйте обновить страницу.</p>
+            `;
           }
         }
+        
       } catch (error) {
         console.error('Failed to load book:', error);
         throw new Error('Не удалось загрузить книгу');
       }
     },
-
-    buildSimplePages() {
-      // Simple pagination: each chapter = multiple pages based on content length
-      STATE.chapterPages = [];
-      STATE.chapterStart = [];
-      let totalPages = 0;
-
-      STATE.chapters.forEach((chapter, index) => {
-        const content = STATE.content[index] || '';
-        const textLength = content.replace(/<[^>]*>/g, '').length;
-        const wordsPerPage = 800; // approximate
-        const pages = Math.max(1, Math.ceil(textLength / wordsPerPage));
-        
-        STATE.chapterPages[index] = pages;
-        STATE.chapterStart[index] = totalPages + 1;
-        totalPages += pages;
-      });
-
-      STATE.totalGlobalPages = totalPages;
-      STATE.totalPages = totalPages;
+    
+    calculatePages() {
+      // Simple approach: each chapter is one "page"
+      // In a real implementation, you'd measure actual text height
+      state.totalPages = state.chapters.length;
     },
-
-    renderUI() {
-      // Build table of contents
-      const tocList = $('#toc-list');
-      if (tocList) {
-        tocList.innerHTML = '';
-        STATE.chapters.forEach((chapter, index) => {
-          const link = document.createElement('a');
-          link.href = 'javascript:void(0)';
-          link.innerHTML = `
-            <div>${chapter.title || `Глава ${index + 1}`}</div>
-            <div class="meta">стр. ${STATE.chapterStart[index]}</div>
-          `;
-          on(link, 'click', () => {
-            this.goToChapter(index);
-            this.hideSidebar();
-          });
-          tocList.appendChild(link);
-        });
+    
+    renderCurrentPage() {
+      const pageContent = $('#page-content');
+      if (!pageContent) return;
+      
+      const chapterIndex = state.currentChapter;
+      const content = state.content[chapterIndex] || '<p>Глава не найдена</p>';
+      
+      // Update page content
+      pageContent.innerHTML = content;
+      
+      // Update book title
+      const bookTitle = $('#book-title');
+      const chapter = state.chapters[chapterIndex];
+      if (bookTitle && chapter) {
+        bookTitle.textContent = chapter.bookTitle || 'КрымЧиталка';
       }
-
-      // Display first chapter
-      this.displayChapter(0);
-      this.updateProgress();
+      
+      // Update progress
+      ui.updateProgress();
+      ui.renderTOC();
+      
+      // Save progress
+      progress.save();
     },
-
-    displayChapter(index) {
-      STATE.currentChapter = index;
-      STATE.currentPage = 1;
-      STATE.globalPage = STATE.chapterStart[index];
-
-      // Simple display: show chapter content in a page
-      const pager = $('#pager');
-      if (pager) {
-        const content = STATE.content[index] || '<p>Глава не найдена</p>';
-        pager.innerHTML = `
-          <div class="page">
-            <div class="sheet">
-              ${content}
-            </div>
-          </div>
-        `;
+    
+    goToChapter(index) {
+      if (index >= 0 && index < state.chapters.length) {
+        state.currentChapter = index;
+        state.currentPage = index + 1; // Simple mapping
+        this.renderCurrentPage();
+        ui.hideSidebar();
       }
-
-      this.updateProgress();
     },
-
+    
+    goToPage(page) {
+      const pageNumber = Math.max(1, Math.min(parseInt(page) || 1, state.totalPages));
+      const chapterIndex = pageNumber - 1; // Simple mapping
+      this.goToChapter(chapterIndex);
+    },
+    
+    nextPage() {
+      if (state.currentChapter < state.chapters.length - 1) {
+        this.goToChapter(state.currentChapter + 1);
+      }
+    },
+    
+    prevPage() {
+      if (state.currentChapter > 0) {
+        this.goToChapter(state.currentChapter - 1);
+      }
+    },
+    
     bindEvents() {
-      // Navigation
-      on($('#tap-right'), 'click', () => this.nextPage());
-      on($('#tap-left'), 'click', () => this.prevPage());
-      on($('#btn-next'), 'click', () => this.nextPage());
-      on($('#btn-prev'), 'click', () => this.prevPage());
-
-      // UI toggles
-      on($('#tap-center'), 'click', () => this.toggleTopbar());
-      on($('#btn-toc'), 'click', () => this.showSidebar());
-      on($('#overlay'), 'click', () => this.hideSidebar());
-      on($('#btn-settings'), 'click', () => this.showSettings());
-      on($('#btn-back'), 'click', () => history.back());
-
+      // Touch zones
+      on($('#prev-zone'), 'click', () => this.prevPage());
+      on($('#next-zone'), 'click', () => this.nextPage());
+      on($('#menu-zone'), 'click', () => ui.toggleUI());
+      
+      // Navigation buttons
+      on($('#prev-btn'), 'click', () => this.prevPage());
+      on($('#next-btn'), 'click', () => this.nextPage());
+      
+      // Header buttons
+      on($('#back-btn'), 'click', () => history.back());
+      on($('#toc-btn'), 'click', () => ui.showSidebar());
+      on($('#settings-btn'), 'click', () => ui.showSettings());
+      
       // Page input
-      const gotoInput = $('#goto');
-      if (gotoInput) {
-        on(gotoInput, 'change', (e) => {
-          const page = parseInt(e.target.value);
-          if (page >= 1 && page <= STATE.totalGlobalPages) {
-            this.goToPage(page);
-          }
+      on($('#page-input'), 'change', (e) => this.goToPage(e.target.value));
+      
+      // Progress bar
+      on($('#progress-bar'), 'click', (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const ratio = (e.clientX - rect.left) / rect.width;
+        const page = Math.ceil(ratio * state.totalPages);
+        this.goToPage(page);
+      });
+      
+      // Sidebar
+      on($('#close-sidebar'), 'click', () => ui.hideSidebar());
+      on($('#overlay'), 'click', () => ui.hideSidebar());
+      
+      // Sidebar tabs
+      $$('.tab-btn').forEach(btn => {
+        on(btn, 'click', () => {
+          $$('.tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          const tabName = btn.dataset.tab;
+          $$('.tab-content').forEach(content => {
+            content.classList.toggle('active', content.id === `${tabName}-content`);
+          });
+        });
+      });
+      
+      // Settings modal
+      on($('#close-settings'), 'click', () => ui.hideSettings());
+      on($('#settings-modal .modal-backdrop'), 'click', () => ui.hideSettings());
+      
+      // Theme buttons
+      $$('.theme-btn').forEach(btn => {
+        on(btn, 'click', () => {
+          $$('.theme-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          settings.update('theme', btn.dataset.theme);
+        });
+      });
+      
+      // Font buttons
+      $$('.font-btn').forEach(btn => {
+        on(btn, 'click', () => {
+          $$('.font-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          settings.update('font', btn.dataset.font);
+        });
+      });
+      
+      // Width buttons
+      $$('.width-btn').forEach(btn => {
+        on(btn, 'click', () => {
+          $$('.width-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          settings.update('textWidth', btn.dataset.width);
+        });
+      });
+      
+      // Range sliders
+      const fontSizeSlider = $('#font-size-slider');
+      const fontSizeValue = $('#font-size-value');
+      if (fontSizeSlider && fontSizeValue) {
+        fontSizeSlider.value = state.settings.fontSize;
+        on(fontSizeSlider, 'input', (e) => {
+          const size = parseInt(e.target.value);
+          fontSizeValue.textContent = `${size}px`;
+          settings.update('fontSize', size);
         });
       }
-
+      
+      const lineHeightSlider = $('#line-height-slider');
+      const lineHeightValue = $('#line-height-value');
+      if (lineHeightSlider && lineHeightValue) {
+        lineHeightSlider.value = state.settings.lineHeight;
+        on(lineHeightSlider, 'input', (e) => {
+          const height = parseFloat(e.target.value);
+          lineHeightValue.textContent = height.toFixed(1);
+          settings.update('lineHeight', height);
+        });
+      }
+      
       // Keyboard shortcuts
       on(document, 'keydown', (e) => {
-        if (e.key === 'ArrowRight' || e.key === ' ') {
-          e.preventDefault();
-          this.nextPage();
-        } else if (e.key === 'ArrowLeft') {
-          e.preventDefault();
-          this.prevPage();
-        } else if (e.key === 'Escape') {
-          this.hideSidebar();
-          this.hideTopbar();
-        } else if (e.key === 't' && e.ctrlKey) {
-          e.preventDefault();
-          this.showSidebar();
-        }
-      });
-
-      // Sidebar tabs
-      $$('.tab').forEach(tab => {
-        on(tab, 'click', () => {
-          $$('.tab').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          
-          const panelId = tab.dataset.tab;
-          $$('.panel').forEach(panel => {
-            panel.classList.toggle('active', panel.dataset.panel === panelId);
-          });
-        });
-      });
-
-      // Modal close buttons
-      $$('dialog').forEach(dialog => {
-        const closeBtn = dialog.querySelector('[value="close"]');
-        if (closeBtn) {
-          on(closeBtn, 'click', () => dialog.close());
-        }
-      });
-    },
-
-    nextPage() {
-      if (STATE.currentChapter < STATE.chapters.length - 1) {
-        this.displayChapter(STATE.currentChapter + 1);
-      }
-      this.saveProgress();
-    },
-
-    prevPage() {
-      if (STATE.currentChapter > 0) {
-        this.displayChapter(STATE.currentChapter - 1);
-      }
-      this.saveProgress();
-    },
-
-    goToChapter(index) {
-      if (index >= 0 && index < STATE.chapters.length) {
-        this.displayChapter(index);
-        this.saveProgress();
-      }
-    },
-
-    goToPage(globalPage) {
-      // Find which chapter contains this global page
-      for (let i = 0; i < STATE.chapterStart.length; i++) {
-        const start = STATE.chapterStart[i];
-        const end = start + STATE.chapterPages[i] - 1;
+        if (e.target.tagName === 'INPUT') return;
         
-        if (globalPage >= start && globalPage <= end) {
-          this.displayChapter(i);
-          break;
+        switch (e.key) {
+          case 'ArrowLeft':
+          case 'PageUp':
+            e.preventDefault();
+            this.prevPage();
+            break;
+          case 'ArrowRight':
+          case 'PageDown':
+          case ' ':
+            e.preventDefault();
+            this.nextPage();
+            break;
+          case 'Home':
+            e.preventDefault();
+            this.goToPage(1);
+            break;
+          case 'End':
+            e.preventDefault();
+            this.goToPage(state.totalPages);
+            break;
+          case 'Escape':
+            if (state.settingsVisible) {
+              ui.hideSettings();
+            } else if (state.sidebarVisible) {
+              ui.hideSidebar();
+            } else if (state.uiVisible) {
+              ui.toggleUI();
+            }
+            break;
+          case 't':
+            if (e.ctrlKey) {
+              e.preventDefault();
+              ui.showSidebar();
+            }
+            break;
+          case 's':
+            if (e.ctrlKey) {
+              e.preventDefault();
+              ui.showSettings();
+            }
+            break;
         }
-      }
-      this.saveProgress();
-    },
-
-    updateProgress() {
-      const currentGlobal = STATE.chapterStart[STATE.currentChapter];
-      const total = STATE.totalGlobalPages;
-      
-      // Update progress text
-      const progressText = $('#progress-text');
-      if (progressText) {
-        progressText.textContent = `${currentGlobal} из ${total} • ~3 мин`;
-      }
-
-      // Update progress bar
-      const progressFill = $('#progress-fill');
-      if (progressFill) {
-        const ratio = (currentGlobal - 1) / Math.max(1, total - 1);
-        progressFill.style.width = `${ratio * 100}%`;
-      }
-
-      // Update page input
-      const gotoInput = $('#goto');
-      const totalSpan = $('#total');
-      if (gotoInput) gotoInput.value = currentGlobal;
-      if (totalSpan) totalSpan.textContent = `/ ${total}`;
-
-      // Highlight active chapter in TOC
-      $$('#toc-list a').forEach((link, index) => {
-        link.classList.toggle('active', index === STATE.currentChapter);
       });
-    },
-
-    saveProgress() {
-      storage.set('premium_reader_progress_hadji', {
-        page: STATE.chapterStart[STATE.currentChapter],
-        chapter: STATE.currentChapter
-      });
-    },
-
-    // UI helpers
-    showSidebar() {
-      $('#sidebar').classList.add('show');
-      $('#overlay').classList.add('show');
-    },
-
-    hideSidebar() {
-      $('#sidebar').classList.remove('show');
-      $('#overlay').classList.remove('show');
-    },
-
-    toggleTopbar() {
-      $('#topbar').classList.toggle('show');
-    },
-
-    hideTopbar() {
-      $('#topbar').classList.remove('show');
-    },
-
-    showSettings() {
-      const modal = $('#modal-settings');
-      if (modal) modal.showModal();
-    },
-
-    hideLoading() {
-      const loading = $('#loading');
-      if (loading) {
-        loading.classList.add('hidden');
-      }
-    },
-
-    showError(message) {
-      const loading = $('#loading');
-      if (loading) {
-        loading.innerHTML = `
-          <div class="loading__box">
-            <div class="loading__title">Ошибка</div>
-            <div class="loading__hint">${message}</div>
-          </div>
-        `;
-      }
     }
   };
 
   // Initialize when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => Reader.init());
+    document.addEventListener('DOMContentLoaded', () => reader.init());
   } else {
-    Reader.init();
+    reader.init();
   }
 })();
