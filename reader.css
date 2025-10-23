@@ -197,12 +197,13 @@ body {
 
 .page-content {
   flex: 1;
-  padding: 20px 16px; /* БЕЗ лишних отступов снизу */
+  padding: 20px 16px;
   font-family: var(--font-reading);
   font-size: var(--font-size-reading);
   line-height: var(--line-height-reading);
   color: var(--text-primary);
-  overflow: hidden; /* НЕ МОЖЕТ выйти за границы */
+  /* УБИРАЕМ overflow: hidden !!! */
+  overflow-y: auto; /* Разрешаем прокрутку если нужно */
   word-wrap: break-word;
 }
 
