@@ -137,8 +137,8 @@ const createPages = () => {
   const fontSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size-reading'));
   const lineHeight = fontSize * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-height-reading'));
   const linesPerPage = Math.floor(availableHeight / lineHeight);
-  const wordsPerLine = isMobile ? 6 : 9; // слов в строке
-  const wordsPerPage = Math.floor(linesPerPage * wordsPerLine * 0.9); // с запасом 10%
+  const wordsPerLine = isMobile ? 5 : 8; // Меньше слов в строке
+  const wordsPerPage = Math.floor(linesPerPage * wordsPerLine * 0.8); // Больше запас - 20%
   
   console.log('Lines:', linesPerPage, 'Words per page:', wordsPerPage, 'Mobile:', isMobile);
 
