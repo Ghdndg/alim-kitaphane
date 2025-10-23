@@ -138,7 +138,8 @@ const createPages = () => {
   const lineHeight = fontSize * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-height-reading'));
   const linesPerPage = Math.floor(availableHeight / lineHeight);
   const charsPerLine = isMobile ? 35 : 50; // Оптимальное количество символов в строке
-  const charsPerPage = Math.floor(linesPerPage * charsPerLine * 0.92); // Заполняем на 92%
+  const charsPerPage = Math.floor(linesPerPage * charsPerLine * 0.88); // Заполняем на 88%
+
   
   console.log('Viewport:', viewportHeight, 'Available:', availableHeight, 'Lines:', linesPerPage, 'Chars:', charsPerPage, 'Mobile:', isMobile);
 
