@@ -206,6 +206,13 @@ body {
   overflow-x: hidden; /* Скрываем горизонтальную прокрутку */
   /* Убираем flexbox для естественного потока текста */
   min-height: 0; /* Важно для flex-контейнера */
+  
+  /* Настройки для правильного переноса слов */
+  word-wrap: break-word; /* Перенос длинных слов */
+  word-break: break-word; /* Разрыв слов при необходимости */
+  hyphens: auto; /* Автоматические переносы */
+  text-align: justify; /* Выравнивание по ширине */
+  text-justify: inter-word; /* Равномерное распределение пробелов */
 }
 
 
@@ -231,6 +238,9 @@ body {
   text-align: justify;
   text-justify: inter-word;
   hyphens: auto;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word; /* Современный стандарт */
 }
 
 .page-content p:last-child {
