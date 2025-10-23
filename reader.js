@@ -293,6 +293,7 @@ const createPages = () => {
 
 
 
+
   // Build table of contents with page numbers
   const buildTOC = () => {
     const tocList = $('#toc-list');
