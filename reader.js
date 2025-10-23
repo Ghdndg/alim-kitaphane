@@ -32,10 +32,13 @@
     chapters: [],
     content: [],
     
-    // Reading position
-    currentChapter: 0,
-    currentPage: 1,
-    totalPages: 1,
+    // Pagination data
+    pages: [], // Array of page objects: { content: string, chapterIndex: number, pageInChapter: number }
+    currentPageIndex: 0,
+    totalPages: 0,
+    
+    // Chapter mapping
+    chapterStartPages: [], // First page index for each chapter
     
     // UI state
     uiVisible: false,
@@ -50,9 +53,6 @@
       lineHeight: 1.6,
       textWidth: 'medium'
     },
-    
-    // Cache
-    pageCache: new Map(),
     
     // Reading stats
     readingStartTime: Date.now(),
@@ -82,6 +82,10 @@
       document.documentElement.style.setProperty('--font-size-reading', `${state.settings.fontSize}px`);
       document.documentElement.style.setProperty('--line-height-reading', state.settings.lineHeight);
       
+      // Apply text width
+      const widths = { narrow: '520px', medium: '680px', wide: '800px' };
+      document.documentElement.style.setProperty('--text-width', widths[state.settings.textWidth] || widths.medium);
+      
       // Apply font family
       const fontMap = {
         crimson: '"Crimson Text", Georgia, "Times New Roman", serif',
@@ -98,8 +102,11 @@
       this.apply();
       // Trigger page recalculation if typography changed
       if (['fontSize', 'lineHeight', 'textWidth'].includes(key)) {
-        reader.calculatePages();
-        reader.renderCurrentPage();
+        setTimeout(() => {
+          paginator.calculatePages();
+          reader.renderCurrentPage();
+          ui.updateProgress();
+        }, 100);
       }
     }
   };
@@ -108,18 +115,207 @@
   const progress = {
     save() {
       storage.set('crimchitalka_progress', {
-        chapter: state.currentChapter,
-        page: state.currentPage,
+        pageIndex: state.currentPageIndex,
         timestamp: Date.now()
       });
     },
     
     load() {
       const saved = storage.get('crimchitalka_progress');
-      if (saved) {
-        state.currentChapter = Math.max(0, Math.min(saved.chapter || 0, state.chapters.length - 1));
-        state.currentPage = Math.max(1, saved.page || 1);
+      if (saved && saved.pageIndex !== undefined) {
+        state.currentPageIndex = Math.max(0, Math.min(saved.pageIndex, state.totalPages - 1));
       }
+    }
+  };
+
+  // Page calculation engine
+  const paginator = {
+    calculatePages() {
+      ui.showLoading('Создание страниц...');
+      
+      // Clear existing pages
+      state.pages = [];
+      state.chapterStartPages = [];
+      
+      // Create a hidden measurement container
+      const measureContainer = this.createMeasureContainer();
+      
+      try {
+        state.chapters.forEach((chapter, chapterIndex) => {
+          // Mark the start of this chapter
+          state.chapterStartPages[chapterIndex] = state.pages.length;
+          
+          const chapterContent = state.content[chapterIndex] || '';
+          const pages = this.paginateChapter(chapterContent, chapterIndex, measureContainer);
+          state.pages.push(...pages);
+          
+          ui.showLoading(`Обработка глав: ${chapterIndex + 1}/${state.chapters.length}`);
+        });
+        
+        state.totalPages = state.pages.length;
+        
+        // Clean up
+        document.body.removeChild(measureContainer);
+        
+      } catch (error) {
+        console.error('Pagination failed:', error);
+        document.body.removeChild(measureContainer);
+        throw error;
+      }
+    },
+    
+    createMeasureContainer() {
+      const container = document.createElement('div');
+      container.style.cssText = `
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        visibility: hidden;
+      `;
+      
+      const page = document.createElement('div');
+      page.className = 'page';
+      
+      const pageContent = document.createElement('div');
+      pageContent.className = 'page-content';
+      pageContent.style.cssText = `
+        height: calc(100vh - 160px);
+        overflow: hidden;
+        padding: 40px;
+      `;
+      
+      page.appendChild(pageContent);
+      container.appendChild(page);
+      document.body.appendChild(container);
+      
+      return { container, page, pageContent };
+    },
+    
+    paginateChapter(htmlContent, chapterIndex, measureContainer) {
+      const { pageContent } = measureContainer;
+      const pages = [];
+      
+      // Create a temporary DOM structure
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlContent;
+      
+      // Get all child elements
+      const elements = Array.from(tempDiv.children);
+      
+      let currentPageContent = '';
+      let pageNumber = 1;
+      
+      elements.forEach((element, elementIndex) => {
+        const elementHTML = element.outerHTML;
+        const testContent = currentPageContent + elementHTML;
+        
+        // Test if content fits on current page
+        pageContent.innerHTML = testContent;
+        
+        if (pageContent.scrollHeight > pageContent.clientHeight) {
+          // Content overflows - save current page and start new one
+          if (currentPageContent.trim()) {
+            pages.push({
+              content: currentPageContent,
+              chapterIndex: chapterIndex,
+              pageInChapter: pageNumber,
+              chapterTitle: state.chapters[chapterIndex]?.title || `Глава ${chapterIndex + 1}`
+            });
+            pageNumber++;
+          }
+          
+          // Start new page with current element
+          currentPageContent = elementHTML;
+          pageContent.innerHTML = elementHTML;
+          
+          // Handle very long elements that don't fit on a single page
+          if (pageContent.scrollHeight > pageContent.clientHeight) {
+            const splitPages = this.splitLongElement(element, chapterIndex, pageNumber, measureContainer);
+            pages.push(...splitPages);
+            pageNumber += splitPages.length;
+            currentPageContent = '';
+          }
+        } else {
+          // Content fits - add to current page
+          currentPageContent = testContent;
+        }
+      });
+      
+      // Add the last page if it has content
+      if (currentPageContent.trim()) {
+        pages.push({
+          content: currentPageContent,
+          chapterIndex: chapterIndex,
+          pageInChapter: pageNumber,
+          chapterTitle: state.chapters[chapterIndex]?.title || `Глава ${chapterIndex + 1}`
+        });
+      }
+      
+      // Ensure at least one page per chapter
+      if (pages.length === 0) {
+        pages.push({
+          content: htmlContent || `<h1>${state.chapters[chapterIndex]?.title || `Глава ${chapterIndex + 1}`}</h1>`,
+          chapterIndex: chapterIndex,
+          pageInChapter: 1,
+          chapterTitle: state.chapters[chapterIndex]?.title || `Глава ${chapterIndex + 1}`
+        });
+      }
+      
+      return pages;
+    },
+    
+    splitLongElement(element, chapterIndex, startPageNumber, measureContainer) {
+      const { pageContent } = measureContainer;
+      const pages = [];
+      
+      // For very long elements (like long paragraphs), split by sentences
+      if (element.tagName === 'P' && element.textContent.length > 500) {
+        const sentences = element.textContent.split(/(?<=[.!?…])\s+/);
+        let currentContent = `<${element.tagName.toLowerCase()}>`;
+        let pageNumber = startPageNumber;
+        
+        sentences.forEach(sentence => {
+          const testContent = currentContent + sentence + ' ';
+          pageContent.innerHTML = testContent + `</${element.tagName.toLowerCase()}>`;
+          
+          if (pageContent.scrollHeight > pageContent.clientHeight && currentContent.length > element.tagName.length + 3) {
+            // Save current page
+            pages.push({
+              content: currentContent + `</${element.tagName.toLowerCase()}>`,
+              chapterIndex: chapterIndex,
+              pageInChapter: pageNumber,
+              chapterTitle: state.chapters[chapterIndex]?.title || `Глава ${chapterIndex + 1}`
+            });
+            pageNumber++;
+            currentContent = `<${element.tagName.toLowerCase()}>${sentence} `;
+          } else {
+            currentContent = testContent;
+          }
+        });
+        
+        // Add final page
+        if (currentContent.length > element.tagName.length + 3) {
+          pages.push({
+            content: currentContent + `</${element.tagName.toLowerCase()}>`,
+            chapterIndex: chapterIndex,
+            pageInChapter: pageNumber,
+            chapterTitle: state.chapters[chapterIndex]?.title || `Глава ${chapterIndex + 1}`
+          });
+        }
+      } else {
+        // For other elements, just put on single page (might overflow)
+        pages.push({
+          content: element.outerHTML,
+          chapterIndex: chapterIndex,
+          pageInChapter: startPageNumber,
+          chapterTitle: state.chapters[chapterIndex]?.title || `Глава ${chapterIndex + 1}`
+        });
+      }
+      
+      return pages;
     }
   };
 
@@ -177,6 +373,9 @@
     },
     
     updateProgress() {
+      const currentPage = state.currentPageIndex + 1;
+      const totalPages = state.totalPages;
+      
       const currentPos = $('#current-pos');
       const totalPos = $('#total-pos');
       const readingTime = $('#reading-time');
@@ -184,24 +383,23 @@
       const progressHandle = $('#progress-handle');
       const pageInput = $('#page-input');
       
-      if (currentPos) currentPos.textContent = state.currentPage;
-      if (totalPos) totalPos.textContent = state.totalPages;
+      if (currentPos) currentPos.textContent = currentPage;
+      if (totalPos) totalPos.textContent = totalPages;
       if (pageInput) {
-        pageInput.value = state.currentPage;
-        pageInput.max = state.totalPages;
+        pageInput.value = currentPage;
+        pageInput.max = totalPages;
       }
       
-      // Calculate reading time
-      const chapter = state.chapters[state.currentChapter];
-      if (chapter && readingTime) {
-        const content = state.content[state.currentChapter] || '';
-        const wordCount = content.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length;
+      // Calculate reading time for current page
+      if (readingTime && state.pages[state.currentPageIndex]) {
+        const currentPageData = state.pages[state.currentPageIndex];
+        const wordCount = currentPageData.content.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length;
         const minutes = Math.ceil(wordCount / state.wordsPerMinute);
         readingTime.textContent = `~${minutes} мин`;
       }
       
       // Update progress bar
-      const progress = state.totalPages > 1 ? (state.currentPage - 1) / (state.totalPages - 1) : 0;
+      const progress = totalPages > 1 ? (currentPage - 1) / (totalPages - 1) : 0;
       if (progressFill) progressFill.style.width = `${progress * 100}%`;
       if (progressHandle) progressHandle.style.left = `${progress * 100}%`;
     },
@@ -211,17 +409,29 @@
       if (!tocList) return;
       
       tocList.innerHTML = '';
-      state.chapters.forEach((chapter, index) => {
+      state.chapters.forEach((chapter, chapterIndex) => {
+        const startPageIndex = state.chapterStartPages[chapterIndex];
+        const startPageNumber = startPageIndex + 1;
+        
         const item = document.createElement('div');
         item.className = 'toc-item';
-        if (index === state.currentChapter) item.classList.add('active');
+        
+        // Highlight current chapter
+        const currentPage = state.pages[state.currentPageIndex];
+        if (currentPage && currentPage.chapterIndex === chapterIndex) {
+          item.classList.add('active');
+        }
         
         item.innerHTML = `
-          <div class="toc-title">${chapter.title || `Глава ${index + 1}`}</div>
-          <div class="toc-page">Страница ${index + 1}</div>
+          <div class="toc-title">${chapter.title || `Глава ${chapterIndex + 1}`}</div>
+          <div class="toc-page">Страница ${startPageNumber}</div>
         `;
         
-        on(item, 'click', () => reader.goToChapter(index));
+        on(item, 'click', () => {
+          reader.goToPage(startPageNumber);
+          this.hideSidebar();
+        });
+        
         tocList.appendChild(item);
       });
     }
@@ -240,13 +450,15 @@
         await this.loadBook();
         
         // Calculate pages
-        this.calculatePages();
+        paginator.calculatePages();
         
         // Restore reading position
         progress.load();
         
-        // Render UI
+        // Render current page
         this.renderCurrentPage();
+        
+        // Update UI
         ui.renderTOC();
         ui.updateProgress();
         
@@ -256,10 +468,10 @@
         // Hide loading
         ui.hideLoading();
         
-        // Show UI briefly then hide
+        // Show UI briefly then hide for immersive reading
         setTimeout(() => {
           ui.toggleUI();
-          setTimeout(() => ui.toggleUI(), 2000);
+          setTimeout(() => ui.toggleUI(), 3000);
         }, 500);
         
       } catch (error) {
@@ -305,27 +517,22 @@
       }
     },
     
-    calculatePages() {
-      // Simple approach: each chapter is one "page"
-      // In a real implementation, you'd measure actual text height
-      state.totalPages = state.chapters.length;
-    },
-    
     renderCurrentPage() {
       const pageContent = $('#page-content');
-      if (!pageContent) return;
+      if (!pageContent || !state.pages.length) return;
       
-      const chapterIndex = state.currentChapter;
-      const content = state.content[chapterIndex] || '<p>Глава не найдена</p>';
+      const currentPageData = state.pages[state.currentPageIndex];
+      if (!currentPageData) return;
       
-      // Update page content
-      pageContent.innerHTML = content;
+      // Render page content WITHOUT scroll
+      pageContent.innerHTML = currentPageData.content;
+      pageContent.style.overflow = 'hidden'; // No scrolling!
       
       // Update book title
       const bookTitle = $('#book-title');
-      const chapter = state.chapters[chapterIndex];
-      if (bookTitle && chapter) {
-        bookTitle.textContent = chapter.bookTitle || 'КрымЧиталка';
+      if (bookTitle) {
+        const chapter = state.chapters[currentPageData.chapterIndex];
+        bookTitle.textContent = chapter?.bookTitle || 'КрымЧиталка';
       }
       
       // Update progress
@@ -334,37 +541,46 @@
       
       // Save progress
       progress.save();
+      
+      // Update navigation buttons
+      this.updateNavigationButtons();
     },
     
-    goToChapter(index) {
-      if (index >= 0 && index < state.chapters.length) {
-        state.currentChapter = index;
-        state.currentPage = index + 1; // Simple mapping
-        this.renderCurrentPage();
-        ui.hideSidebar();
+    updateNavigationButtons() {
+      const prevBtn = $('#prev-btn');
+      const nextBtn = $('#next-btn');
+      
+      if (prevBtn) {
+        prevBtn.disabled = state.currentPageIndex === 0;
+      }
+      
+      if (nextBtn) {
+        nextBtn.disabled = state.currentPageIndex >= state.totalPages - 1;
       }
     },
     
-    goToPage(page) {
-      const pageNumber = Math.max(1, Math.min(parseInt(page) || 1, state.totalPages));
-      const chapterIndex = pageNumber - 1; // Simple mapping
-      this.goToChapter(chapterIndex);
+    goToPage(pageNumber) {
+      const pageIndex = Math.max(0, Math.min(pageNumber - 1, state.totalPages - 1));
+      if (pageIndex !== state.currentPageIndex) {
+        state.currentPageIndex = pageIndex;
+        this.renderCurrentPage();
+      }
     },
     
     nextPage() {
-      if (state.currentChapter < state.chapters.length - 1) {
-        this.goToChapter(state.currentChapter + 1);
+      if (state.currentPageIndex < state.totalPages - 1) {
+        this.goToPage(state.currentPageIndex + 2); // +2 because goToPage expects 1-based
       }
     },
     
     prevPage() {
-      if (state.currentChapter > 0) {
-        this.goToChapter(state.currentChapter - 1);
+      if (state.currentPageIndex > 0) {
+        this.goToPage(state.currentPageIndex); // current index is 0-based, so this goes to previous
       }
     },
     
     bindEvents() {
-      // Touch zones
+      // Touch zones for page turning
       on($('#prev-zone'), 'click', () => this.prevPage());
       on($('#next-zone'), 'click', () => this.nextPage());
       on($('#menu-zone'), 'click', () => ui.toggleUI());
@@ -379,17 +595,25 @@
       on($('#settings-btn'), 'click', () => ui.showSettings());
       
       // Page input
-      on($('#page-input'), 'change', (e) => this.goToPage(e.target.value));
+      on($('#page-input'), 'change', (e) => {
+        const pageNumber = parseInt(e.target.value);
+        if (pageNumber >= 1 && pageNumber <= state.totalPages) {
+          this.goToPage(pageNumber);
+        } else {
+          // Reset to current page if invalid
+          e.target.value = state.currentPageIndex + 1;
+        }
+      });
       
-      // Progress bar
+      // Progress bar click
       on($('#progress-bar'), 'click', (e) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const ratio = (e.clientX - rect.left) / rect.width;
-        const page = Math.ceil(ratio * state.totalPages);
-        this.goToPage(page);
+        const pageNumber = Math.ceil(ratio * state.totalPages);
+        this.goToPage(pageNumber);
       });
       
-      // Sidebar
+      // Sidebar controls
       on($('#close-sidebar'), 'click', () => ui.hideSidebar());
       on($('#overlay'), 'click', () => ui.hideSidebar());
       
@@ -410,58 +634,12 @@
       on($('#close-settings'), 'click', () => ui.hideSettings());
       on($('#settings-modal .modal-backdrop'), 'click', () => ui.hideSettings());
       
-      // Theme buttons
-      $$('.theme-btn').forEach(btn => {
-        on(btn, 'click', () => {
-          $$('.theme-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          settings.update('theme', btn.dataset.theme);
-        });
-      });
-      
-      // Font buttons
-      $$('.font-btn').forEach(btn => {
-        on(btn, 'click', () => {
-          $$('.font-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          settings.update('font', btn.dataset.font);
-        });
-      });
-      
-      // Width buttons
-      $$('.width-btn').forEach(btn => {
-        on(btn, 'click', () => {
-          $$('.width-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          settings.update('textWidth', btn.dataset.width);
-        });
-      });
-      
-      // Range sliders
-      const fontSizeSlider = $('#font-size-slider');
-      const fontSizeValue = $('#font-size-value');
-      if (fontSizeSlider && fontSizeValue) {
-        fontSizeSlider.value = state.settings.fontSize;
-        on(fontSizeSlider, 'input', (e) => {
-          const size = parseInt(e.target.value);
-          fontSizeValue.textContent = `${size}px`;
-          settings.update('fontSize', size);
-        });
-      }
-      
-      const lineHeightSlider = $('#line-height-slider');
-      const lineHeightValue = $('#line-height-value');
-      if (lineHeightSlider && lineHeightValue) {
-        lineHeightSlider.value = state.settings.lineHeight;
-        on(lineHeightSlider, 'input', (e) => {
-          const height = parseFloat(e.target.value);
-          lineHeightValue.textContent = height.toFixed(1);
-          settings.update('lineHeight', height);
-        });
-      }
+      // Settings controls
+      this.bindSettingsControls();
       
       // Keyboard shortcuts
       on(document, 'keydown', (e) => {
+        // Don't handle keys when typing in inputs
         if (e.target.tagName === 'INPUT') return;
         
         switch (e.key) {
@@ -489,7 +667,7 @@
               ui.hideSettings();
             } else if (state.sidebarVisible) {
               ui.hideSidebar();
-            } else if (state.uiVisible) {
+            } else {
               ui.toggleUI();
             }
             break;
@@ -507,6 +685,70 @@
             break;
         }
       });
+    },
+    
+    bindSettingsControls() {
+      // Theme buttons
+      $$('.theme-btn').forEach(btn => {
+        if (btn.dataset.theme === state.settings.theme) {
+          btn.classList.add('active');
+        }
+        on(btn, 'click', () => {
+          $$('.theme-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          settings.update('theme', btn.dataset.theme);
+        });
+      });
+      
+      // Font buttons
+      $$('.font-btn').forEach(btn => {
+        if (btn.dataset.font === state.settings.font) {
+          btn.classList.add('active');
+        }
+        on(btn, 'click', () => {
+          $$('.font-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          settings.update('font', btn.dataset.font);
+        });
+      });
+      
+      // Width buttons
+      $$('.width-btn').forEach(btn => {
+        if (btn.dataset.width === state.settings.textWidth) {
+          btn.classList.add('active');
+        }
+        on(btn, 'click', () => {
+          $$('.width-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          settings.update('textWidth', btn.dataset.width);
+        });
+      });
+      
+      // Font size slider
+      const fontSizeSlider = $('#font-size-slider');
+      const fontSizeValue = $('#font-size-value');
+      if (fontSizeSlider && fontSizeValue) {
+        fontSizeSlider.value = state.settings.fontSize;
+        fontSizeValue.textContent = `${state.settings.fontSize}px`;
+        on(fontSizeSlider, 'input', (e) => {
+          const size = parseInt(e.target.value);
+          fontSizeValue.textContent = `${size}px`;
+          settings.update('fontSize', size);
+        });
+      }
+      
+      // Line height slider
+      const lineHeightSlider = $('#line-height-slider');
+      const lineHeightValue = $('#line-height-value');
+      if (lineHeightSlider && lineHeightValue) {
+        lineHeightSlider.value = state.settings.lineHeight;
+        lineHeightValue.textContent = state.settings.lineHeight.toFixed(1);
+        on(lineHeightSlider, 'input', (e) => {
+          const height = parseFloat(e.target.value);
+          lineHeightValue.textContent = height.toFixed(1);
+          settings.update('lineHeight', height);
+        });
+      }
     }
   };
 
