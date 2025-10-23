@@ -117,7 +117,7 @@
   };
 
   // Real pagination - split text into pages that fit screen height
-// Оптимальная пагинация - заполняем страницы почти полностью
+// Умная пагинация по словам с сохранением читаемости
 const createPages = () => {
   $('#loading-status').textContent = 'Разбиение на страницы...';
   
@@ -126,97 +126,52 @@ const createPages = () => {
   const viewportHeight = window.innerHeight;
   const isMobile = window.innerWidth <= 768;
   
-  // Более точные размеры UI
+  // Размеры UI
   const headerHeight = isMobile ? 56 : 64;
-  const footerHeight = isMobile ? 76 : 88; // Реальная высота footer
-  const contentPadding = isMobile ? 52 : 64; // padding контента сверху и снизу
+  const footerHeight = isMobile ? 76 : 88;
+  const contentPadding = isMobile ? 60 : 72; // padding контента + запас
   
   const availableHeight = viewportHeight - headerHeight - footerHeight - contentPadding;
   
-  // Оптимальное количество символов - заполняем страницы на 92-95%
+  // Рассчитываем оптимальное количество слов на страницу
   const fontSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size-reading'));
   const lineHeight = fontSize * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-height-reading'));
   const linesPerPage = Math.floor(availableHeight / lineHeight);
-  const charsPerLine = isMobile ? 35 : 50; // Оптимальное количество символов в строке
-  const charsPerPage = Math.floor(linesPerPage * charsPerLine * 0.88); // Заполняем на 88%
-
+  const wordsPerLine = isMobile ? 6 : 9; // слов в строке
+  const wordsPerPage = Math.floor(linesPerPage * wordsPerLine * 0.9); // с запасом 10%
   
-  console.log('Viewport:', viewportHeight, 'Available:', availableHeight, 'Lines:', linesPerPage, 'Chars:', charsPerPage, 'Mobile:', isMobile);
+  console.log('Lines:', linesPerPage, 'Words per page:', wordsPerPage, 'Mobile:', isMobile);
 
   // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
     
+    // Извлекаем чистый текст
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = chapterContent;
     const textContent = tempDiv.textContent || '';
     
-    // Разбиваем на предложения
-    const sentences = textContent.split(/(?<=[.!?…])\s+/).filter(s => s.length > 0);
+    // Разбиваем на слова
+    const words = textContent.split(/\s+/).filter(w => w.length > 0);
     
-    let currentPageText = '';
     let isFirstPageOfChapter = true;
     
-    sentences.forEach((sentence, index) => {
-      const testText = currentPageText + (currentPageText ? ' ' : '') + sentence;
+    // Группируем слова в страницы
+    for (let i = 0; i < words.length; i += wordsPerPage) {
+      const pageWords = words.slice(i, i + wordsPerPage);
+      const pageText = pageWords.join(' ');
       
-      // Проверяем, поместится ли предложение
-      if (testText.length > charsPerPage && currentPageText.length > 0) {
-        // Создаем страницу с текущим текстом
-        let pageHTML = '';
-        
-        if (isFirstPageOfChapter) {
-          pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
-          isFirstPageOfChapter = false;
-        }
-        
-        // Группируем предложения в абзацы (3-4 предложения в абзац)
-        const paragraphs = currentPageText.split(/(?<=[.!?…])\s+(?=[А-ЯЁABCDEFGHIJKLMNOPQRSTUVWXYZ])/);
-        const groupedParagraphs = [];
-        const sentencesPerParagraph = 3;
-        
-        for (let i = 0; i < paragraphs.length; i += sentencesPerParagraph) {
-          const paragraphGroup = paragraphs.slice(i, i + sentencesPerParagraph).join(' ');
-          if (paragraphGroup.trim()) {
-            groupedParagraphs.push(`<p>${paragraphGroup.trim()}</p>`);
-          }
-        }
-        
-        pageHTML += groupedParagraphs.join('');
-        
-        pages.push({
-          content: pageHTML,
-          chapterIndex: chapterIndex
-        });
-        
-        // Начинаем новую страницу с текущего предложения
-        currentPageText = sentence;
-      } else {
-        // Добавляем предложение к текущей странице
-        currentPageText += (currentPageText ? ' ' : '') + sentence;
-      }
-    });
-    
-    // Добавляем последнюю страницу главы
-    if (currentPageText.trim()) {
+      // Создаем HTML для страницы
       let pageHTML = '';
       
+      // Добавляем заголовок главы только на первую страницу главы
       if (isFirstPageOfChapter) {
         pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+        isFirstPageOfChapter = false;
       }
       
-      const paragraphs = currentPageText.split(/(?<=[.!?…])\s+(?=[А-ЯЁABCDEFGHIJKLMNOPQRSTUVWXYZ])/);
-      const groupedParagraphs = [];
-      const sentencesPerParagraph = 3;
-      
-      for (let i = 0; i < paragraphs.length; i += sentencesPerParagraph) {
-        const paragraphGroup = paragraphs.slice(i, i + sentencesPerParagraph).join(' ');
-        if (paragraphGroup.trim()) {
-          groupedParagraphs.push(`<p>${paragraphGroup.trim()}</p>`);
-        }
-      }
-      
-      pageHTML += groupedParagraphs.join('');
+      // Умно разбиваем текст на абзацы
+      pageHTML += createSmartParagraphs(pageText);
       
       pages.push({
         content: pageHTML,
@@ -232,6 +187,46 @@ const createPages = () => {
   
   console.log(`Created ${totalPages} pages`);
 };
+
+// Функция для умного создания абзацев
+function createSmartParagraphs(text) {
+  // Разбиваем на предложения
+  const sentences = text.split(/(?<=[.!?…])\s+/).filter(s => s.trim().length > 0);
+  
+  if (sentences.length === 0) return `<p>${text}</p>`;
+  
+  const paragraphs = [];
+  let currentParagraph = '';
+  let sentenceCount = 0;
+  
+  sentences.forEach((sentence, index) => {
+    currentParagraph += (currentParagraph ? ' ' : '') + sentence;
+    sentenceCount++;
+    
+    // Создаем абзац после 2-4 предложений или в конце
+    const shouldBreak = sentenceCount >= 2 && (
+      sentenceCount >= 4 || // максимум 4 предложения в абзаце
+      index === sentences.length - 1 || // последнее предложение
+      sentence.match(/[.!?…]$/) && Math.random() > 0.3 // случайная разбивка для естественности
+    );
+    
+    if (shouldBreak) {
+      if (currentParagraph.trim()) {
+        paragraphs.push(`<p>${currentParagraph.trim()}</p>`);
+      }
+      currentParagraph = '';
+      sentenceCount = 0;
+    }
+  });
+  
+  // Добавляем последний абзац если остался текст
+  if (currentParagraph.trim()) {
+    paragraphs.push(`<p>${currentParagraph.trim()}</p>`);
+  }
+  
+  return paragraphs.join('');
+}
+
 
 
 
