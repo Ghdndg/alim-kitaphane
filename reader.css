@@ -202,10 +202,12 @@ body {
   font-size: var(--font-size-reading);
   line-height: var(--line-height-reading);
   color: var(--text-primary);
-  overflow: auto; /* Заменяем на auto, чтобы текст не обрезался */
+  overflow-y: auto; /* Позволяем прокрутку по вертикали */
+  overflow-x: hidden; /* Скрываем горизонтальную прокрутку */
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  min-height: 0; /* Важно для flex-контейнера */
 }
 
 
