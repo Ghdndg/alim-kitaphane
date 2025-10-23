@@ -754,6 +754,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* Мобильные исправления */
+/* Мобильные исправления */
 @media (max-width: 768px) {
   .header {
     padding: 0 16px;
@@ -764,69 +765,71 @@ input[type="range"]::-moz-range-thumb {
     font-size: 18px;
   }
   
-  /* Исправляем высоту страницы для мобильных */
+  /* Правильная высота страницы для мобильных */
   .page {
-    height: calc(100vh - 120px); /* Меньше отступ для footer */
+    height: calc(100vh - 136px); /* 56px header + 80px footer */
     border-radius: 0;
     box-shadow: none;
   }
   
   .page-content {
-    padding: 20px 16px; /* Меньше padding */
+    padding: 16px; /* Меньше padding */
+    height: 100%;
+    box-sizing: border-box;
   }
   
-  /* Footer всегда видимый на мобильных */
+  /* Footer фиксированный внизу */
   .footer {
-    position: fixed;
+    position: fixed !important;
     bottom: 0;
     left: 0;
     right: 0;
-    transform: none !important; /* Не скрываем на мобильных */
-    background: rgba(0, 0, 0, 0.9);
+    transform: none !important;
+    background: rgba(0, 0, 0, 0.95);
     backdrop-filter: blur(10px);
-    padding: 8px 16px;
+    padding: 6px 12px;
+    z-index: 100;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   .progress-section {
-    gap: 4px;
+    gap: 3px;
   }
   
   .progress-info {
-    font-size: 12px;
+    font-size: 11px;
   }
   
   .nav-controls {
-    gap: 12px;
+    gap: 8px;
   }
   
   .nav-btn {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
   }
   
   .page-input {
-    width: 60px;
-    height: 36px;
-    font-size: 14px;
+    width: 50px;
+    height: 32px;
+    font-size: 12px;
+    padding: 4px;
   }
   
   .sidebar {
     width: 100vw;
   }
   
-  /* Touch zones больше на мобильных */
+  /* Touch zones НЕ перекрывают footer */
   .touch-zones {
-    z-index: 5; /* Ниже чем footer */
+    bottom: 80px; /* Оставляем место для footer */
+    z-index: 5;
+  }
+  
+  /* Reader content не перекрывается footer */
+  .reader {
+    padding-bottom: 80px; /* Отступ для footer */
   }
 }
 
-/* Поддержка safe-area для iPhone */
-@supports (padding: max(0px)) {
-  .footer {
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
-  }
-  
-  .page {
-    height: calc(100vh - 120px - env(safe-area-inset-bottom));
-  }
-}
