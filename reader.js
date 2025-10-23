@@ -117,21 +117,19 @@
   };
 
   // Real pagination - split text into pages that fit screen height
-// ИДЕАЛЬНАЯ пагинация - добавляем контент пока помещается
-// ПРОСТАЯ пагинация по строкам - гарантированно работает
+// НАДЕЖНАЯ пагинация - фиксированные размеры страниц
 const createPages = () => {
-  $('#loading-status').textContent = 'Создание страниц...';
+  $('#loading-status').textContent = 'Разбиение на страницы...';
   
   pages = [];
   const isMobile = window.innerWidth <= 768;
   
-  // Безопасное количество строк на страницу (тестированное)
-  const linesPerPage = isMobile ? 20 : 25;
-  const wordsPerLine = isMobile ? 7 : 10;
-  const wordsPerPage = linesPerPage * wordsPerLine;
+  // Безопасные размеры для каждого устройства (проверены на практике)
+  const charsPerPage = isMobile ? 800 : 1400; // Символов на страницу
   
-  console.log('Lines per page:', linesPerPage, 'Words per page:', wordsPerPage);
+  console.log('Chars per page:', charsPerPage, 'Mobile:', isMobile);
 
+  // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
     
@@ -139,34 +137,67 @@ const createPages = () => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = chapterContent;
     const textContent = tempDiv.textContent || '';
+    
+    // Разбиваем на слова
     const words = textContent.split(/\s+/).filter(word => word.length > 0);
     
     let isFirstPageOfChapter = true;
+    let currentText = '';
     
-    // Разбиваем на страницы по фиксированному количеству слов
-    for (let i = 0; i < words.length; i += wordsPerPage) {
-      const pageWords = words.slice(i, i + wordsPerPage);
+    words.forEach((word, index) => {
+      // Добавляем слово к текущей странице
+      const testText = currentText + (currentText ? ' ' : '') + word;
       
+      // Если превышаем лимит символов, создаем страницу
+      if (testText.length > charsPerPage && currentText.length > 0) {
+        // Создаем страницу с текущим текстом
+        let pageHTML = '';
+        
+        if (isFirstPageOfChapter) {
+          pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+          isFirstPageOfChapter = false;
+        }
+        
+        // Разбиваем текст на абзацы
+        const pageWords = currentText.split(/\s+/);
+        const wordsPerParagraph = isMobile ? 25 : 35;
+        
+        for (let i = 0; i < pageWords.length; i += wordsPerParagraph) {
+          const paragraphWords = pageWords.slice(i, i + wordsPerParagraph);
+          if (paragraphWords.length > 0) {
+            pageHTML += `<p>${paragraphWords.join(' ')}</p>`;
+          }
+        }
+        
+        pages.push({
+          content: pageHTML,
+          chapterIndex: chapterIndex
+        });
+        
+        // Начинаем новую страницу с текущего слова
+        currentText = word;
+      } else {
+        currentText = testText;
+      }
+    });
+    
+    // Добавляем последнюю страницу главы
+    if (currentText.trim()) {
       let pageHTML = '';
       
-      // Заголовок только на первой странице главы  
       if (isFirstPageOfChapter) {
         pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
-        isFirstPageOfChapter = false;
       }
       
-      // Разбиваем слова на абзацы
-      const wordsPerParagraph = isMobile ? 25 : 40;
-      const paragraphs = [];
+      const pageWords = currentText.split(/\s+/);
+      const wordsPerParagraph = isMobile ? 25 : 35;
       
-      for (let j = 0; j < pageWords.length; j += wordsPerParagraph) {
-        const paragraphWords = pageWords.slice(j, j + wordsPerParagraph);
+      for (let i = 0; i < pageWords.length; i += wordsPerParagraph) {
+        const paragraphWords = pageWords.slice(i, i + wordsPerParagraph);
         if (paragraphWords.length > 0) {
-          paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
+          pageHTML += `<p>${paragraphWords.join(' ')}</p>`;
         }
       }
-      
-      pageHTML += paragraphs.join('');
       
       pages.push({
         content: pageHTML,
@@ -176,10 +207,13 @@ const createPages = () => {
   });
 
   totalPages = pages.length;
-  currentPageIndex = Math.max(0, Math.min(currentPageIndex, totalPages - 1));
+  if (currentPageIndex >= totalPages) {
+    currentPageIndex = Math.max(0, totalPages - 1);
+  }
   
-  console.log(`Created ${totalPages} pages with safe word limits`);
+  console.log(`Created ${totalPages} pages with fixed character limits`);
 };
+
 
 
 
