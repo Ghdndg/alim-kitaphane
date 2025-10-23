@@ -119,12 +119,11 @@
   // Real pagination - split text into pages that fit screen height
 const createPages = () => {
   $('#loading-status').textContent = 'Создание безопасной пагинации...';
-
+  
   pages = [];
   const isMobile = window.innerWidth <= 768;
-
-  // ОЧЕНЬ консервативные размеры - лучше недозаполнить чем обрезать
-  const charsPerPage = isMobile ? 600 : 1000;
+  const maxHeight = 800; // Максимальная высота страницы, можно настроить в зависимости от вашего дизайна
+  const charsPerPage = isMobile ? 600 : 1000; // Можно оставить лимит на символы, но лучше опираться на высоту
 
   console.log('SAFE chars per page:', charsPerPage, 'Mobile:', isMobile);
 
@@ -139,12 +138,26 @@ const createPages = () => {
 
     let isFirstPageOfChapter = true;
     let currentText = '';
+    let pageHTML = '';
+    let currentHeight = 0; // Для вычисления текущей высоты текста на странице
+
+    // Создаем невидимый элемент для измерения высоты
+    const tempElement = document.createElement('div');
+    tempElement.style.position = 'absolute';
+    tempElement.style.visibility = 'hidden';
+    tempElement.style.fontFamily = 'var(--font-reading)';
+    tempElement.style.fontSize = 'var(--font-size-reading)';
+    tempElement.style.lineHeight = 'var(--line-height-reading)';
+    document.body.appendChild(tempElement); // Добавляем в body, чтобы измерить
 
     words.forEach((word, index) => {
       const testText = currentText + (currentText ? ' ' : '') + word;
 
-      // Разделяем, когда длина текста на странице превышает лимит
-      if (testText.length > charsPerPage && currentText.length > 0) {
+      // Добавляем текст в невидимый элемент
+      tempElement.textContent = testText;
+
+      // Проверяем, превышает ли высоту текста максимальную
+      if (tempElement.offsetHeight > maxHeight && currentText.length > 0) {
         let pageHTML = '';
 
         if (isFirstPageOfChapter) {
@@ -152,7 +165,7 @@ const createPages = () => {
           isFirstPageOfChapter = false;
         }
 
-        // Разбиваем текст на абзацы с меньшим количеством слов
+        // Разбиваем на абзацы для экономии места
         const pageWords = currentText.split(/\s+/);
         const wordsPerParagraph = isMobile ? 20 : 25;
 
@@ -169,6 +182,7 @@ const createPages = () => {
         });
 
         currentText = word;
+        tempElement.textContent = currentText; // Пересчитываем для следующей порции текста
       } else {
         currentText = testText;
       }
@@ -196,6 +210,9 @@ const createPages = () => {
         chapterIndex: chapterIndex
       });
     }
+
+    // Убираем временный элемент из DOM после использования
+    document.body.removeChild(tempElement);
   });
 
   totalPages = pages.length;
@@ -205,6 +222,7 @@ const createPages = () => {
 
   console.log(`Created ${totalPages} SAFE pages`);
 };
+
 
 
 
