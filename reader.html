@@ -3,228 +3,184 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#1a1a1a" />
-  <title>КрымЧиталка — Ридер</title>
+  <meta name="theme-color" content="#0b0b0c" />
+  <title>КрымЧиталка — Премиум ридер</title>
 
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="reader.css" />
 </head>
-<body data-theme="light">
-  <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
-    <div class="loading-content">
-      <div class="loading-spinner" aria-hidden="true"></div>
-      <h2>КрымЧиталка</h2>
-      <p>Загрузка книги…</p>
+<body data-theme="auto">
+  <!-- Splash -->
+  <div id="loading" class="loading" role="status" aria-live="polite">
+    <div class="loading__box">
+      <div class="loading__spinner" aria-hidden="true"></div>
+      <div class="loading__title">КрымЧиталка</div>
+      <div class="loading__hint">Подготовка страниц…</div>
     </div>
   </div>
 
-  <header class="reader-header" id="reader-header" role="banner">
-    <div class="header-left">
-      <button id="back-btn" class="icon-btn" role="button" aria-label="Назад" title="Назад">
-        <i class="fas fa-arrow-left" aria-hidden="true"></i>
-      </button>
-      <div class="book-info" aria-live="polite">
-        <h1 id="book-title">Хаджи-Гирай</h1>
-        <span id="book-author">Алим Къуртсеит</span>
-      </div>
+  <!-- Top bar -->
+  <header class="topbar" id="topbar" role="banner">
+    <button class="btn icon" id="btn-back" aria-label="Назад" title="Назад">
+      <i class="ri-arrow-left-line" aria-hidden="true"></i>
+    </button>
+    <div class="topbar__title">
+      <div id="book-title">Хаджи‑Гирай</div>
+      <div id="book-author" class="muted">Алим Къуртсеит</div>
     </div>
-
-    <div class="header-right">
-      <button id="search-btn" class="icon-btn" role="button" aria-label="Поиск" title="Поиск (Ctrl+F)">
-        <i class="fas fa-search" aria-hidden="true"></i>
+    <div class="topbar__actions">
+      <button class="btn icon" id="btn-search" aria-label="Поиск" title="Поиск (Ctrl+F)">
+        <i class="ri-search-line" aria-hidden="true"></i>
       </button>
-      <button id="toc-btn" class="icon-btn" role="button" aria-label="Оглавление" title="Оглавление (Ctrl+T)">
-        <i class="fas fa-list" aria-hidden="true"></i>
+      <button class="btn icon" id="btn-toc" aria-label="Оглавление" title="Оглавление (Ctrl+T)">
+        <i class="ri-list-check-2" aria-hidden="true"></i>
       </button>
-      <button id="bookmark-btn" class="icon-btn" role="button" aria-label="Добавить закладку" title="Закладка (Ctrl+B)">
-        <i class="fas fa-bookmark" aria-hidden="true"></i>
+      <button class="btn icon" id="btn-bookmark" aria-label="Закладка" title="Закладка (Ctrl+B)">
+        <i class="ri-bookmark-3-line" aria-hidden="true"></i>
       </button>
-      <button id="settings-btn" class="icon-btn" role="button" aria-label="Настройки" title="Настройки (Ctrl+S)">
-        <i class="fas fa-cog" aria-hidden="true"></i>
-      </button>
-      <button id="fullscreen-btn" class="icon-btn" role="button" aria-label="Полноэкранный режим" title="Полноэкранный режим (F)">
-        <i class="fas fa-expand" aria-hidden="true"></i>
+      <button class="btn icon" id="btn-settings" aria-label="Настройки" title="Настройки (S)">
+        <i class="ri-settings-3-line" aria-hidden="true"></i>
       </button>
     </div>
   </header>
 
-  <div class="reader-container">
-    <aside class="reader-sidebar" id="reader-sidebar" role="complementary" aria-label="Боковая панель">
-      <div class="sidebar-tabs" role="tablist" aria-label="Панели">
-        <button class="sidebar-tab active" data-tab="toc" role="tab" aria-selected="true">Содержание</button>
-        <button class="sidebar-tab" data-tab="bookmarks" role="tab" aria-selected="false">Закладки</button>
-        <button class="sidebar-tab" data-tab="annotations" role="tab" aria-selected="false">Заметки</button>
-      </div>
-
-      <div class="sidebar-content" id="sidebar-content">
-        <section class="tab-panel active" data-panel="toc" role="region" aria-label="Оглавление">
-          <div class="search-box">
-            <input type="text" placeholder="Поиск по главам…" id="chapter-search" aria-label="Поиск по главам" />
-            <i class="fas fa-search" aria-hidden="true"></i>
-          </div>
-          <div class="toc-list" id="toc-list"></div>
-        </section>
-
-        <section class="tab-panel" data-panel="bookmarks" role="region" aria-label="Закладки">
-          <div class="bookmarks-list" id="bookmarks-list">
-            <p class="empty-state">Закладки не найдены</p>
-          </div>
-        </section>
-
-        <section class="tab-panel" data-panel="annotations" role="region" aria-label="Заметки">
-          <div class="annotations-list" id="annotations-list">
-            <p class="empty-state">Заметки не найдены</p>
-          </div>
-        </section>
-      </div>
-    </aside>
-
-    <main class="reader-main" role="main" aria-label="Текст книги">
-      <div class="reader-content" id="reader-content" data-mode="paginated" data-width="medium">
-        <article class="chapter-content" id="chapter-content"></article>
-      </div>
-      <div class="reader-overlay" id="reader-overlay" aria-hidden="true"></div>
-    </main>
-  </div>
-
-  <footer class="reader-footer" id="reader-footer" role="contentinfo">
-    <div class="footer-left">
-      <div class="reading-progress" aria-label="Прогресс чтения">
-        <div class="progress-info"><span id="current-page">1</span> из <span id="total-pages">100</span></div>
-        <div class="progress-bar-container">
-          <div class="progress-bar" id="progress-bar" role="slider" aria-valuemin="1" aria-valuemax="100" aria-valuenow="1" tabindex="0">
-            <div class="progress-fill" id="progress-fill"></div>
-            <div class="progress-thumb" id="progress-thumb" aria-hidden="true"></div>
-          </div>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar" role="complementary" aria-label="Оглавление и заметки">
+    <div class="sidebar__tabs" role="tablist">
+      <button class="tab active" data-tab="toc" role="tab" aria-selected="true">Содержание</button>
+      <button class="tab" data-tab="marks" role="tab" aria-selected="false">Закладки</button>
+      <button class="tab" data-tab="notes" role="tab" aria-selected="false">Заметки</button>
+    </div>
+    <div class="sidebar__body">
+      <section class="panel active" data-panel="toc" role="region">
+        <div class="field">
+          <i class="ri-search-2-line"></i>
+          <input id="toc-search" type="text" placeholder="Поиск по главам…" aria-label="Поиск по оглавлению" />
         </div>
-      </div>
+        <nav id="toc-list" class="toc"></nav>
+      </section>
+      <section class="panel" data-panel="marks" role="region">
+        <div id="marks-list" class="list empty">Закладок пока нет</div>
+      </section>
+      <section class="panel" data-panel="notes" role="region">
+        <div id="notes-list" class="list empty">Заметок пока нет</div>
+      </section>
+    </div>
+  </aside>
+
+  <!-- Reader surface -->
+  <main class="surface" id="surface" role="main" aria-label="Область чтения">
+    <!-- Page container with swipe paging -->
+    <div class="pager" id="pager" aria-live="polite">
+      <!-- Pages will be injected -->
     </div>
 
-    <div class="footer-center" aria-label="Навигация по страницам">
-      <button id="prev-page" class="nav-btn" role="button" aria-label="Предыдущая страница" title="Предыдущая (←)">
-        <i class="fas fa-chevron-left" aria-hidden="true"></i>
-      </button>
-      <div class="page-input-container">
-        <input type="number" id="page-input" min="1" value="1" title="Перейти на страницу" aria-label="Номер страницы" />
-      </div>
-      <button id="next-page" class="nav-btn" role="button" aria-label="Следующая страница" title="Следующая (→)">
-        <i class="fas fa-chevron-right" aria-hidden="true"></i>
-      </button>
+    <!-- Touch zones for premium UX: left/right tap to turn page, center to toggle UI -->
+    <div class="tap-zones">
+      <button class="zone zone--left" id="tap-left" aria-label="Назад"></button>
+      <button class="zone zone--center" id="tap-center" aria-label="Показать/скрыть панели"></button>
+      <button class="zone zone--right" id="tap-right" aria-label="Вперед"></button>
     </div>
 
-    <div class="footer-right">
-      <div class="reading-stats"><span id="reading-time">0 мин</span> | <span id="words-per-minute">200 слов/мин</span></div>
-    </div>
-  </footer>
-
-  <!-- Settings -->
-  <div class="modal" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="settings-title">Настройки чтения</h3>
-        <button class="modal-close" data-modal="settings-modal" aria-label="Закрыть">
-          <i class="fas fa-times" aria-hidden="true"></i>
-        </button>
+    <!-- Floating controls -->
+    <div class="floats">
+      <div class="floats__progress">
+        <div id="progress-text">1 из 100 • ~0 мин</div>
+        <div class="progress" id="progress">
+          <div class="progress__fill" id="progress-fill"></div>
+        </div>
       </div>
-      <div class="modal-body">
-        <div class="settings-group">
-          <label for="font-family">Шрифт</label>
-          <select id="font-family">
-            <option value="inter">Inter</option>
-            <option value="crimson">Crimson Text</option>
-            <option value="georgia">Georgia</option>
-            <option value="times">Times New Roman</option>
-            <option value="arial">Arial</option>
-          </select>
-        </div>
+      <div class="floats__nav">
+        <button class="btn pill" id="btn-prev"><i class="ri-arrow-left-s-line"></i></button>
+        <input class="page-input" id="goto" type="number" min="1" value="1" />
+        <span id="total" class="muted">/ 100</span>
+        <button class="btn pill" id="btn-next"><i class="ri-arrow-right-s-line"></i></button>
+      </div>
+    </div>
+  </main>
 
-        <div class="settings-group">
-          <label for="font-size">Размер шрифта: <span id="font-size-value">18px</span></label>
-          <input type="range" id="font-size" min="14" max="28" value="18" />
-        </div>
+  <!-- Overlays -->
+  <div id="overlay" class="overlay" aria-hidden="true"></div>
 
-        <div class="settings-group">
-          <label for="line-height">Междустрочный интервал: <span id="line-height-value">1.6</span></label>
-          <input type="range" id="line-height" min="1.4" max="2.2" value="1.6" step="0.1" />
-        </div>
-
-        <div class="settings-group">
-          <label for="text-width">Ширина текста</label>
-          <select id="text-width">
-            <option value="narrow">Узкая</option>
-            <option value="medium" selected>Средняя</option>
-            <option value="wide">Широкая</option>
-            <option value="full">На всю ширину</option>
-          </select>
-        </div>
-
-        <div class="settings-group">
-          <label>Тема оформления</label>
-          <div class="theme-options">
-            <button class="theme-btn active" data-theme="light" aria-pressed="true">
-              <div class="theme-preview light-preview"></div><span>Светлая</span>
-            </button>
-            <button class="theme-btn" data-theme="dark" aria-pressed="false">
-              <div class="theme-preview dark-preview"></div><span>Тёмная</span>
-            </button>
-            <button class="theme-btn" data-theme="sepia" aria-pressed="false">
-              <div class="theme-preview sepia-preview"></div><span>Сепия</span>
-            </button>
+  <!-- Modals -->
+  <dialog class="modal" id="modal-settings" aria-labelledby="mod-title-settings">
+    <form method="dialog" class="modal__box">
+      <header class="modal__header">
+        <h3 id="mod-title-settings">Настройки</h3>
+        <button class="btn icon" value="close" aria-label="Закрыть"><i class="ri-close-line"></i></button>
+      </header>
+      <div class="modal__body grid">
+        <label class="field-label">Тема
+          <div class="segmented">
+            <button type="button" class="seg active" data-theme="auto">Авто</button>
+            <button type="button" class="seg" data-theme="light">Светлая</button>
+            <button type="button" class="seg" data-theme="dark">Тёмная</button>
+            <button type="button" class="seg" data-theme="sepia">Сепия</button>
           </div>
-        </div>
-
-        <div class="settings-group">
-          <label for="reading-mode">Режим чтения</label>
-          <select id="reading-mode">
-            <option value="paginated" selected>Постраничный</option>
-            <option value="scroll">Непрерывная прокрутка</option>
-          </select>
-        </div>
+        </label>
+        <label class="field-label">Шрифт
+          <div class="segmented">
+            <button type="button" class="seg active" data-font="crimson">Crimson</button>
+            <button type="button" class="seg" data-font="inter">Inter</button>
+            <button type="button" class="seg" data-font="georgia">Georgia</button>
+          </div>
+        </label>
+        <label class="field-label">Размер шрифта
+          <input id="ctrl-size" type="range" min="14" max="28" value="18" />
+        </label>
+        <label class="field-label">Интерлиньяж
+          <input id="ctrl-lh" type="range" min="1.4" max="2.2" step="0.05" value="1.7" />
+        </label>
+        <label class="field-label">Ширина текста
+          <div class="segmented">
+            <button type="button" class="seg" data-width="narrow">Узкая</button>
+            <button type="button" class="seg active" data-width="medium">Средняя</button>
+            <button type="button" class="seg" data-width="wide">Широкая</button>
+          </div>
+        </label>
+        <label class="field-label">Режим
+          <div class="segmented">
+            <button type="button" class="seg active" data-mode="page">Страницы</button>
+            <button type="button" class="seg" data-mode="scroll">Прокрутка</button>
+          </div>
+        </label>
       </div>
-    </div>
-  </div>
+      <footer class="modal__footer">
+        <button class="btn primary" value="close">Готово</button>
+      </footer>
+    </form>
+  </dialog>
 
-  <!-- Search -->
-  <div class="modal" id="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-title">
-    <div class="modal-content search-modal-content">
-      <div class="modal-header">
-        <h3 id="search-title">Поиск по книге</h3>
-        <button class="modal-close" data-modal="search-modal" aria-label="Закрыть">
-          <i class="fas fa-times" aria-hidden="true"></i>
-        </button>
+  <dialog class="modal" id="modal-search" aria-labelledby="mod-title-search">
+    <form method="dialog" class="modal__box">
+      <header class="modal__header">
+        <h3 id="mod-title-search">Поиск по книге</h3>
+        <button class="btn icon" value="close" aria-label="Закрыть"><i class="ri-close-line"></i></button>
+      </header>
+      <div class="modal__body">
+        <div class="field">
+          <i class="ri-search-2-line"></i>
+          <input id="q" placeholder="Введите запрос…" />
+          <button class="btn" id="do-search" type="button">Найти</button>
+        </div>
+        <div class="opts">
+          <label><input type="checkbox" id="cs" /> С учетом регистра</label>
+          <label><input type="checkbox" id="ww" /> Целые слова</label>
+        </div>
+        <div id="search-results" class="results"></div>
       </div>
-      <div class="modal-body">
-        <div class="search-input-container">
-          <input type="text" id="search-input" placeholder="Введите текст для поиска…" aria-label="Строка поиска" />
-          <button id="search-submit" aria-label="Начать поиск">
-            <i class="fas fa-search" aria-hidden="true"></i>
-          </button>
-        </div>
-        <div class="search-options">
-          <label><input type="checkbox" id="case-sensitive" /> С учетом регистра</label>
-          <label><input type="checkbox" id="whole-words" /> Целые слова</label>
-        </div>
-        <div class="search-results" id="search-results">
-          <p class="search-placeholder">Введите текст для поиска</p>
-        </div>
-      </div>
-    </div>
-  </div>
+      <footer class="modal__footer">
+        <button class="btn" value="close">Закрыть</button>
+      </footer>
+    </form>
+  </dialog>
 
-  <!-- Context menu -->
-  <div class="context-menu" id="context-menu" role="menu" aria-hidden="true">
-    <button id="highlight-text" role="menuitem"><i class="fas fa-highlighter" aria-hidden="true"></i> Выделить</button>
-    <button id="add-note" role="menuitem"><i class="fas fa-sticky-note" aria-hidden="true"></i> Добавить заметку</button>
-    <button id="copy-text" role="menuitem"><i class="fas fa-copy" aria-hidden="true"></i> Копировать</button>
-    <button id="lookup-word" role="menuitem"><i class="fas fa-book" aria-hidden="true"></i> Найти в словаре</button>
-  </div>
-
-  <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" defer></script>
-  <script src="reader.js"></script>
+  <!-- Icons (RemixIcon) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" />
+  <script src="reader.js" type="module"></script>
 </body>
 </html>
