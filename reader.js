@@ -117,179 +117,160 @@
   };
 
   // Real pagination - split text into pages that fit screen height
-// ПРАВИЛЬНАЯ пагинация - измеряем реальный overflow
+// ИДЕАЛЬНАЯ пагинация - добавляем контент пока помещается
 const createPages = () => {
-  $('#loading-status').textContent = 'Разбиение на страницы...';
+  $('#loading-status').textContent = 'Создание идеальной пагинации...';
   
   pages = [];
 
-  // Создаем точную копию page-content для измерений
-  const measureContainer = document.createElement('div');
-  measureContainer.style.cssText = `
-    position: absolute;
-    visibility: hidden;
-    top: 0;
-    left: -9999px;
-    width: 100%;
-    height: 100%;
-  `;
-  
-  // Копируем структуру app
-  const appClone = document.createElement('div');
-  appClone.className = 'app';
-  appClone.style.cssText = `
-    display: grid;
-    grid-template-rows: var(--header-height) 1fr var(--footer-height);
-    height: 100vh;
-    width: 100vw;
-  `;
-  
-  const readerClone = document.createElement('div');
-  readerClone.className = 'reader';
-  readerClone.style.gridRow = '2';
-  
-  const pageContainerClone = document.createElement('div');
-  pageContainerClone.className = 'page-container';
-  
-  const pageClone = document.createElement('div');
-  pageClone.className = 'page';
-  
-  const contentClone = document.createElement('div');
-  contentClone.className = 'page-content';
-  
-  pageClone.appendChild(contentClone);
-  pageContainerClone.appendChild(pageClone);
-  readerClone.appendChild(pageContainerClone);
-  appClone.appendChild(readerClone);
-  measureContainer.appendChild(appClone);
-  document.body.appendChild(measureContainer);
-
-  // Принудительно применяем стили
-  measureContainer.offsetHeight;
-  
-  console.log('Content height:', contentClone.clientHeight, 'Scroll height will be measured per content');
-
-  // Убираем измерительный контейнер
-  document.body.removeChild(measureContainer);
+  // Создаем точный клон page-content для измерений
+  const createMeasureElement = () => {
+    const measure = document.createElement('div');
+    measure.className = 'page-content';
+    measure.style.cssText = `
+      position: absolute;
+      visibility: hidden;
+      top: -9999px;
+      left: 0;
+      width: 100%;
+      max-width: var(--text-width);
+      height: calc(100vh - var(--header-height) - var(--footer-height) - 32px);
+      padding: 20px 16px;
+      font-family: var(--font-reading);
+      font-size: var(--font-size-reading);
+      line-height: var(--line-height-reading);
+      color: var(--text-primary);
+      overflow: hidden;
+      box-sizing: border-box;
+    `;
+    document.body.appendChild(measure);
+    return measure;
+  };
 
   // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
     
-    // Извлекаем чистый текст
+    // Парсим содержимое главы
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = chapterContent;
-    const textContent = tempDiv.textContent || '';
     
-    // Разбиваем на предложения для лучшего контроля
-    const sentences = textContent.split(/(?<=[.!?…])\s+/).filter(s => s.trim().length > 0);
-    
-    let currentPageText = '';
+    // Получаем все абзацы и заголовки
+    const elements = Array.from(tempDiv.querySelectorAll('h1, h2, h3, p')).filter(el => 
+      el.textContent.trim().length > 0
+    );
+
+    // Если нет элементов, создаем из текста
+    if (elements.length === 0) {
+      const textContent = tempDiv.textContent || '';
+      const sentences = textContent.split(/(?<=[.!?…])\s+/).filter(s => s.trim().length > 0);
+      
+      // Группируем предложения в абзацы по 2-3
+      for (let i = 0; i < sentences.length; i += 3) {
+        const paragraphSentences = sentences.slice(i, i + 3);
+        if (paragraphSentences.length > 0) {
+          const p = document.createElement('p');
+          p.textContent = paragraphSentences.join(' ');
+          elements.push(p);
+        }
+      }
+    }
+
+    let currentPageElements = [];
     let isFirstPageOfChapter = true;
-    
-    sentences.forEach(sentence => {
-      // Тестируем добавление предложения
-      const testText = currentPageText + (currentPageText ? ' ' : '') + sentence;
+
+    elements.forEach((element, index) => {
+      // Создаем измерительный элемент
+      const measure = createMeasureElement();
       
-      // Создаем тестовую страницу для измерения
-      let testHTML = '';
+      // Добавляем заголовок главы если это первая страница
       if (isFirstPageOfChapter) {
-        testHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+        const h1 = document.createElement('h1');
+        h1.textContent = chapter.title || `Глава ${chapterIndex + 1}`;
+        measure.appendChild(h1);
       }
       
-      // Разбиваем тестовый текст на абзацы 
-      const testWords = testText.split(/\s+/);
-      const wordsPerParagraph = 30;
-      const testParagraphs = [];
+      // Добавляем все элементы текущей страницы
+      currentPageElements.forEach(el => {
+        measure.appendChild(el.cloneNode(true));
+      });
       
-      for (let i = 0; i < testWords.length; i += wordsPerParagraph) {
-        const paragraphWords = testWords.slice(i, i + wordsPerParagraph);
-        if (paragraphWords.length > 0) {
-          testParagraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
-        }
-      }
+      // Пробуем добавить новый элемент
+      measure.appendChild(element.cloneNode(true));
       
-      testHTML += testParagraphs.join('');
+      // Проверяем, помещается ли контент
+      const fits = measure.scrollHeight <= measure.clientHeight;
       
-      // Создаем временный элемент для проверки overflow
-      const testElement = document.createElement('div');
-      testElement.className = 'page-content';
-      testElement.style.cssText = `
-        position: absolute;
-        visibility: hidden;
-        top: 0;
-        left: -9999px;
-        width: 680px;
-        max-width: 680px;
-        height: calc(100vh - var(--header-height) - var(--footer-height) - 32px);
-        padding: 20px 16px;
-        font-family: var(--font-reading);
-        font-size: var(--font-size-reading);
-        line-height: var(--line-height-reading);
-        overflow: hidden;
-        box-sizing: border-box;
-      `;
-      testElement.innerHTML = testHTML;
-      document.body.appendChild(testElement);
+      // Убираем измерительный элемент
+      document.body.removeChild(measure);
       
-      const isOverflowing = testElement.scrollHeight > testElement.clientHeight;
-      document.body.removeChild(testElement);
-      
-      if (isOverflowing && currentPageText.length > 0) {
-        // Создаем страницу с текущим текстом
-        let pageHTML = '';
-        
-        if (isFirstPageOfChapter) {
-          pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
-          isFirstPageOfChapter = false;
+      if (fits) {
+        // Элемент помещается, добавляем к текущей странице
+        currentPageElements.push(element);
+      } else {
+        // Элемент не помещается, сохраняем текущую страницу
+        if (currentPageElements.length > 0) {
+          let pageHTML = '';
+          
+          if (isFirstPageOfChapter) {
+            pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+            isFirstPageOfChapter = false;
+          }
+          
+          currentPageElements.forEach(el => {
+            pageHTML += el.outerHTML;
+          });
+          
+          pages.push({
+            content: pageHTML,
+            chapterIndex: chapterIndex
+          });
         }
         
-        // Формируем абзацы из текущего текста
-        const currentWords = currentPageText.split(/\s+/);
-        const paragraphs = [];
+        // Начинаем новую страницу с текущего элемента
+        currentPageElements = [element];
         
-        for (let i = 0; i < currentWords.length; i += wordsPerParagraph) {
-          const paragraphWords = currentWords.slice(i, i + wordsPerParagraph);
-          if (paragraphWords.length > 0) {
-            paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
+        // Проверяем, помещается ли хотя бы один элемент
+        const singleMeasure = createMeasureElement();
+        if (!isFirstPageOfChapter) {
+          singleMeasure.appendChild(element.cloneNode(true));
+        } else {
+          const h1 = document.createElement('h1');
+          h1.textContent = chapter.title || `Глава ${chapterIndex + 1}`;
+          singleMeasure.appendChild(h1);
+          singleMeasure.appendChild(element.cloneNode(true));
+        }
+        
+        const singleFits = singleMeasure.scrollHeight <= singleMeasure.clientHeight;
+        document.body.removeChild(singleMeasure);
+        
+        if (!singleFits) {
+          // Элемент слишком большой, разбиваем его на части
+          const text = element.textContent;
+          const words = text.split(/\s+/);
+          const wordsPerChunk = Math.floor(words.length / 2); // Разбиваем пополам
+          
+          for (let i = 0; i < words.length; i += wordsPerChunk) {
+            const chunkWords = words.slice(i, i + wordsPerChunk);
+            const chunkElement = document.createElement('p');
+            chunkElement.textContent = chunkWords.join(' ');
+            currentPageElements.push(chunkElement);
           }
         }
-        
-        pageHTML += paragraphs.join('');
-        
-        pages.push({
-          content: pageHTML,
-          chapterIndex: chapterIndex
-        });
-        
-        // Начинаем новую страницу с текущего предложения
-        currentPageText = sentence;
-      } else {
-        // Добавляем предложение к текущей странице
-        currentPageText = testText;
       }
     });
-    
+
     // Добавляем последнюю страницу главы
-    if (currentPageText.trim()) {
+    if (currentPageElements.length > 0) {
       let pageHTML = '';
       
       if (isFirstPageOfChapter) {
         pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
       }
       
-      const currentWords = currentPageText.split(/\s+/);
-      const wordsPerParagraph = 30;
-      const paragraphs = [];
-      
-      for (let i = 0; i < currentWords.length; i += wordsPerParagraph) {
-        const paragraphWords = currentWords.slice(i, i + wordsPerParagraph);
-        if (paragraphWords.length > 0) {
-          paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
-        }
-      }
-      
-      pageHTML += paragraphs.join('');
+      currentPageElements.forEach(el => {
+        pageHTML += el.outerHTML;
+      });
       
       pages.push({
         content: pageHTML,
@@ -303,8 +284,9 @@ const createPages = () => {
     currentPageIndex = Math.max(0, totalPages - 1);
   }
   
-  console.log(`Created ${totalPages} pages using DOM overflow detection`);
+  console.log(`Created ${totalPages} pages with PERFECT pagination`);
 };
+
 
 
 
