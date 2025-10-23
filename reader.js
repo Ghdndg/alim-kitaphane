@@ -118,6 +118,7 @@
 
   // Real pagination - split text into pages that fit screen height
 // Real pagination - учитываем мобильные экраны
+// Real pagination - исправленная версия для мобильных
 const createPages = () => {
   $('#loading-status').textContent = 'Разбиение на страницы...';
   
@@ -135,22 +136,28 @@ const createPages = () => {
   `;
   document.body.appendChild(tempContainer);
 
+  // Определяем правильную высоту для мобильных и десктопа
+  const isMobile = window.innerWidth <= 768;
+  const headerHeight = isMobile ? 56 : 64;
+  const footerHeight = isMobile ? 80 : 88; // Увеличиваем отступ для footer
+  const totalUIHeight = headerHeight + footerHeight;
+  
   const tempPage = document.createElement('div');
   tempPage.className = 'page';
   tempPage.style.cssText = `
     width: 100%;
     max-width: var(--text-width);
-    height: calc(100vh - 120px - env(safe-area-inset-bottom, 0px));
+    height: calc(100vh - ${totalUIHeight}px);
     margin: 0 auto;
+    overflow: hidden;
   `;
   tempContainer.appendChild(tempPage);
 
   const tempContent = document.createElement('div');
   tempContent.className = 'page-content';
   
-  // Мобильные отступы
-  const isMobile = window.innerWidth <= 768;
-  const padding = isMobile ? '20px 16px' : '40px';
+  // Правильные отступы для мобильных и десктопа
+  const padding = isMobile ? '16px' : '40px';
   
   tempContent.style.cssText = `
     height: 100%;
@@ -166,9 +173,9 @@ const createPages = () => {
   // Force layout calculation
   tempContainer.offsetHeight;
 
-  // Доступная высота для текста
-  const availableHeight = tempContent.clientHeight;
-  console.log('Available height:', availableHeight); // Debug
+  // Доступная высота для текста (с запасом для кнопок)
+  const availableHeight = tempContent.clientHeight - (isMobile ? 20 : 0); // Запас для мобильных
+  console.log('Available height:', availableHeight, 'Mobile:', isMobile);
 
   // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
@@ -185,7 +192,7 @@ const createPages = () => {
 
     let currentPageContent = '';
 
-    elements.forEach(element => {
+    elements.forEach((element, index) => {
       const elementHTML = element.outerHTML;
       
       // Test if adding this element would overflow
@@ -229,8 +236,9 @@ const createPages = () => {
     currentPageIndex = Math.max(0, totalPages - 1);
   }
   
-  console.log(`Created ${totalPages} pages`); // Debug
+  console.log(`Created ${totalPages} pages for ${isMobile ? 'mobile' : 'desktop'}`);
 };
+
 
 
   // Build table of contents with page numbers
