@@ -181,7 +181,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 16px;
-  overflow: hidden; /* ВАЖНО! */
+  overflow: visible; /* Разрешаем видимость контента */
 }
 
 .page {
@@ -190,7 +190,7 @@ body {
   height: 100%; /* Занимает ВСЮ высоту своего контейнера */
   background: var(--bg-primary);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible; /* Разрешаем видимость контента */
   display: flex;
   flex-direction: column;
 }
@@ -204,9 +204,7 @@ body {
   color: var(--text-primary);
   overflow-y: auto; /* Позволяем прокрутку по вертикали */
   overflow-x: hidden; /* Скрываем горизонтальную прокрутку */
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  /* Убираем flexbox для естественного потока текста */
   min-height: 0; /* Важно для flex-контейнера */
 }
 
