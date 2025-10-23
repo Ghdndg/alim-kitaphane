@@ -118,159 +118,55 @@
 
   // Real pagination - split text into pages that fit screen height
 // ИДЕАЛЬНАЯ пагинация - добавляем контент пока помещается
+// ПРОСТАЯ пагинация по строкам - гарантированно работает
 const createPages = () => {
-  $('#loading-status').textContent = 'Создание идеальной пагинации...';
+  $('#loading-status').textContent = 'Создание страниц...';
   
   pages = [];
+  const isMobile = window.innerWidth <= 768;
+  
+  // Безопасное количество строк на страницу (тестированное)
+  const linesPerPage = isMobile ? 20 : 25;
+  const wordsPerLine = isMobile ? 7 : 10;
+  const wordsPerPage = linesPerPage * wordsPerLine;
+  
+  console.log('Lines per page:', linesPerPage, 'Words per page:', wordsPerPage);
 
-  // Создаем точный клон page-content для измерений
-  const createMeasureElement = () => {
-    const measure = document.createElement('div');
-    measure.className = 'page-content';
-    measure.style.cssText = `
-      position: absolute;
-      visibility: hidden;
-      top: -9999px;
-      left: 0;
-      width: 100%;
-      max-width: var(--text-width);
-      height: calc(100vh - var(--header-height) - var(--footer-height) - 32px);
-      padding: 20px 16px;
-      font-family: var(--font-reading);
-      font-size: var(--font-size-reading);
-      line-height: var(--line-height-reading);
-      color: var(--text-primary);
-      overflow: hidden;
-      box-sizing: border-box;
-    `;
-    document.body.appendChild(measure);
-    return measure;
-  };
-
-  // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
     
-    // Парсим содержимое главы
+    // Извлекаем чистый текст
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = chapterContent;
+    const textContent = tempDiv.textContent || '';
+    const words = textContent.split(/\s+/).filter(word => word.length > 0);
     
-    // Получаем все абзацы и заголовки
-    const elements = Array.from(tempDiv.querySelectorAll('h1, h2, h3, p')).filter(el => 
-      el.textContent.trim().length > 0
-    );
-
-    // Если нет элементов, создаем из текста
-    if (elements.length === 0) {
-      const textContent = tempDiv.textContent || '';
-      const sentences = textContent.split(/(?<=[.!?…])\s+/).filter(s => s.trim().length > 0);
-      
-      // Группируем предложения в абзацы по 2-3
-      for (let i = 0; i < sentences.length; i += 3) {
-        const paragraphSentences = sentences.slice(i, i + 3);
-        if (paragraphSentences.length > 0) {
-          const p = document.createElement('p');
-          p.textContent = paragraphSentences.join(' ');
-          elements.push(p);
-        }
-      }
-    }
-
-    let currentPageElements = [];
     let isFirstPageOfChapter = true;
-
-    elements.forEach((element, index) => {
-      // Создаем измерительный элемент
-      const measure = createMeasureElement();
+    
+    // Разбиваем на страницы по фиксированному количеству слов
+    for (let i = 0; i < words.length; i += wordsPerPage) {
+      const pageWords = words.slice(i, i + wordsPerPage);
       
-      // Добавляем заголовок главы если это первая страница
-      if (isFirstPageOfChapter) {
-        const h1 = document.createElement('h1');
-        h1.textContent = chapter.title || `Глава ${chapterIndex + 1}`;
-        measure.appendChild(h1);
-      }
-      
-      // Добавляем все элементы текущей страницы
-      currentPageElements.forEach(el => {
-        measure.appendChild(el.cloneNode(true));
-      });
-      
-      // Пробуем добавить новый элемент
-      measure.appendChild(element.cloneNode(true));
-      
-      // Проверяем, помещается ли контент
-      const fits = measure.scrollHeight <= measure.clientHeight;
-      
-      // Убираем измерительный элемент
-      document.body.removeChild(measure);
-      
-      if (fits) {
-        // Элемент помещается, добавляем к текущей странице
-        currentPageElements.push(element);
-      } else {
-        // Элемент не помещается, сохраняем текущую страницу
-        if (currentPageElements.length > 0) {
-          let pageHTML = '';
-          
-          if (isFirstPageOfChapter) {
-            pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
-            isFirstPageOfChapter = false;
-          }
-          
-          currentPageElements.forEach(el => {
-            pageHTML += el.outerHTML;
-          });
-          
-          pages.push({
-            content: pageHTML,
-            chapterIndex: chapterIndex
-          });
-        }
-        
-        // Начинаем новую страницу с текущего элемента
-        currentPageElements = [element];
-        
-        // Проверяем, помещается ли хотя бы один элемент
-        const singleMeasure = createMeasureElement();
-        if (!isFirstPageOfChapter) {
-          singleMeasure.appendChild(element.cloneNode(true));
-        } else {
-          const h1 = document.createElement('h1');
-          h1.textContent = chapter.title || `Глава ${chapterIndex + 1}`;
-          singleMeasure.appendChild(h1);
-          singleMeasure.appendChild(element.cloneNode(true));
-        }
-        
-        const singleFits = singleMeasure.scrollHeight <= singleMeasure.clientHeight;
-        document.body.removeChild(singleMeasure);
-        
-        if (!singleFits) {
-          // Элемент слишком большой, разбиваем его на части
-          const text = element.textContent;
-          const words = text.split(/\s+/);
-          const wordsPerChunk = Math.floor(words.length / 2); // Разбиваем пополам
-          
-          for (let i = 0; i < words.length; i += wordsPerChunk) {
-            const chunkWords = words.slice(i, i + wordsPerChunk);
-            const chunkElement = document.createElement('p');
-            chunkElement.textContent = chunkWords.join(' ');
-            currentPageElements.push(chunkElement);
-          }
-        }
-      }
-    });
-
-    // Добавляем последнюю страницу главы
-    if (currentPageElements.length > 0) {
       let pageHTML = '';
       
+      // Заголовок только на первой странице главы  
       if (isFirstPageOfChapter) {
         pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+        isFirstPageOfChapter = false;
       }
       
-      currentPageElements.forEach(el => {
-        pageHTML += el.outerHTML;
-      });
+      // Разбиваем слова на абзацы
+      const wordsPerParagraph = isMobile ? 25 : 40;
+      const paragraphs = [];
+      
+      for (let j = 0; j < pageWords.length; j += wordsPerParagraph) {
+        const paragraphWords = pageWords.slice(j, j + wordsPerParagraph);
+        if (paragraphWords.length > 0) {
+          paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
+        }
+      }
+      
+      pageHTML += paragraphs.join('');
       
       pages.push({
         content: pageHTML,
@@ -280,12 +176,11 @@ const createPages = () => {
   });
 
   totalPages = pages.length;
-  if (currentPageIndex >= totalPages) {
-    currentPageIndex = Math.max(0, totalPages - 1);
-  }
+  currentPageIndex = Math.max(0, Math.min(currentPageIndex, totalPages - 1));
   
-  console.log(`Created ${totalPages} pages with PERFECT pagination`);
+  console.log(`Created ${totalPages} pages with safe word limits`);
 };
+
 
 
 
