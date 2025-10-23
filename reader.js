@@ -117,107 +117,121 @@
   };
 
   // Real pagination - split text into pages that fit screen height
-  const createPages = () => {
-    $('#loading-status').textContent = 'Разбиение на страницы...';
+// Real pagination - учитываем мобильные экраны
+const createPages = () => {
+  $('#loading-status').textContent = 'Разбиение на страницы...';
+  
+  pages = [];
+
+  // Create temporary measuring container
+  const tempContainer = document.createElement('div');
+  tempContainer.style.cssText = `
+    position: absolute;
+    visibility: hidden;
+    top: 0;
+    left: -9999px;
+    width: 100vw;
+    height: 100vh;
+  `;
+  document.body.appendChild(tempContainer);
+
+  const tempPage = document.createElement('div');
+  tempPage.className = 'page';
+  tempPage.style.cssText = `
+    width: 100%;
+    max-width: var(--text-width);
+    height: calc(100vh - 120px - env(safe-area-inset-bottom, 0px));
+    margin: 0 auto;
+  `;
+  tempContainer.appendChild(tempPage);
+
+  const tempContent = document.createElement('div');
+  tempContent.className = 'page-content';
+  
+  // Мобильные отступы
+  const isMobile = window.innerWidth <= 768;
+  const padding = isMobile ? '20px 16px' : '40px';
+  
+  tempContent.style.cssText = `
+    height: 100%;
+    padding: ${padding};
+    font-family: var(--font-reading);
+    font-size: var(--font-size-reading);
+    line-height: var(--line-height-reading);
+    overflow: hidden;
+    box-sizing: border-box;
+  `;
+  tempPage.appendChild(tempContent);
+
+  // Force layout calculation
+  tempContainer.offsetHeight;
+
+  // Доступная высота для текста
+  const availableHeight = tempContent.clientHeight;
+  console.log('Available height:', availableHeight); // Debug
+
+  // Process each chapter
+  chapters.forEach((chapter, chapterIndex) => {
+    const chapterContent = content[chapterIndex] || '';
     
-    pages = [];
+    // Parse HTML into paragraphs
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = chapterContent;
+    
+    // Get all paragraphs and headings
+    const elements = Array.from(tempDiv.querySelectorAll('h1, h2, h3, p, blockquote')).filter(el => 
+      el.textContent.trim().length > 0
+    );
 
-    // Create temporary measuring container
-    const tempContainer = document.createElement('div');
-    tempContainer.style.cssText = `
-      position: absolute;
-      visibility: hidden;
-      top: 0;
-      left: -9999px;
-      width: 100vw;
-      height: 100vh;
-    `;
-    document.body.appendChild(tempContainer);
+    let currentPageContent = '';
 
-    const tempPage = document.createElement('div');
-    tempPage.className = 'page';
-    tempPage.style.cssText = `
-      width: 100%;
-      max-width: var(--text-width);
-      height: calc(100vh - 160px);
-      margin: 0 auto;
-    `;
-    tempContainer.appendChild(tempPage);
-
-    const tempContent = document.createElement('div');
-    tempContent.className = 'page-content';
-    tempContent.style.cssText = `
-      height: 100%;
-      padding: 40px;
-      font-family: var(--font-reading);
-      font-size: var(--font-size-reading);
-      line-height: var(--line-height-reading);
-      overflow: hidden;
-    `;
-    tempPage.appendChild(tempContent);
-
-    // Force layout calculation
-    tempContainer.offsetHeight;
-
-    // Process each chapter
-    chapters.forEach((chapter, chapterIndex) => {
-      const chapterContent = content[chapterIndex] || '';
+    elements.forEach(element => {
+      const elementHTML = element.outerHTML;
       
-      // Parse HTML into paragraphs
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = chapterContent;
+      // Test if adding this element would overflow
+      const testContent = currentPageContent + elementHTML;
+      tempContent.innerHTML = testContent;
       
-      // Get all paragraphs and headings
-      const elements = Array.from(tempDiv.querySelectorAll('h1, h2, h3, p, blockquote')).filter(el => 
-        el.textContent.trim().length > 0
-      );
-
-      let currentPageContent = '';
-      let elementsOnPage = [];
-
-      elements.forEach(element => {
-        const elementHTML = element.outerHTML;
-        
-        // Test if adding this element would overflow
-        const testContent = currentPageContent + elementHTML;
-        tempContent.innerHTML = testContent;
-        
-        const isOverflowing = tempContent.scrollHeight > tempContent.clientHeight;
-        
-        if (isOverflowing && currentPageContent) {
-          // Save current page
-          pages.push({
-            content: currentPageContent,
-            chapterIndex: chapterIndex
-          });
-          
-          // Start new page with current element
-          currentPageContent = elementHTML;
-          elementsOnPage = [element];
-        } else {
-          // Add to current page
-          currentPageContent = testContent;
-          elementsOnPage.push(element);
-        }
-      });
-
-      // Add final page if there's content
-      if (currentPageContent.trim()) {
+      // Принудительно пересчитываем layout
+      tempContent.offsetHeight;
+      
+      const isOverflowing = tempContent.scrollHeight > availableHeight;
+      
+      if (isOverflowing && currentPageContent) {
+        // Save current page
         pages.push({
           content: currentPageContent,
           chapterIndex: chapterIndex
         });
+        
+        // Start new page with current element
+        currentPageContent = elementHTML;
+      } else {
+        // Add to current page
+        currentPageContent = testContent;
       }
     });
 
-    // Cleanup
-    document.body.removeChild(tempContainer);
-    
-    totalPages = pages.length;
-    if (currentPageIndex >= totalPages) {
-      currentPageIndex = Math.max(0, totalPages - 1);
+    // Add final page if there's content
+    if (currentPageContent.trim()) {
+      pages.push({
+        content: currentPageContent,
+        chapterIndex: chapterIndex
+      });
     }
-  };
+  });
+
+  // Cleanup
+  document.body.removeChild(tempContainer);
+  
+  totalPages = pages.length;
+  if (currentPageIndex >= totalPages) {
+    currentPageIndex = Math.max(0, totalPages - 1);
+  }
+  
+  console.log(`Created ${totalPages} pages`); // Debug
+};
+
 
   // Build table of contents with page numbers
   const buildTOC = () => {
