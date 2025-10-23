@@ -1,186 +1,218 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0b0c" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1c1c1e">
   <title>Хаджи Гирай</title>
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
-
-  <link rel="stylesheet" href="reader.css" />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="reader.css">
 </head>
-<body data-theme="auto">
-  <!-- Splash -->
-  <div id="loading" class="loading" role="status" aria-live="polite">
-    <div class="loading__box">
-      <div class="loading__spinner" aria-hidden="true"></div>
-      <div class="loading__title">Хаджи Гирай</div>
-      <div class="loading__hint">Подготовка страниц…</div>
+<body>
+  <!-- App Shell -->
+  <div id="app" class="app">
+    
+    <!-- Loading State -->
+    <div id="loading" class="loading">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <h2>Хаджи Гирай</h2>
+        <p id="loading-status">Инициализация...</p>
+      </div>
     </div>
+
+    <!-- Header -->
+    <header id="header" class="header" role="banner">
+      <button class="header-btn" id="back-btn" aria-label="Назад">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m15 18-6-6 6-6"/>
+        </svg>
+      </button>
+      
+      <div class="header-title">
+        <h1 id="book-title">Хаджи Гирай</h1>
+        <span id="book-author">Алим Мидат</span>
+      </div>
+      
+      <div class="header-actions">
+        <button class="header-btn" id="search-btn" aria-label="Поиск">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        </button>
+        <button class="header-btn" id="toc-btn" aria-label="Содержание">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/>
+            <line x1="3" y1="12" x2="3.01" y2="12"/>
+            <line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </button>
+        <button class="header-btn" id="bookmark-btn" aria-label="Закладка">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+          </svg>
+        </button>
+        <button class="header-btn" id="settings-btn" aria-label="Настройки">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="m12 1 1.57 4.13L17 4l2 2-1.13 3.43L22 11v2l-4.13 1.57L19 18l-2 2-3.43-1.13L11 23H9l-1.57-4.13L4 20l-2-2 1.13-3.43L1 13v-2l4.13-1.57L4 6l2-2 3.43 1.13L11 1h2z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Reading Area -->
+    <main id="reader" class="reader" role="main">
+      <div id="page-container" class="page-container">
+        <div id="current-page" class="page">
+          <article id="page-content" class="page-content"></article>
+        </div>
+      </div>
+      
+      <!-- Touch zones for navigation -->
+      <div class="touch-zones">
+        <button class="touch-zone touch-zone--left" id="prev-zone" aria-label="Предыдущая страница"></button>
+        <button class="touch-zone touch-zone--center" id="menu-zone" aria-label="Показать/скрыть меню"></button>
+        <button class="touch-zone touch-zone--right" id="next-zone" aria-label="Следующая страница"></button>
+      </div>
+    </main>
+
+    <!-- Footer Controls -->
+    <footer id="footer" class="footer" role="contentinfo">
+      <div class="progress-section">
+        <div class="progress-info">
+          <span id="current-pos">1</span> из <span id="total-pos">100</span>
+          <span class="separator">•</span>
+          <span id="reading-time">~5 мин</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+            <div class="progress-handle" id="progress-handle"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="nav-controls">
+        <button class="nav-btn" id="prev-btn" aria-label="Назад">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+        </button>
+        <input type="number" id="page-input" class="page-input" min="1" value="1">
+        <button class="nav-btn" id="next-btn" aria-label="Вперед">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar" role="complementary">
+      <div class="sidebar-header">
+        <div class="sidebar-tabs">
+          <button class="tab-btn active" data-tab="toc">Содержание</button>
+          <button class="tab-btn" data-tab="bookmarks">Закладки</button>
+          <button class="tab-btn" data-tab="notes">Заметки</button>
+        </div>
+        <button class="close-btn" id="close-sidebar" aria-label="Закрыть">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m18 6-12 12"/>
+            <path d="m6 6 12 12"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="sidebar-content">
+        <div class="tab-content active" id="toc-content">
+          <div class="search-box">
+            <input type="text" placeholder="Поиск по содержанию..." id="toc-search">
+          </div>
+          <nav id="toc-list" class="toc-list"></nav>
+        </div>
+        
+        <div class="tab-content" id="bookmarks-content">
+          <div id="bookmarks-list" class="bookmarks-list">
+            <div class="empty-state">Закладок пока нет</div>
+          </div>
+        </div>
+        
+        <div class="tab-content" id="notes-content">
+          <div id="notes-list" class="notes-list">
+            <div class="empty-state">Заметок пока нет</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Настройки чтения</h3>
+          <button class="close-btn" id="close-settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m18 6-12 12"/>
+              <path d="m6 6 12 12"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="setting-group">
+            <label>Тема оформления</label>
+            <div class="theme-picker">
+              <button class="theme-btn active" data-theme="light">Светлая</button>
+              <button class="theme-btn" data-theme="dark">Тёмная</button>
+              <button class="theme-btn" data-theme="sepia">Сепия</button>
+            </div>
+          </div>
+          
+          <div class="setting-group">
+            <label>Шрифт</label>
+            <div class="font-picker">
+              <button class="font-btn active" data-font="crimson">Crimson Text</button>
+              <button class="font-btn" data-font="inter">Inter</button>
+              <button class="font-btn" data-font="georgia">Georgia</button>
+            </div>
+          </div>
+          
+          <div class="setting-group">
+            <label>Размер шрифта: <span id="font-size-value">18px</span></label>
+            <input type="range" id="font-size-slider" min="14" max="28" value="18" step="1">
+          </div>
+          
+          <div class="setting-group">
+            <label>Междустрочный интервал: <span id="line-height-value">1.6</span></label>
+            <input type="range" id="line-height-slider" min="1.2" max="2.4" value="1.6" step="0.1">
+          </div>
+          
+          <div class="setting-group">
+            <label>Ширина текста</label>
+            <div class="width-picker">
+              <button class="width-btn" data-width="narrow">Узкая</button>
+              <button class="width-btn active" data-width="medium">Средняя</button>
+              <button class="width-btn" data-width="wide">Широкая</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overlay -->
+    <div id="overlay" class="overlay"></div>
   </div>
 
-  <!-- Top bar -->
-  <header class="topbar" id="topbar" role="banner">
-    <button class="btn icon" id="btn-back" aria-label="Назад" title="Назад">
-      <i class="ri-arrow-left-line" aria-hidden="true"></i>
-    </button>
-    <div class="topbar__title">
-      <div id="book-title">Хаджи‑Гирай</div>
-      <div id="book-author" class="muted">Алим Мидат</div>
-    </div>
-    <div class="topbar__actions">
-      <button class="btn icon" id="btn-search" aria-label="Поиск" title="Поиск (Ctrl+F)">
-        <i class="ri-search-line" aria-hidden="true"></i>
-      </button>
-      <button class="btn icon" id="btn-toc" aria-label="Оглавление" title="Оглавление (Ctrl+T)">
-        <i class="ri-list-check-2" aria-hidden="true"></i>
-      </button>
-      <button class="btn icon" id="btn-bookmark" aria-label="Закладка" title="Закладка (Ctrl+B)">
-        <i class="ri-bookmark-3-line" aria-hidden="true"></i>
-      </button>
-      <button class="btn icon" id="btn-settings" aria-label="Настройки" title="Настройки (S)">
-        <i class="ri-settings-3-line" aria-hidden="true"></i>
-      </button>
-    </div>
-  </header>
-
-  <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar" role="complementary" aria-label="Оглавление и заметки">
-    <div class="sidebar__tabs" role="tablist">
-      <button class="tab active" data-tab="toc" role="tab" aria-selected="true">Содержание</button>
-      <button class="tab" data-tab="marks" role="tab" aria-selected="false">Закладки</button>
-      <button class="tab" data-tab="notes" role="tab" aria-selected="false">Заметки</button>
-    </div>
-    <div class="sidebar__body">
-      <section class="panel active" data-panel="toc" role="region">
-        <div class="field">
-          <i class="ri-search-2-line"></i>
-          <input id="toc-search" type="text" placeholder="Поиск по главам…" aria-label="Поиск по оглавлению" />
-        </div>
-        <nav id="toc-list" class="toc"></nav>
-      </section>
-      <section class="panel" data-panel="marks" role="region">
-        <div id="marks-list" class="list empty">Закладок пока нет</div>
-      </section>
-      <section class="panel" data-panel="notes" role="region">
-        <div id="notes-list" class="list empty">Заметок пока нет</div>
-      </section>
-    </div>
-  </aside>
-
-  <!-- Reader surface -->
-  <main class="surface" id="surface" role="main" aria-label="Область чтения">
-    <!-- Page container with swipe paging -->
-    <div class="pager" id="pager" aria-live="polite">
-      <!-- Pages will be injected -->
-    </div>
-
-    <!-- Touch zones for premium UX: left/right tap to turn page, center to toggle UI -->
-    <div class="tap-zones">
-      <button class="zone zone--left" id="tap-left" aria-label="Назад"></button>
-      <button class="zone zone--center" id="tap-center" aria-label="Показать/скрыть панели"></button>
-      <button class="zone zone--right" id="tap-right" aria-label="Вперед"></button>
-    </div>
-
-    <!-- Floating controls -->
-    <div class="floats">
-      <div class="floats__progress">
-        <div id="progress-text">1 из 100 • ~0 мин</div>
-        <div class="progress" id="progress">
-          <div class="progress__fill" id="progress-fill"></div>
-        </div>
-      </div>
-      <div class="floats__nav">
-        <button class="btn pill" id="btn-prev"><i class="ri-arrow-left-s-line"></i></button>
-        <input class="page-input" id="goto" type="number" min="1" value="1" />
-        <span id="total" class="muted">/ 100</span>
-        <button class="btn pill" id="btn-next"><i class="ri-arrow-right-s-line"></i></button>
-      </div>
-    </div>
-  </main>
-
-  <!-- Overlays -->
-  <div id="overlay" class="overlay" aria-hidden="true"></div>
-
-  <!-- Modals -->
-  <dialog class="modal" id="modal-settings" aria-labelledby="mod-title-settings">
-    <form method="dialog" class="modal__box">
-      <header class="modal__header">
-        <h3 id="mod-title-settings">Настройки</h3>
-        <button class="btn icon" value="close" aria-label="Закрыть"><i class="ri-close-line"></i></button>
-      </header>
-      <div class="modal__body grid">
-        <label class="field-label">Тема
-          <div class="segmented">
-            <button type="button" class="seg active" data-theme="auto">Авто</button>
-            <button type="button" class="seg" data-theme="light">Светлая</button>
-            <button type="button" class="seg" data-theme="dark">Тёмная</button>
-            <button type="button" class="seg" data-theme="sepia">Сепия</button>
-          </div>
-        </label>
-        <label class="field-label">Шрифт
-          <div class="segmented">
-            <button type="button" class="seg active" data-font="crimson">Crimson</button>
-            <button type="button" class="seg" data-font="inter">Inter</button>
-            <button type="button" class="seg" data-font="georgia">Georgia</button>
-          </div>
-        </label>
-        <label class="field-label">Размер шрифта
-          <input id="ctrl-size" type="range" min="14" max="28" value="18" />
-        </label>
-        <label class="field-label">Интерлиньяж
-          <input id="ctrl-lh" type="range" min="1.4" max="2.2" step="0.05" value="1.7" />
-        </label>
-        <label class="field-label">Ширина текста
-          <div class="segmented">
-            <button type="button" class="seg" data-width="narrow">Узкая</button>
-            <button type="button" class="seg active" data-width="medium">Средняя</button>
-            <button type="button" class="seg" data-width="wide">Широкая</button>
-          </div>
-        </label>
-        <label class="field-label">Режим
-          <div class="segmented">
-            <button type="button" class="seg active" data-mode="page">Страницы</button>
-            <button type="button" class="seg" data-mode="scroll">Прокрутка</button>
-          </div>
-        </label>
-      </div>
-      <footer class="modal__footer">
-        <button class="btn primary" value="close">Готово</button>
-      </footer>
-    </form>
-  </dialog>
-
-  <dialog class="modal" id="modal-search" aria-labelledby="mod-title-search">
-    <form method="dialog" class="modal__box">
-      <header class="modal__header">
-        <h3 id="mod-title-search">Поиск по книге</h3>
-        <button class="btn icon" value="close" aria-label="Закрыть"><i class="ri-close-line"></i></button>
-      </header>
-      <div class="modal__body">
-        <div class="field">
-          <i class="ri-search-2-line"></i>
-          <input id="q" placeholder="Введите запрос…" />
-          <button class="btn" id="do-search" type="button">Найти</button>
-        </div>
-        <div class="opts">
-          <label><input type="checkbox" id="cs" /> С учетом регистра</label>
-          <label><input type="checkbox" id="ww" /> Целые слова</label>
-        </div>
-        <div id="search-results" class="results"></div>
-      </div>
-      <footer class="modal__footer">
-        <button class="btn" value="close">Закрыть</button>
-      </footer>
-    </form>
-  </dialog>
-
-  <!-- Icons (RemixIcon) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" />
   <script src="reader.js"></script>
 </body>
 </html>
