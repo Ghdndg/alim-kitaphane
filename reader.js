@@ -129,7 +129,7 @@ const createPages = () => {
   // Размеры UI
   const headerHeight = isMobile ? 56 : 64;
   const footerHeight = isMobile ? 76 : 88;
-  const contentPadding = isMobile ? 60 : 80; // Учитываем padding сверху и снизу
+  const contentPadding = isMobile ? 60 : 100; // Учитываем padding сверху и снизу
   
   const availableHeight = viewportHeight - headerHeight - footerHeight - contentPadding;
   
