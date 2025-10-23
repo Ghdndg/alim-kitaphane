@@ -122,10 +122,14 @@ const createPages = () => {
   
   pages = [];
   const isMobile = window.innerWidth <= 768;
-  const maxHeight = 800; // Максимальная высота страницы, можно настроить в зависимости от вашего дизайна
-  const charsPerPage = isMobile ? 600 : 1000; // Можно оставить лимит на символы, но лучше опираться на высоту
+  
+  // Получаем реальные размеры контейнера для чтения
+  const headerHeight = 56; // var(--header-height)
+  const footerHeight = 80; // var(--footer-height)
+  const availableHeight = window.innerHeight - headerHeight - footerHeight - 32; // 32px для отступов
+  const maxHeight = Math.max(availableHeight * 0.9, 400); // 90% от доступной высоты, минимум 400px
 
-  console.log('SAFE chars per page:', charsPerPage, 'Mobile:', isMobile);
+  console.log('Available height:', availableHeight, 'Max height:', maxHeight, 'Mobile:', isMobile);
 
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
@@ -141,14 +145,31 @@ const createPages = () => {
     let pageHTML = '';
     let currentHeight = 0; // Для вычисления текущей высоты текста на странице
 
-    // Создаем невидимый элемент для измерения высоты
+    // Создаем невидимый элемент с точными стилями page-content
     const tempElement = document.createElement('div');
     tempElement.style.position = 'absolute';
     tempElement.style.visibility = 'hidden';
+    tempElement.style.top = '-9999px';
+    tempElement.style.left = '-9999px';
+    tempElement.style.width = '100%';
+    tempElement.style.maxWidth = 'var(--text-width)';
     tempElement.style.fontFamily = 'var(--font-reading)';
     tempElement.style.fontSize = 'var(--font-size-reading)';
     tempElement.style.lineHeight = 'var(--line-height-reading)';
-    document.body.appendChild(tempElement); // Добавляем в body, чтобы измерить
+    tempElement.style.padding = '20px 16px 40px 16px';
+    tempElement.style.boxSizing = 'border-box';
+    
+    // Копируем стили из page-content если он существует
+    const pageContent = $('.page-content');
+    if (pageContent) {
+      const computedStyle = window.getComputedStyle(pageContent);
+      tempElement.style.fontFamily = computedStyle.fontFamily;
+      tempElement.style.fontSize = computedStyle.fontSize;
+      tempElement.style.lineHeight = computedStyle.lineHeight;
+      tempElement.style.padding = computedStyle.padding;
+    }
+    
+    document.body.appendChild(tempElement);
 
     words.forEach((word, index) => {
       const testText = currentText + (currentText ? ' ' : '') + word;
@@ -220,7 +241,7 @@ const createPages = () => {
     currentPageIndex = Math.max(0, totalPages - 1);
   }
 
-  console.log(`Created ${totalPages} SAFE pages`);
+  console.log(`Created ${totalPages} SAFE pages with max height: ${maxHeight}px`);
 };
 
 
