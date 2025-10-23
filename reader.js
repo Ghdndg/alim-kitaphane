@@ -174,11 +174,30 @@ const createPages = () => {
     words.forEach((word, index) => {
       const testText = currentText + (currentText ? ' ' : '') + word;
 
-      // Добавляем текст в невидимый элемент
-      tempElement.textContent = testText;
+      // Создаем HTML-разметку для тестирования
+      let testHTML = '';
+      if (isFirstPageOfChapter) {
+        testHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+      }
+      
+      // Разбиваем на абзацы для тестирования
+      const testWords = testText.split(/\s+/);
+      const wordsPerParagraph = isMobile ? 20 : 25;
+      
+      for (let i = 0; i < testWords.length; i += wordsPerParagraph) {
+        const paragraphWords = testWords.slice(i, i + wordsPerParagraph);
+        if (paragraphWords.length > 0) {
+          testHTML += `<p>${paragraphWords.join(' ')}</p>`;
+        }
+      }
+
+      // Добавляем HTML в невидимый элемент
+      tempElement.innerHTML = testHTML;
 
       // Проверяем, превышает ли высоту текста максимальную
-      if (tempElement.offsetHeight > maxHeight && currentText.length > 0) {
+      const currentHeight = tempElement.offsetHeight;
+      if (currentHeight > maxHeight && currentText.length > 0) {
+        console.log(`Page break: height ${currentHeight}px > max ${maxHeight}px, text length: ${currentText.length}`);
         let pageHTML = '';
 
         if (isFirstPageOfChapter) {
@@ -203,7 +222,13 @@ const createPages = () => {
         });
 
         currentText = word;
-        tempElement.textContent = currentText; // Пересчитываем для следующей порции текста
+        // Пересчитываем для следующей порции текста с HTML-разметкой
+        let nextTestHTML = '';
+        if (isFirstPageOfChapter) {
+          nextTestHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+        }
+        nextTestHTML += `<p>${word}</p>`;
+        tempElement.innerHTML = nextTestHTML;
       } else {
         currentText = testText;
       }
