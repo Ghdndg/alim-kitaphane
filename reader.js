@@ -119,125 +119,83 @@
   // Real pagination - split text into pages that fit screen height
 // Real pagination - учитываем мобильные экраны
 // Real pagination - исправленная версия для мобильных
+// Простая но правильная пагинация для мобильных
 const createPages = () => {
   $('#loading-status').textContent = 'Разбиение на страницы...';
   
   pages = [];
 
-  // Create temporary measuring container
-  const tempContainer = document.createElement('div');
-  tempContainer.style.cssText = `
-    position: absolute;
-    visibility: hidden;
-    top: 0;
-    left: -9999px;
-    width: 100vw;
-    height: 100vh;
-  `;
-  document.body.appendChild(tempContainer);
-
-  // Определяем правильную высоту для мобильных и десктопа
+  // Получаем реальные размеры экрана
+  const viewportHeight = window.innerHeight;
   const isMobile = window.innerWidth <= 768;
+  
+  // Высота UI элементов
   const headerHeight = isMobile ? 56 : 64;
-  const footerHeight = isMobile ? 80 : 88; // Увеличиваем отступ для footer
-  const totalUIHeight = headerHeight + footerHeight;
+  const footerHeight = isMobile ? 72 : 88; // высота footer с кнопками
+  const padding = isMobile ? 40 : 64; // padding контента
   
-  const tempPage = document.createElement('div');
-  tempPage.className = 'page';
-  tempPage.style.cssText = `
-    width: 100%;
-    max-width: var(--text-width);
-    height: calc(100vh - ${totalUIHeight}px);
-    margin: 0 auto;
-    overflow: hidden;
-  `;
-  tempContainer.appendChild(tempPage);
-
-  const tempContent = document.createElement('div');
-  tempContent.className = 'page-content';
+  // Доступная высота для текста
+  const availableHeight = viewportHeight - headerHeight - footerHeight - padding;
   
-  // Правильные отступы для мобильных и десктопа
-  const padding = isMobile ? '16px' : '40px';
+  console.log('Viewport:', viewportHeight, 'Available:', availableHeight, 'Mobile:', isMobile);
+
+  // Примерные строки на страницу (учитываем высоту строки)
+  const lineHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size-reading')) * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-height-reading'));
+  const linesPerPage = Math.floor(availableHeight / lineHeight);
+  const wordsPerLine = isMobile ? 8 : 12; // меньше слов на строку на мобильных
+  const wordsPerPage = linesPerPage * wordsPerLine;
   
-  tempContent.style.cssText = `
-    height: 100%;
-    padding: ${padding};
-    font-family: var(--font-reading);
-    font-size: var(--font-size-reading);
-    line-height: var(--line-height-reading);
-    overflow: hidden;
-    box-sizing: border-box;
-  `;
-  tempPage.appendChild(tempContent);
-
-  // Force layout calculation
-  tempContainer.offsetHeight;
-
-  // Доступная высота для текста (с запасом для кнопок)
-  const availableHeight = tempContent.clientHeight - (isMobile ? 20 : 0); // Запас для мобильных
-  console.log('Available height:', availableHeight, 'Mobile:', isMobile);
+  console.log('Lines per page:', linesPerPage, 'Words per page:', wordsPerPage);
 
   // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
     
-    // Parse HTML into paragraphs
+    // Простое разбиение по словам
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = chapterContent;
+    const textContent = tempDiv.textContent || '';
     
-    // Get all paragraphs and headings
-    const elements = Array.from(tempDiv.querySelectorAll('h1, h2, h3, p, blockquote')).filter(el => 
-      el.textContent.trim().length > 0
-    );
-
-    let currentPageContent = '';
-
-    elements.forEach((element, index) => {
-      const elementHTML = element.outerHTML;
+    const words = textContent.split(/\s+/).filter(word => word.length > 0);
+    
+    // Разбиваем на страницы по количеству слов
+    for (let i = 0; i < words.length; i += wordsPerPage) {
+      const pageWords = words.slice(i, i + wordsPerPage);
+      const pageText = pageWords.join(' ');
       
-      // Test if adding this element would overflow
-      const testContent = currentPageContent + elementHTML;
-      tempContent.innerHTML = testContent;
+      // Создаем HTML для страницы
+      let pageHTML = '';
       
-      // Принудительно пересчитываем layout
-      tempContent.offsetHeight;
-      
-      const isOverflowing = tempContent.scrollHeight > availableHeight;
-      
-      if (isOverflowing && currentPageContent) {
-        // Save current page
-        pages.push({
-          content: currentPageContent,
-          chapterIndex: chapterIndex
-        });
-        
-        // Start new page with current element
-        currentPageContent = elementHTML;
-      } else {
-        // Add to current page
-        currentPageContent = testContent;
+      // Добавляем заголовок главы только на первую страницу главы
+      if (i === 0) {
+        pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
       }
-    });
-
-    // Add final page if there's content
-    if (currentPageContent.trim()) {
+      
+      // Разбиваем текст на абзацы (примерно по 100-150 слов)
+      const wordsInParagraph = isMobile ? 80 : 120;
+      const paragraphs = [];
+      for (let j = 0; j < pageWords.length; j += wordsInParagraph) {
+        const paragraphWords = pageWords.slice(j, j + wordsInParagraph);
+        paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
+      }
+      
+      pageHTML += paragraphs.join('');
+      
       pages.push({
-        content: currentPageContent,
+        content: pageHTML,
         chapterIndex: chapterIndex
       });
     }
   });
 
-  // Cleanup
-  document.body.removeChild(tempContainer);
-  
   totalPages = pages.length;
   if (currentPageIndex >= totalPages) {
     currentPageIndex = Math.max(0, totalPages - 1);
   }
   
-  console.log(`Created ${totalPages} pages for ${isMobile ? 'mobile' : 'desktop'}`);
+  console.log(`Created ${totalPages} pages`);
 };
+
 
 
 
