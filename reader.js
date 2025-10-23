@@ -117,7 +117,7 @@
   };
 
   // Real pagination - split text into pages that fit screen height
-// Умная пагинация по словам с защитой от обрезания
+// Гибридная пагинация - по словам с безопасным отступом
 const createPages = () => {
   $('#loading-status').textContent = 'Разбиение на страницы...';
   
@@ -126,19 +126,19 @@ const createPages = () => {
   const viewportHeight = window.innerHeight;
   const isMobile = window.innerWidth <= 768;
   
-  // Высота UI элементов
+  // Размеры UI
   const headerHeight = isMobile ? 56 : 64;
   const footerHeight = isMobile ? 76 : 88;
-  const contentPadding = isMobile ? 60 : 64; // учитываем увеличенный отступ снизу
+  const contentPadding = isMobile ? 60 : 80; // Учитываем padding сверху и снизу
   
   const availableHeight = viewportHeight - headerHeight - footerHeight - contentPadding;
   
-  // Рассчитываем количество слов на страницу
+  // Более точный расчет по словам
   const fontSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size-reading'));
   const lineHeight = fontSize * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-height-reading'));
   const linesPerPage = Math.floor(availableHeight / lineHeight);
-  const wordsPerLine = isMobile ? 6 : 8; // количество слов в строке
-  const wordsPerPage = Math.floor(linesPerPage * wordsPerLine * 0.95); // заполняем на 95%
+  const wordsPerLine = isMobile ? 6 : 9; // Слов в строке (более точно)
+  const wordsPerPage = Math.floor(linesPerPage * wordsPerLine * 0.9); // 90% заполнение с запасом
   
   console.log('Lines:', linesPerPage, 'Words per page:', wordsPerPage, 'Mobile:', isMobile);
 
@@ -146,81 +146,82 @@ const createPages = () => {
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
     
-    // Извлекаем чистый текст
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = chapterContent;
     const textContent = tempDiv.textContent || '';
     
-    // Разбиваем на слова
+    // Разбиваем на слова (с сохранением пунктуации)
     const words = textContent.split(/\s+/).filter(word => word.length > 0);
     
+    let currentPageWords = [];
     let isFirstPageOfChapter = true;
     
-    // Разбиваем на страницы по количеству слов
-    for (let i = 0; i < words.length; i += wordsPerPage) {
-      const pageWords = words.slice(i, i + wordsPerPage);
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
       
-      // Проверяем, чтобы страница не заканчивалась посреди предложения
-      let finalWords = [...pageWords];
-      
-      // Если это не последняя порция слов
-      if (i + wordsPerPage < words.length) {
-        const lastWord = finalWords[finalWords.length - 1];
-        
-        // Если последнее слово не заканчивается знаком препинания
-        if (!/[.!?…]$/.test(lastWord)) {
-          // Ищем ближайший конец предложения в следующих 10 словах
-          let foundEndOfSentence = false;
-          let wordsToAdd = 0;
-          
-          for (let j = 1; j <= 10 && (i + wordsPerPage + j - 1) < words.length; j++) {
-            const nextWord = words[i + wordsPerPage + j - 1];
-            wordsToAdd++;
-            
-            if (/[.!?…]$/.test(nextWord)) {
-              finalWords = words.slice(i, i + wordsPerPage + j);
-              foundEndOfSentence = true;
-              break;
-            }
-          }
-          
-          // Если не нашли конец предложения, убираем слова до последнего завершенного предложения
-          if (!foundEndOfSentence) {
-            for (let k = finalWords.length - 1; k >= 0; k--) {
-              if (/[.!?…]$/.test(finalWords[k])) {
-                finalWords = finalWords.slice(0, k + 1);
-                break;
-              }
-            }
-          } else {
-            // Если добавили слова, сдвигаем индекс
-            i += wordsToAdd;
+      // Проверяем, поместятся ли слова на страницу
+      if (currentPageWords.length >= wordsPerPage && currentPageWords.length > 0) {
+        // Ищем ближайший конец предложения для красивого разрыва
+        let cutIndex = currentPageWords.length;
+        for (let j = currentPageWords.length - 1; j >= Math.max(0, currentPageWords.length - 20); j--) {
+          const checkWord = currentPageWords[j];
+          if (checkWord.match(/[.!?…]$/)) {
+            cutIndex = j + 1;
+            break;
           }
         }
+        
+        // Создаем страницу
+        const pageWords = currentPageWords.slice(0, cutIndex);
+        let pageHTML = '';
+        
+        if (isFirstPageOfChapter) {
+          pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+          isFirstPageOfChapter = false;
+        }
+        
+        // Группируем слова в абзацы (по ~25-35 слов в абзац)
+        const wordsPerParagraph = isMobile ? 25 : 35;
+        const paragraphs = [];
+        
+        for (let k = 0; k < pageWords.length; k += wordsPerParagraph) {
+          const paragraphWords = pageWords.slice(k, k + wordsPerParagraph);
+          if (paragraphWords.length > 0) {
+            paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
+          }
+        }
+        
+        pageHTML += paragraphs.join('');
+        
+        pages.push({
+          content: pageHTML,
+          chapterIndex: chapterIndex
+        });
+        
+        // Переносим оставшиеся слова на новую страницу
+        currentPageWords = currentPageWords.slice(cutIndex);
+        currentPageWords.push(word);
+      } else {
+        // Добавляем слово к текущей странице
+        currentPageWords.push(word);
       }
-      
-      // Создаем HTML для страницы
+    }
+    
+    // Добавляем последнюю страницу главы
+    if (currentPageWords.length > 0) {
       let pageHTML = '';
       
-      // Добавляем заголовок главы только на первую страницу главы
       if (isFirstPageOfChapter) {
         pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
-        isFirstPageOfChapter = false;
       }
       
-      // Группируем слова в предложения, затем в абзацы
-      const pageText = finalWords.join(' ');
-      const sentences = pageText.split(/(?<=[.!?…])\s+/).filter(s => s.length > 0);
-      
-      // Группируем предложения в абзацы (2-3 предложения в абзац)
-      const sentencesPerParagraph = isMobile ? 2 : 3;
+      const wordsPerParagraph = isMobile ? 25 : 35;
       const paragraphs = [];
       
-      for (let j = 0; j < sentences.length; j += sentencesPerParagraph) {
-        const paragraphSentences = sentences.slice(j, j + sentencesPerParagraph);
-        const paragraphText = paragraphSentences.join(' ').trim();
-        if (paragraphText) {
-          paragraphs.push(`<p>${paragraphText}</p>`);
+      for (let k = 0; k < currentPageWords.length; k += wordsPerParagraph) {
+        const paragraphWords = currentPageWords.slice(k, k + wordsPerParagraph);
+        if (paragraphWords.length > 0) {
+          paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
         }
       }
       
@@ -240,8 +241,6 @@ const createPages = () => {
   
   console.log(`Created ${totalPages} pages`);
 };
-
-
 
 
 
