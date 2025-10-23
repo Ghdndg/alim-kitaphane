@@ -130,6 +130,17 @@ const createPages = () => {
   const maxHeight = Math.max(availableHeight * 0.9, 400); // 90% от доступной высоты, минимум 400px
 
   console.log('Available height:', availableHeight, 'Max height:', maxHeight, 'Mobile:', isMobile);
+  
+  // Получаем реальную ширину контейнера для отладки
+  const pageContent = $('.page-content');
+  if (pageContent) {
+    const computedStyle = window.getComputedStyle(pageContent);
+    const parentWidth = pageContent.parentElement.offsetWidth;
+    const paddingLeft = parseInt(computedStyle.paddingLeft) || 0;
+    const paddingRight = parseInt(computedStyle.paddingRight) || 0;
+    const containerWidth = parentWidth - paddingLeft - paddingRight;
+    console.log('Container width:', containerWidth, 'Parent width:', parentWidth, 'Padding:', paddingLeft + paddingRight);
+  }
 
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
@@ -151,23 +162,37 @@ const createPages = () => {
     tempElement.style.visibility = 'hidden';
     tempElement.style.top = '-9999px';
     tempElement.style.left = '-9999px';
-    tempElement.style.width = '100%';
-    tempElement.style.maxWidth = 'var(--text-width)';
-    tempElement.style.fontFamily = 'var(--font-reading)';
-    tempElement.style.fontSize = 'var(--font-size-reading)';
-    tempElement.style.lineHeight = 'var(--line-height-reading)';
-    tempElement.style.padding = '20px 16px 40px 16px';
-    tempElement.style.boxSizing = 'border-box';
     
-    // Копируем стили из page-content если он существует
+    // Получаем реальную ширину контейнера
     const pageContent = $('.page-content');
+    let containerWidth = 680; // значение по умолчанию
+    
     if (pageContent) {
       const computedStyle = window.getComputedStyle(pageContent);
+      const parentWidth = pageContent.parentElement.offsetWidth;
+      const paddingLeft = parseInt(computedStyle.paddingLeft) || 0;
+      const paddingRight = parseInt(computedStyle.paddingRight) || 0;
+      containerWidth = parentWidth - paddingLeft - paddingRight;
+      
+      // Применяем все стили из page-content
       tempElement.style.fontFamily = computedStyle.fontFamily;
       tempElement.style.fontSize = computedStyle.fontSize;
       tempElement.style.lineHeight = computedStyle.lineHeight;
       tempElement.style.padding = computedStyle.padding;
+      tempElement.style.textAlign = computedStyle.textAlign;
+      tempElement.style.wordWrap = computedStyle.wordWrap;
+      tempElement.style.wordBreak = computedStyle.wordBreak;
+      tempElement.style.hyphens = computedStyle.hyphens;
+    } else {
+      // Fallback стили
+      tempElement.style.fontFamily = 'var(--font-reading)';
+      tempElement.style.fontSize = 'var(--font-size-reading)';
+      tempElement.style.lineHeight = 'var(--line-height-reading)';
+      tempElement.style.padding = '20px 16px 40px 16px';
     }
+    
+    tempElement.style.width = containerWidth + 'px';
+    tempElement.style.boxSizing = 'border-box';
     
     document.body.appendChild(tempElement);
 
