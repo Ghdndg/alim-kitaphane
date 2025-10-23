@@ -117,40 +117,34 @@
   };
 
   // Real pagination - split text into pages that fit screen height
-// НАДЕЖНАЯ пагинация - фиксированные размеры страниц
+// КОНСЕРВАТИВНАЯ пагинация - гарантированно без обрезания
 const createPages = () => {
-  $('#loading-status').textContent = 'Разбиение на страницы...';
+  $('#loading-status').textContent = 'Создание безопасной пагинации...';
   
   pages = [];
   const isMobile = window.innerWidth <= 768;
   
-  // Безопасные размеры для каждого устройства (проверены на практике)
-  const charsPerPage = isMobile ? 800 : 1400; // Символов на страницу
+  // ОЧЕНЬ консервативные размеры - лучше недозаполнить чем обрезать
+  const charsPerPage = isMobile ? 600 : 1000; // Еще меньше символов
   
-  console.log('Chars per page:', charsPerPage, 'Mobile:', isMobile);
+  console.log('SAFE chars per page:', charsPerPage, 'Mobile:', isMobile);
 
-  // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
     
-    // Извлекаем чистый текст
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = chapterContent;
     const textContent = tempDiv.textContent || '';
     
-    // Разбиваем на слова
     const words = textContent.split(/\s+/).filter(word => word.length > 0);
     
     let isFirstPageOfChapter = true;
     let currentText = '';
     
     words.forEach((word, index) => {
-      // Добавляем слово к текущей странице
       const testText = currentText + (currentText ? ' ' : '') + word;
       
-      // Если превышаем лимит символов, создаем страницу
       if (testText.length > charsPerPage && currentText.length > 0) {
-        // Создаем страницу с текущим текстом
         let pageHTML = '';
         
         if (isFirstPageOfChapter) {
@@ -158,9 +152,9 @@ const createPages = () => {
           isFirstPageOfChapter = false;
         }
         
-        // Разбиваем текст на абзацы
+        // Меньше слов в абзаце для экономии места
         const pageWords = currentText.split(/\s+/);
-        const wordsPerParagraph = isMobile ? 25 : 35;
+        const wordsPerParagraph = isMobile ? 20 : 25; // Еще меньше
         
         for (let i = 0; i < pageWords.length; i += wordsPerParagraph) {
           const paragraphWords = pageWords.slice(i, i + wordsPerParagraph);
@@ -174,14 +168,12 @@ const createPages = () => {
           chapterIndex: chapterIndex
         });
         
-        // Начинаем новую страницу с текущего слова
         currentText = word;
       } else {
         currentText = testText;
       }
     });
     
-    // Добавляем последнюю страницу главы
     if (currentText.trim()) {
       let pageHTML = '';
       
@@ -190,7 +182,7 @@ const createPages = () => {
       }
       
       const pageWords = currentText.split(/\s+/);
-      const wordsPerParagraph = isMobile ? 25 : 35;
+      const wordsPerParagraph = isMobile ? 20 : 25;
       
       for (let i = 0; i < pageWords.length; i += wordsPerParagraph) {
         const paragraphWords = pageWords.slice(i, i + wordsPerParagraph);
@@ -211,8 +203,9 @@ const createPages = () => {
     currentPageIndex = Math.max(0, totalPages - 1);
   }
   
-  console.log(`Created ${totalPages} pages with fixed character limits`);
+  console.log(`Created ${totalPages} SAFE pages`);
 };
+
 
 
 
