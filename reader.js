@@ -118,18 +118,29 @@
 
   // Real pagination - split text into pages that fit screen height
 // Оптимальная пагинация - заполняем страницы почти полностью
-// Упрощенная пагинация с фиксированными безопасными значениями
 const createPages = () => {
   $('#loading-status').textContent = 'Разбиение на страницы...';
   
   pages = [];
 
+  const viewportHeight = window.innerHeight;
   const isMobile = window.innerWidth <= 768;
   
-  // Фиксированные безопасные значения вместо динамических вычислений
-  const charsPerPage = isMobile ? 800 : 1200; // Консервативные значения
+  // Более точные размеры UI
+  const headerHeight = isMobile ? 56 : 64;
+  const footerHeight = isMobile ? 76 : 88; // Реальная высота footer
+  const contentPadding = isMobile ? 52 : 64; // padding контента сверху и снизу
   
-  console.log('Chars per page:', charsPerPage, 'Mobile:', isMobile);
+  const availableHeight = viewportHeight - headerHeight - footerHeight - contentPadding;
+  
+  // Оптимальное количество символов - заполняем страницы на 92-95%
+  const fontSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size-reading'));
+  const lineHeight = fontSize * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-height-reading'));
+  const linesPerPage = Math.floor(availableHeight / lineHeight);
+  const charsPerLine = isMobile ? 35 : 50; // Оптимальное количество символов в строке
+  const charsPerPage = Math.floor(linesPerPage * charsPerLine * 0.92); // Заполняем на 92%
+  
+  console.log('Viewport:', viewportHeight, 'Available:', availableHeight, 'Lines:', linesPerPage, 'Chars:', charsPerPage, 'Mobile:', isMobile);
 
   // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
@@ -148,9 +159,9 @@ const createPages = () => {
     sentences.forEach((sentence, index) => {
       const testText = currentPageText + (currentPageText ? ' ' : '') + sentence;
       
-      // Проверяем длину с запасом
+      // Проверяем, поместится ли предложение
       if (testText.length > charsPerPage && currentPageText.length > 0) {
-        // Создаем страницу
+        // Создаем страницу с текущим текстом
         let pageHTML = '';
         
         if (isFirstPageOfChapter) {
@@ -158,32 +169,34 @@ const createPages = () => {
           isFirstPageOfChapter = false;
         }
         
-        // Простое разбиение на абзацы
-        const words = currentPageText.split(' ');
-        const paragraphs = [];
-        const wordsPerParagraph = isMobile ? 60 : 80;
+        // Группируем предложения в абзацы (3-4 предложения в абзац)
+        const paragraphs = currentPageText.split(/(?<=[.!?…])\s+(?=[А-ЯЁABCDEFGHIJKLMNOPQRSTUVWXYZ])/);
+        const groupedParagraphs = [];
+        const sentencesPerParagraph = 3;
         
-        for (let i = 0; i < words.length; i += wordsPerParagraph) {
-          const paragraphWords = words.slice(i, i + wordsPerParagraph);
-          if (paragraphWords.length > 0) {
-            paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
+        for (let i = 0; i < paragraphs.length; i += sentencesPerParagraph) {
+          const paragraphGroup = paragraphs.slice(i, i + sentencesPerParagraph).join(' ');
+          if (paragraphGroup.trim()) {
+            groupedParagraphs.push(`<p>${paragraphGroup.trim()}</p>`);
           }
         }
         
-        pageHTML += paragraphs.join('');
+        pageHTML += groupedParagraphs.join('');
         
         pages.push({
           content: pageHTML,
           chapterIndex: chapterIndex
         });
         
+        // Начинаем новую страницу с текущего предложения
         currentPageText = sentence;
       } else {
+        // Добавляем предложение к текущей странице
         currentPageText += (currentPageText ? ' ' : '') + sentence;
       }
     });
     
-    // Последняя страница главы
+    // Добавляем последнюю страницу главы
     if (currentPageText.trim()) {
       let pageHTML = '';
       
@@ -191,18 +204,18 @@ const createPages = () => {
         pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
       }
       
-      const words = currentPageText.split(' ');
-      const paragraphs = [];
-      const wordsPerParagraph = isMobile ? 60 : 80;
+      const paragraphs = currentPageText.split(/(?<=[.!?…])\s+(?=[А-ЯЁABCDEFGHIJKLMNOPQRSTUVWXYZ])/);
+      const groupedParagraphs = [];
+      const sentencesPerParagraph = 3;
       
-      for (let i = 0; i < words.length; i += wordsPerParagraph) {
-        const paragraphWords = words.slice(i, i + wordsPerParagraph);
-        if (paragraphWords.length > 0) {
-          paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
+      for (let i = 0; i < paragraphs.length; i += sentencesPerParagraph) {
+        const paragraphGroup = paragraphs.slice(i, i + sentencesPerParagraph).join(' ');
+        if (paragraphGroup.trim()) {
+          groupedParagraphs.push(`<p>${paragraphGroup.trim()}</p>`);
         }
       }
       
-      pageHTML += paragraphs.join('');
+      pageHTML += groupedParagraphs.join('');
       
       pages.push({
         content: pageHTML,
@@ -218,6 +231,7 @@ const createPages = () => {
   
   console.log(`Created ${totalPages} pages`);
 };
+
 
 
 
