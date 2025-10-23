@@ -341,6 +341,15 @@ const createPages = () => {
       const page = Math.round(ratio * (totalPages - 1)) + 1;
       goToPage(page);
     });
+    // Обработчик поворота экрана и изменения размера окна
+    window.addEventListener('resize', () => {
+      // Пересчитать страницы при изменении размера окна
+      setTimeout(() => {
+        createPages();
+        buildTOC();
+        render();
+      }, 300);
+    });
 
     // Settings controls
     $$('.theme-btn').forEach(btn => {
