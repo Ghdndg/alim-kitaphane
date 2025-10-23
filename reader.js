@@ -117,6 +117,7 @@
   };
 
   // Real pagination - split text into pages that fit screen height
+// Оптимальная пагинация - заполняем страницы почти полностью
 const createPages = () => {
   $('#loading-status').textContent = 'Разбиение на страницы...';
   
@@ -125,21 +126,21 @@ const createPages = () => {
   const viewportHeight = window.innerHeight;
   const isMobile = window.innerWidth <= 768;
   
-  // Высота UI с запасом
+  // Более точные размеры UI
   const headerHeight = isMobile ? 56 : 64;
-  const footerHeight = isMobile ? 80 : 88;
-  const padding = isMobile ? 52 : 64; // Больше padding для мобильных
+  const footerHeight = isMobile ? 76 : 88; // Реальная высота footer
+  const contentPadding = isMobile ? 52 : 64; // padding контента сверху и снизу
   
-  const availableHeight = viewportHeight - headerHeight - footerHeight - padding;
+  const availableHeight = viewportHeight - headerHeight - footerHeight - contentPadding;
   
-  // Уменьшаем количество символов на странице для мобильных
+  // Оптимальное количество символов - заполняем страницы на 92-95%
   const fontSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size-reading'));
   const lineHeight = fontSize * parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-height-reading'));
   const linesPerPage = Math.floor(availableHeight / lineHeight);
-  const charsPerLine = isMobile ? 30 : 45; // Меньше символов на строку
-  const charsPerPage = Math.floor(linesPerPage * charsPerLine * 0.85); // Запас 15%
+  const charsPerLine = isMobile ? 35 : 50; // Оптимальное количество символов в строке
+  const charsPerPage = Math.floor(linesPerPage * charsPerLine * 0.92); // Заполняем на 92%
   
-  console.log('Lines:', linesPerPage, 'Chars per page:', charsPerPage, 'Mobile:', isMobile);
+  console.log('Viewport:', viewportHeight, 'Available:', availableHeight, 'Lines:', linesPerPage, 'Chars:', charsPerPage, 'Mobile:', isMobile);
 
   // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
@@ -155,11 +156,12 @@ const createPages = () => {
     let currentPageText = '';
     let isFirstPageOfChapter = true;
     
-    sentences.forEach(sentence => {
+    sentences.forEach((sentence, index) => {
       const testText = currentPageText + (currentPageText ? ' ' : '') + sentence;
       
+      // Проверяем, поместится ли предложение
       if (testText.length > charsPerPage && currentPageText.length > 0) {
-        // Создаем страницу
+        // Создаем страницу с текущим текстом
         let pageHTML = '';
         
         if (isFirstPageOfChapter) {
@@ -167,10 +169,10 @@ const createPages = () => {
           isFirstPageOfChapter = false;
         }
         
-        // Разбиваем на абзацы по 2-3 предложения для мобильных
-        const sentencesPerParagraph = isMobile ? 2 : 3;
-        const paragraphs = currentPageText.split(/(?<=[.!?…])\s+(?=[А-ЯЁ])/);
+        // Группируем предложения в абзацы (3-4 предложения в абзац)
+        const paragraphs = currentPageText.split(/(?<=[.!?…])\s+(?=[А-ЯЁABCDEFGHIJKLMNOPQRSTUVWXYZ])/);
         const groupedParagraphs = [];
+        const sentencesPerParagraph = 3;
         
         for (let i = 0; i < paragraphs.length; i += sentencesPerParagraph) {
           const paragraphGroup = paragraphs.slice(i, i + sentencesPerParagraph).join(' ');
@@ -186,13 +188,15 @@ const createPages = () => {
           chapterIndex: chapterIndex
         });
         
+        // Начинаем новую страницу с текущего предложения
         currentPageText = sentence;
       } else {
+        // Добавляем предложение к текущей странице
         currentPageText += (currentPageText ? ' ' : '') + sentence;
       }
     });
     
-    // Последняя страница главы
+    // Добавляем последнюю страницу главы
     if (currentPageText.trim()) {
       let pageHTML = '';
       
@@ -200,9 +204,9 @@ const createPages = () => {
         pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
       }
       
-      const sentencesPerParagraph = isMobile ? 2 : 3;
-      const paragraphs = currentPageText.split(/(?<=[.!?…])\s+(?=[А-ЯЁ])/);
+      const paragraphs = currentPageText.split(/(?<=[.!?…])\s+(?=[А-ЯЁABCDEFGHIJKLMNOPQRSTUVWXYZ])/);
       const groupedParagraphs = [];
+      const sentencesPerParagraph = 3;
       
       for (let i = 0; i < paragraphs.length; i += sentencesPerParagraph) {
         const paragraphGroup = paragraphs.slice(i, i + sentencesPerParagraph).join(' ');
@@ -227,6 +231,7 @@ const createPages = () => {
   
   console.log(`Created ${totalPages} pages`);
 };
+
 
 
 
