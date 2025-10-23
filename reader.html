@@ -1,252 +1,230 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1a1a1a">
-    <title>Хаджи Гирай</title>
-    <link rel="stylesheet" href="reader.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1a1a" />
+  <title>КрымЧиталка — Ридер</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="reader.css" />
 </head>
 <body data-theme="light">
-    <div id="loading-screen" class="loading-screen">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <h2>Хаджи Гирай</h2>
-            <p>Загрузка книги...</p>
-        </div>
+  <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
+    <div class="loading-content">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <h2>КрымЧиталка</h2>
+      <p>Загрузка книги…</p>
+    </div>
+  </div>
+
+  <header class="reader-header" id="reader-header" role="banner">
+    <div class="header-left">
+      <button id="back-btn" class="icon-btn" role="button" aria-label="Назад" title="Назад">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      </button>
+      <div class="book-info" aria-live="polite">
+        <h1 id="book-title">Хаджи-Гирай</h1>
+        <span id="book-author">Алим Къуртсеит</span>
+      </div>
     </div>
 
-    <header class="reader-header" id="reader-header">
-        <div class="header-left">
-            <button id="back-btn" class="icon-btn" title="Назад">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <div class="book-info">
-                <h1 id="book-title">Хаджи Гирай</h1>
-                <span id="book-author">Алим Мидат</span>
-            </div>
-        </div>
-        
-        <div class="header-right">
-            <button id="search-btn" class="icon-btn" title="Поиск (Ctrl+F)">
-                <i class="fas fa-search"></i>
-            </button>
-            <button id="toc-btn" class="icon-btn" title="Оглавление (Ctrl+T)">
-                <i class="fas fa-list"></i>
-            </button>
-            <button id="bookmark-btn" class="icon-btn" title="Закладка (Ctrl+B)">
-                <i class="fas fa-bookmark"></i>
-            </button>
-            <button id="settings-btn" class="icon-btn" title="Настройки (Ctrl+S)">
-                <i class="fas fa-cog"></i>
-            </button>
-            <button id="fullscreen-btn" class="icon-btn" title="Полноэкранный режим (F11)">
-                <i class="fas fa-expand"></i>
-            </button>
-        </div>
-    </header>
+    <div class="header-right">
+      <button id="search-btn" class="icon-btn" role="button" aria-label="Поиск" title="Поиск (Ctrl+F)">
+        <i class="fas fa-search" aria-hidden="true"></i>
+      </button>
+      <button id="toc-btn" class="icon-btn" role="button" aria-label="Оглавление" title="Оглавление (Ctrl+T)">
+        <i class="fas fa-list" aria-hidden="true"></i>
+      </button>
+      <button id="bookmark-btn" class="icon-btn" role="button" aria-label="Добавить закладку" title="Закладка (Ctrl+B)">
+        <i class="fas fa-bookmark" aria-hidden="true"></i>
+      </button>
+      <button id="settings-btn" class="icon-btn" role="button" aria-label="Настройки" title="Настройки (Ctrl+S)">
+        <i class="fas fa-cog" aria-hidden="true"></i>
+      </button>
+      <button id="fullscreen-btn" class="icon-btn" role="button" aria-label="Полноэкранный режим" title="Полноэкранный режим (F)">
+        <i class="fas fa-expand" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
 
-    <div class="reader-container">
-        <div class="reader-sidebar" id="reader-sidebar">
-            <div class="sidebar-tabs">
-                <button class="sidebar-tab active" data-tab="toc">Содержание</button>
-                <button class="sidebar-tab" data-tab="bookmarks">Закладки</button>
-                <button class="sidebar-tab" data-tab="annotations">Заметки</button>
-            </div>
-            
-            <div class="sidebar-content" id="sidebar-content">
-                <div class="tab-panel active" data-panel="toc">
-                    <div class="search-box">
-                        <input type="text" placeholder="Поиск по главам..." id="chapter-search">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <div class="toc-list" id="toc-list">
-                        <!-- Содержание будет загружено динамически -->
-                    </div>
-                </div>
-                
-                <div class="tab-panel" data-panel="bookmarks">
-                    <div class="bookmarks-list" id="bookmarks-list">
-                        <p class="empty-state">Закладки не найдены</p>
-                    </div>
-                </div>
-                
-                <div class="tab-panel" data-panel="annotations">
-                    <div class="annotations-list" id="annotations-list">
-                        <p class="empty-state">Заметки не найдены</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="reader-container">
+    <aside class="reader-sidebar" id="reader-sidebar" role="complementary" aria-label="Боковая панель">
+      <div class="sidebar-tabs" role="tablist" aria-label="Панели">
+        <button class="sidebar-tab active" data-tab="toc" role="tab" aria-selected="true">Содержание</button>
+        <button class="sidebar-tab" data-tab="bookmarks" role="tab" aria-selected="false">Закладки</button>
+        <button class="sidebar-tab" data-tab="annotations" role="tab" aria-selected="false">Заметки</button>
+      </div>
 
-        <main class="reader-main">
-            <div class="reader-content" id="reader-content">
-                <div class="chapter-content" id="chapter-content">
-                    <!-- Контент главы будет загружен здесь -->
-                </div>
-            </div>
-            
-            <div class="reader-overlay" id="reader-overlay"></div>
-        </main>
+      <div class="sidebar-content" id="sidebar-content">
+        <section class="tab-panel active" data-panel="toc" role="region" aria-label="Оглавление">
+          <div class="search-box">
+            <input type="text" placeholder="Поиск по главам…" id="chapter-search" aria-label="Поиск по главам" />
+            <i class="fas fa-search" aria-hidden="true"></i>
+          </div>
+          <div class="toc-list" id="toc-list"></div>
+        </section>
+
+        <section class="tab-panel" data-panel="bookmarks" role="region" aria-label="Закладки">
+          <div class="bookmarks-list" id="bookmarks-list">
+            <p class="empty-state">Закладки не найдены</p>
+          </div>
+        </section>
+
+        <section class="tab-panel" data-panel="annotations" role="region" aria-label="Заметки">
+          <div class="annotations-list" id="annotations-list">
+            <p class="empty-state">Заметки не найдены</p>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <main class="reader-main" role="main" aria-label="Текст книги">
+      <div class="reader-content" id="reader-content" data-mode="paginated" data-width="medium">
+        <article class="chapter-content" id="chapter-content"></article>
+      </div>
+      <div class="reader-overlay" id="reader-overlay" aria-hidden="true"></div>
+    </main>
+  </div>
+
+  <footer class="reader-footer" id="reader-footer" role="contentinfo">
+    <div class="footer-left">
+      <div class="reading-progress" aria-label="Прогресс чтения">
+        <div class="progress-info"><span id="current-page">1</span> из <span id="total-pages">100</span></div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar" role="slider" aria-valuemin="1" aria-valuemax="100" aria-valuenow="1" tabindex="0">
+            <div class="progress-fill" id="progress-fill"></div>
+            <div class="progress-thumb" id="progress-thumb" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <footer class="reader-footer" id="reader-footer">
-        <div class="footer-left">
-            <div class="reading-progress">
-                <div class="progress-info">
-                    <span id="current-page">1</span> из <span id="total-pages">100</span>
-                </div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar" id="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
-                        <div class="progress-thumb" id="progress-thumb"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="footer-center">
-            <button id="prev-page" class="nav-btn" title="Предыдущая страница (←)">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <div class="page-input-container">
-                <input type="number" id="page-input" min="1" max="100" value="1" title="Перейти на страницу">
-            </div>
-            <button id="next-page" class="nav-btn" title="Следующая страница (→)">
-                <i class="fas fa-chevron-right"></i>
-            </button>
-        </div>
-        
-        <div class="footer-right">
-            <div class="reading-stats">
-                <span id="reading-time">0 мин</span> | <span id="words-per-minute">200 слов/мин</span>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Модальные окна -->
-    <div class="modal" id="settings-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Настройки чтения</h3>
-                <button class="modal-close" data-modal="settings-modal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="settings-group">
-                    <label>Шрифт</label>
-                    <select id="font-family">
-                        <option value="inter">Inter</option>
-                        <option value="crimson">Crimson Text</option>
-                        <option value="georgia">Georgia</option>
-                        <option value="times">Times New Roman</option>
-                        <option value="arial">Arial</option>
-                    </select>
-                </div>
-                
-                <div class="settings-group">
-                    <label>Размер шрифта: <span id="font-size-value">18px</span></label>
-                    <input type="range" id="font-size" min="12" max="28" value="18">
-                </div>
-                
-                <div class="settings-group">
-                    <label>Междустрочный интервал: <span id="line-height-value">1.6</span></label>
-                    <input type="range" id="line-height" min="1.2" max="2.4" value="1.6" step="0.1">
-                </div>
-                
-                <div class="settings-group">
-                    <label>Ширина текста</label>
-                    <select id="text-width">
-                        <option value="narrow">Узкая</option>
-                        <option value="medium" selected>Средняя</option>
-                        <option value="wide">Широкая</option>
-                        <option value="full">На всю ширину</option>
-                    </select>
-                </div>
-                
-                <div class="settings-group">
-                    <label>Тема оформления</label>
-                    <div class="theme-options">
-                        <button class="theme-btn active" data-theme="light">
-                            <div class="theme-preview light-preview"></div>
-                            <span>Светлая</span>
-                        </button>
-                        <button class="theme-btn" data-theme="dark">
-                            <div class="theme-preview dark-preview"></div>
-                            <span>Темная</span>
-                        </button>
-                        <button class="theme-btn" data-theme="sepia">
-                            <div class="theme-preview sepia-preview"></div>
-                            <span>Сепия</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="settings-group">
-                    <label>Режим чтения</label>
-                    <select id="reading-mode">
-                        <option value="paginated" selected>Постраничный</option>
-                        <option value="scroll">Непрерывная прокрутка</option>
-                    </select>
-                </div>
-            </div>
-        </div>
+    <div class="footer-center" aria-label="Навигация по страницам">
+      <button id="prev-page" class="nav-btn" role="button" aria-label="Предыдущая страница" title="Предыдущая (←)">
+        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+      </button>
+      <div class="page-input-container">
+        <input type="number" id="page-input" min="1" value="1" title="Перейти на страницу" aria-label="Номер страницы" />
+      </div>
+      <button id="next-page" class="nav-btn" role="button" aria-label="Следующая страница" title="Следующая (→)">
+        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+      </button>
     </div>
 
-    <div class="modal" id="search-modal">
-        <div class="modal-content search-modal-content">
-            <div class="modal-header">
-                <h3>Поиск по книге</h3>
-                <button class="modal-close" data-modal="search-modal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="search-input-container">
-                    <input type="text" id="search-input" placeholder="Введите текст для поиска...">
-                    <button id="search-submit">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
-                <div class="search-options">
-                    <label>
-                        <input type="checkbox" id="case-sensitive"> С учетом регистра
-                    </label>
-                    <label>
-                        <input type="checkbox" id="whole-words"> Целые слова
-                    </label>
-                </div>
-                <div class="search-results" id="search-results">
-                    <p class="search-placeholder">Введите текст для поиска</p>
-                </div>
-            </div>
-        </div>
+    <div class="footer-right">
+      <div class="reading-stats"><span id="reading-time">0 мин</span> | <span id="words-per-minute">200 слов/мин</span></div>
     </div>
+  </footer>
 
-    <!-- Контекстное меню для выделенного текста -->
-    <div class="context-menu" id="context-menu">
-        <button id="highlight-text">
-            <i class="fas fa-highlighter"></i> Выделить
+  <!-- Settings -->
+  <div class="modal" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="settings-title">Настройки чтения</h3>
+        <button class="modal-close" data-modal="settings-modal" aria-label="Закрыть">
+          <i class="fas fa-times" aria-hidden="true"></i>
         </button>
-        <button id="add-note">
-            <i class="fas fa-sticky-note"></i> Добавить заметку
-        </button>
-        <button id="copy-text">
-            <i class="fas fa-copy"></i> Копировать
-        </button>
-        <button id="lookup-word">
-            <i class="fas fa-book"></i> Найти в словаре
-        </button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-group">
+          <label for="font-family">Шрифт</label>
+          <select id="font-family">
+            <option value="inter">Inter</option>
+            <option value="crimson">Crimson Text</option>
+            <option value="georgia">Georgia</option>
+            <option value="times">Times New Roman</option>
+            <option value="arial">Arial</option>
+          </select>
+        </div>
+
+        <div class="settings-group">
+          <label for="font-size">Размер шрифта: <span id="font-size-value">18px</span></label>
+          <input type="range" id="font-size" min="14" max="28" value="18" />
+        </div>
+
+        <div class="settings-group">
+          <label for="line-height">Междустрочный интервал: <span id="line-height-value">1.6</span></label>
+          <input type="range" id="line-height" min="1.4" max="2.2" value="1.6" step="0.1" />
+        </div>
+
+        <div class="settings-group">
+          <label for="text-width">Ширина текста</label>
+          <select id="text-width">
+            <option value="narrow">Узкая</option>
+            <option value="medium" selected>Средняя</option>
+            <option value="wide">Широкая</option>
+            <option value="full">На всю ширину</option>
+          </select>
+        </div>
+
+        <div class="settings-group">
+          <label>Тема оформления</label>
+          <div class="theme-options">
+            <button class="theme-btn active" data-theme="light" aria-pressed="true">
+              <div class="theme-preview light-preview"></div><span>Светлая</span>
+            </button>
+            <button class="theme-btn" data-theme="dark" aria-pressed="false">
+              <div class="theme-preview dark-preview"></div><span>Тёмная</span>
+            </button>
+            <button class="theme-btn" data-theme="sepia" aria-pressed="false">
+              <div class="theme-preview sepia-preview"></div><span>Сепия</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <label for="reading-mode">Режим чтения</label>
+          <select id="reading-mode">
+            <option value="paginated" selected>Постраничный</option>
+            <option value="scroll">Непрерывная прокрутка</option>
+          </select>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- Уведомления -->
-    <div class="toast-container" id="toast-container"></div>
+  <!-- Search -->
+  <div class="modal" id="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-title">
+    <div class="modal-content search-modal-content">
+      <div class="modal-header">
+        <h3 id="search-title">Поиск по книге</h3>
+        <button class="modal-close" data-modal="search-modal" aria-label="Закрыть">
+          <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="search-input-container">
+          <input type="text" id="search-input" placeholder="Введите текст для поиска…" aria-label="Строка поиска" />
+          <button id="search-submit" aria-label="Начать поиск">
+            <i class="fas fa-search" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="search-options">
+          <label><input type="checkbox" id="case-sensitive" /> С учетом регистра</label>
+          <label><input type="checkbox" id="whole-words" /> Целые слова</label>
+        </div>
+        <div class="search-results" id="search-results">
+          <p class="search-placeholder">Введите текст для поиска</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <script src="reader.js"></script>
+  <!-- Context menu -->
+  <div class="context-menu" id="context-menu" role="menu" aria-hidden="true">
+    <button id="highlight-text" role="menuitem"><i class="fas fa-highlighter" aria-hidden="true"></i> Выделить</button>
+    <button id="add-note" role="menuitem"><i class="fas fa-sticky-note" aria-hidden="true"></i> Добавить заметку</button>
+    <button id="copy-text" role="menuitem"><i class="fas fa-copy" aria-hidden="true"></i> Копировать</button>
+    <button id="lookup-word" role="menuitem"><i class="fas fa-book" aria-hidden="true"></i> Найти в словаре</button>
+  </div>
+
+  <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" defer></script>
+  <script src="reader.js"></script>
 </body>
 </html>
