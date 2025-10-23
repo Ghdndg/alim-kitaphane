@@ -117,122 +117,39 @@
   };
 
   // Real pagination - split text into pages that fit screen height
-// ПРАВИЛЬНАЯ пагинация - измеряем реальную доступную высоту
 const createPages = () => {
   $('#loading-status').textContent = 'Разбиение на страницы...';
-  
   pages = [];
-
-  // Создаем временный контейнер с теми же стилями
-  const tempContainer = document.createElement('div');
-  tempContainer.className = 'page-container';
-  tempContainer.style.cssText = `
-    position: absolute;
-    visibility: hidden;
-    top: 0;
-    left: -9999px;
-    width: 100vw;
-    height: 100vh;
-  `;
-  document.body.appendChild(tempContainer);
-
-  const tempPage = document.createElement('div');
-  tempPage.className = 'page';
-  tempContainer.appendChild(tempPage);
-
-  const tempContent = document.createElement('div');
-  tempContent.className = 'page-content';
-  tempPage.appendChild(tempContent);
-
-  // Принудительно применяем все стили
-  tempContainer.offsetHeight;
-
-  // Измеряем РЕАЛЬНУЮ доступную высоту для текста
-  const availableHeight = tempContent.clientHeight;
   const isMobile = window.innerWidth <= 768;
   
-  console.log('REAL available height:', availableHeight, 'Mobile:', isMobile);
-
-  // Рассчитываем количество символов исходя из реальной высоты
-  const fontSize = parseInt(getComputedStyle(tempContent).fontSize);
-  const lineHeight = parseFloat(getComputedStyle(tempContent).lineHeight);
-  const actualLineHeight = lineHeight || fontSize * 1.6;
+  // Фиксированные размеры для каждого типа устройства
+  const wordsPerPage = isMobile ? 150 : 250;
   
-  const linesPerPage = Math.floor(availableHeight / actualLineHeight);
-  const charsPerLine = isMobile ? 30 : 45;
-  const charsPerPage = Math.floor(linesPerPage * charsPerLine * 0.9); // 10% запас
-  
-  console.log('Lines per page:', linesPerPage, 'Chars per page:', charsPerPage);
+  console.log('Words per page:', wordsPerPage, 'Mobile:', isMobile);
 
-  // Убираем временный контейнер
-  document.body.removeChild(tempContainer);
-
-  // Process each chapter
   chapters.forEach((chapter, chapterIndex) => {
     const chapterContent = content[chapterIndex] || '';
-    
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = chapterContent;
     const textContent = tempDiv.textContent || '';
-    
     const words = textContent.split(/\s+/).filter(word => word.length > 0);
+    
     let isFirstPageOfChapter = true;
     
-    // Разбиваем по словам, но считаем символы
-    let currentPageText = '';
-    
-    words.forEach((word, wordIndex) => {
-      const testText = currentPageText + (currentPageText ? ' ' : '') + word;
-      
-      if (testText.length > charsPerPage && currentPageText.length > 0) {
-        // Создаем страницу с текущим текстом
-        let pageHTML = '';
-        
-        if (isFirstPageOfChapter) {
-          pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
-          isFirstPageOfChapter = false;
-        }
-        
-        // Разбиваем на абзацы
-        const pageWords = currentPageText.split(/\s+/);
-        const wordsPerParagraph = isMobile ? 25 : 35;
-        const paragraphs = [];
-        
-        for (let i = 0; i < pageWords.length; i += wordsPerParagraph) {
-          const paragraphWords = pageWords.slice(i, i + wordsPerParagraph);
-          if (paragraphWords.length > 0) {
-            paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
-          }
-        }
-        
-        pageHTML += paragraphs.join('');
-        
-        pages.push({
-          content: pageHTML,
-          chapterIndex: chapterIndex
-        });
-        
-        // Начинаем новую страницу с текущего слова
-        currentPageText = word;
-      } else {
-        currentPageText = testText;
-      }
-    });
-    
-    // Добавляем последнюю страницу главы
-    if (currentPageText.trim()) {
+    for (let i = 0; i < words.length; i += wordsPerPage) {
+      const pageWords = words.slice(i, i + wordsPerPage);
       let pageHTML = '';
       
       if (isFirstPageOfChapter) {
         pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+        isFirstPageOfChapter = false;
       }
       
-      const pageWords = currentPageText.split(/\s+/);
-      const wordsPerParagraph = isMobile ? 25 : 35;
+      const wordsPerParagraph = isMobile ? 20 : 30;
       const paragraphs = [];
       
-      for (let i = 0; i < pageWords.length; i += wordsPerParagraph) {
-        const paragraphWords = pageWords.slice(i, i + wordsPerParagraph);
+      for (let j = 0; j < pageWords.length; j += wordsPerParagraph) {
+        const paragraphWords = pageWords.slice(j, j + wordsPerParagraph);
         if (paragraphWords.length > 0) {
           paragraphs.push(`<p>${paragraphWords.join(' ')}</p>`);
         }
@@ -252,9 +169,8 @@ const createPages = () => {
     currentPageIndex = Math.max(0, totalPages - 1);
   }
   
-  console.log(`Created ${totalPages} pages based on REAL measurements`);
+  console.log(`Created ${totalPages} pages with fixed boundaries`);
 };
-
 
 
 
