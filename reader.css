@@ -190,7 +190,7 @@ body {
 
 .page-content {
   flex: 1;
-  padding: 20px 16px;
+  padding: 20px 16px 40px 16px; /* Увеличили отступ снизу до 40px */
   font-family: var(--font-reading);
   font-size: var(--font-size-reading);
   line-height: var(--line-height-reading);
@@ -199,9 +199,6 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  
-  /* ВАЖНО: автоматический отступ снизу на основе высоты строки */
-  padding-bottom: calc(var(--line-height-reading) * var(--font-size-reading) + 8px);
 }
 
 
