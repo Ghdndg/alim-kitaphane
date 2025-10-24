@@ -1,9 +1,14 @@
 (() => {
     'use strict';
 
-    const $ = (selector) => document.querySelector(selector);
-    const $$ = (selector) => Array.from(document.querySelectorAll(selector));
-    const on = (element, event, handler) => element?.addEventListener(event, handler);
+    // Application state
+    let state = {
+        chapters: [],
+        allContent: '',
+        currentPage: 1,
+        totalPages: 0,
+        uiVisible: false
+    };
 
     // Storage utilities
     const storage = {
@@ -23,263 +28,73 @@
         }
     };
 
-    // Application state
-    const state = {
-        chapters: [],
-        allContent: '', // All chapters combined
-        pages: [], // Paginated content
-        currentPageIndex: 0,
-        totalPages: 0,
-        uiVisible: false,
-        
-        settings: {
-            theme: 'dark',
-            fontFamily: 'serif',
-            fontSize: 100,
-            lineHeight: 1.6,
-            columnWidth: 'medium',
-            justifyText: true
-        }
-    };
-
-    // Settings management
-    const settings = {
-        load() {
-            const saved = storage.get('readium_reader_settings');
-            if (saved) {
-                Object.assign(state.settings, saved);
-            }
-            this.apply();
-        },
-        
-        save() {
-            storage.set('readium_reader_settings', state.settings);
-        },
-        
-        apply() {
-            document.body.setAttribute('data-theme', state.settings.theme);
-            this.updateUI();
-            this.save();
-            
-            // Re-paginate when settings change
-            if (state.allContent) {
-                setTimeout(() => {
-                    reader.paginate();
-                    reader.render();
-                }, 100);
-            }
-        },
-        
-        update(key, value) {
-            state.settings[key] = value;
-            this.apply();
-        },
-        
-        updateUI() {
-            // Update theme buttons
-            $$('.theme-option').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.theme === state.settings.theme);
-            });
-            
-            // Update font family
-            const fontSelect = $('#font-family');
-            if (fontSelect) fontSelect.value = state.settings.fontFamily;
-            
-            // Update font size
-            const fontSizeSlider = $('#font-size');
-            const fontSizeDisplay = $('#font-size-display');
-            if (fontSizeSlider && fontSizeDisplay) {
-                fontSizeSlider.value = state.settings.fontSize;
-                fontSizeDisplay.textContent = `${state.settings.fontSize}%`;
-            }
-            
-            // Update line height
-            const lineHeightRadio = $(`[name="line-height"][value="${state.settings.lineHeight}"]`);
-            if (lineHeightRadio) lineHeightRadio.checked = true;
-            
-            // Update column width
-            const columnWidthRadio = $(`[name="column-width"][value="${state.settings.columnWidth}"]`);
-            if (columnWidthRadio) columnWidthRadio.checked = true;
-            
-            // Update justify text
-            const justifyCheckbox = $('#justify-text');
-            if (justifyCheckbox) justifyCheckbox.checked = state.settings.justifyText;
-        }
-    };
-
-    // Progress management
-    const progress = {
-        save() {
-            storage.set('readium_reader_progress', {
-                pageIndex: state.currentPageIndex,
-                timestamp: Date.now()
-            });
-        },
-        
-        load() {
-            const saved = storage.get('readium_reader_progress');
-            if (saved && saved.pageIndex < state.totalPages) {
-                state.currentPageIndex = saved.pageIndex;
-                reader.render();
-            }
-        },
-        
-        update() {
-            const currentPos = $('#current-position');
-            const progressPercent = $('#progress-percent');
-            const readingTime = $('#reading-time');
-            const progressFill = $('#progress-fill');
-            const progressHandle = $('#progress-handle');
-            const currentPage = $('#current-page');
-            const totalPages = $('#total-pages');
-            
-            const currentPageNum = state.currentPageIndex + 1;
-            const progressPercentValue = state.totalPages > 0 ? 
-                Math.round((state.currentPageIndex / (state.totalPages - 1)) * 100) : 0;
-            
-            if (currentPos) {
-                // Find current chapter based on page content
-                const currentPageData = state.pages[state.currentPageIndex];
-                if (currentPageData && currentPageData.chapterTitle) {
-                    currentPos.textContent = currentPageData.chapterTitle;
-                } else {
-                    currentPos.textContent = `Страница ${currentPageNum}`;
-                }
-            }
-            
-            if (progressPercent) {
-                progressPercent.textContent = `${progressPercentValue}%`;
-            }
-            
-            if (progressFill) {
-                progressFill.style.width = `${progressPercentValue}%`;
-            }
-            
-            if (progressHandle) {
-                progressHandle.style.left = `${progressPercentValue}%`;
-            }
-            
-            if (readingTime) {
-                const remainingPages = state.totalPages - currentPageNum;
-                const estimatedMinutes = Math.ceil(remainingPages * 1.5); // 1.5 min per page
-                readingTime.textContent = `~${estimatedMinutes} мин`;
-            }
-            
-            if (currentPage) currentPage.textContent = currentPageNum;
-            if (totalPages) totalPages.textContent = state.totalPages;
-            
-            this.save();
-        }
-    };
-
     // UI management
     const ui = {
         showLoading(message = 'Загрузка...') {
-            const loading = $('#loading');
-            const status = $('#loading-status');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('loading-status');
             if (status) status.textContent = message;
             if (loading) loading.classList.remove('hidden');
         },
         
         hideLoading() {
-            const loading = $('#loading');
+            const loading = document.getElementById('loading');
             if (loading) loading.classList.add('hidden');
         },
         
         toggleUI() {
             state.uiVisible = !state.uiVisible;
-            const header = $('#header');
-            const footer = $('#footer');
+            const header = document.getElementById('header');
+            const footer = document.getElementById('footer');
             
             if (header) header.classList.toggle('visible', state.uiVisible);
             if (footer) footer.classList.toggle('visible', state.uiVisible);
         },
         
-        showSidebar() {
-            const sidebar = $('#toc-sidebar');
-            const overlay = $('#overlay');
+        updateProgress() {
+            const currentPageEl = document.getElementById('current-page');
+            const totalPagesEl = document.getElementById('total-pages');
+            const readingTimeEl = document.getElementById('reading-time');
+            const progressFill = document.getElementById('progress-fill');
             
-            if (sidebar) sidebar.classList.add('visible');
-            if (overlay) overlay.classList.add('visible');
-        },
-        
-        hideSidebar() {
-            const sidebar = $('#toc-sidebar');
-            const overlay = $('#overlay');
+            if (currentPageEl) currentPageEl.textContent = state.currentPage;
+            if (totalPagesEl) totalPagesEl.textContent = state.totalPages;
             
-            if (sidebar) sidebar.classList.remove('visible');
-            if (overlay) overlay.classList.remove('visible');
-        },
-        
-        showSettings() {
-            const modal = $('#settings-modal');
-            if (modal) modal.classList.add('visible');
-        },
-        
-        hideSettings() {
-            const modal = $('#settings-modal');
-            if (modal) modal.classList.remove('visible');
-        },
-        
-        renderTOC() {
-            const tocList = $('#toc-list');
-            if (!tocList || !state.chapters.length) return;
+            if (readingTimeEl) {
+                const remainingPages = state.totalPages - state.currentPage;
+                const minutes = Math.ceil(remainingPages * 1.5);
+                readingTimeEl.textContent = `~${minutes} мин`;
+            }
             
-            tocList.innerHTML = '';
+            if (progressFill && state.totalPages > 0) {
+                const progress = ((state.currentPage - 1) / (state.totalPages - 1)) * 100;
+                progressFill.style.width = `${Math.max(0, progress)}%`;
+            }
             
-            // Create TOC with page numbers for each chapter
-            const chapterStartPages = new Map();
-            state.pages.forEach((page, index) => {
-                if (page.isChapterStart && !chapterStartPages.has(page.chapterIndex)) {
-                    chapterStartPages.set(page.chapterIndex, index + 1);
-                }
-            });
-            
-            state.chapters.forEach((chapter, index) => {
-                const item = document.createElement('div');
-                item.className = 'toc-item';
-                
-                // Check if current page is in this chapter
-                const currentPageData = state.pages[state.currentPageIndex];
-                if (currentPageData && currentPageData.chapterIndex === index) {
-                    item.classList.add('active');
-                }
-                
-                const startPage = chapterStartPages.get(index) || 1;
-                
-                item.innerHTML = `
-                    <div class="toc-item-title">${chapter.title || `Глава ${index + 1}`}</div>
-                    <div class="toc-item-page">Страница ${startPage}</div>
-                `;
-                
-                on(item, 'click', () => {
-                    const pageIndex = state.pages.findIndex(p => p.chapterIndex === index && p.isChapterStart);
-                    if (pageIndex >= 0) {
-                        state.currentPageIndex = pageIndex;
-                        reader.render();
-                        ui.hideSidebar();
-                    }
-                });
-                
-                tocList.appendChild(item);
+            // Save progress
+            storage.set('turnjs_reader_progress', {
+                page: state.currentPage,
+                timestamp: Date.now()
             });
         }
     };
 
-    // Main Reader functionality
+    // Main reader functionality
     const reader = {
         async init() {
             try {
-                ui.showLoading('Инициализация профессионального ридера...');
+                ui.showLoading('Инициализация Turn.js ридера...');
                 
-                settings.load();
                 await this.loadBook();
-                this.paginate();
-                
-                progress.load();
-                ui.renderTOC();
+                this.createPages();
+                this.initializeTurnJS();
                 this.bindEvents();
-                this.render();
+                
+                // Load saved progress
+                const saved = storage.get('turnjs_reader_progress');
+                if (saved && saved.page <= state.totalPages) {
+                    $('#book').turn('page', saved.page);
+                }
                 
                 ui.hideLoading();
                 
@@ -291,7 +106,7 @@
                 
             } catch (error) {
                 console.error('Failed to initialize reader:', error);
-                ui.showLoading('Ошибка инициализации ридера. Проверьте подключение.');
+                ui.showLoading('Ошибка загрузки. Проверьте подключение.');
             }
         },
         
@@ -305,7 +120,7 @@
                 
                 state.chapters = await response.json();
                 
-                // Load all chapters and combine
+                // Load all chapters
                 let combinedContent = '';
                 
                 for (let i = 0; i < state.chapters.length; i++) {
@@ -315,23 +130,16 @@
                         const chapterResponse = await fetch(state.chapters[i].href);
                         const chapterContent = await chapterResponse.text();
                         
-                        // Add chapter with metadata
                         combinedContent += `
-                            <div data-chapter-index="${i}" data-chapter-start="true">
-                                <h1 class="chapter-title">${state.chapters[i].title || `Глава ${i + 1}`}</h1>
-                                <div class="chapter-content">${chapterContent}</div>
-                            </div>
+                            <h1>${state.chapters[i].title || `Глава ${i + 1}`}</h1>
+                            ${chapterContent}
                         `;
                         
                     } catch (error) {
                         console.warn(`Failed to load chapter ${i}:`, error);
                         combinedContent += `
-                            <div data-chapter-index="${i}" data-chapter-start="true">
-                                <h1 class="chapter-title">${state.chapters[i].title || `Глава ${i + 1}`}</h1>
-                                <div class="chapter-content">
-                                    <p>Ошибка загрузки главы. Попробуйте обновить страницу.</p>
-                                </div>
-                            </div>
+                            <h1>${state.chapters[i].title || `Глава ${i + 1}`}</h1>
+                            <p>Ошибка загрузки главы. Попробуйте обновить страницу.</p>
                         `;
                     }
                 }
@@ -344,279 +152,139 @@
             }
         },
         
-        paginate() {
+        createPages() {
             ui.showLoading('Создание страниц...');
             
-            state.pages = [];
-            const isMobile = window.innerWidth <= 768;
-            
-            // Create temporary container to measure content
-            const measureContainer = document.createElement('div');
-            measureContainer.style.cssText = `
+            // Create a temporary container to measure content
+            const tempContainer = document.createElement('div');
+            tempContainer.style.cssText = `
                 position: absolute;
                 visibility: hidden;
                 top: -9999px;
                 left: 0;
-                width: 100%;
-                max-width: 680px;
-                height: calc(100vh - 120px); /* Account for header/footer */
+                width: 800px;
+                height: 600px;
                 padding: 2rem;
-                font-family: var(--font-reading-serif);
-                font-size: ${(1.125 * state.settings.fontSize / 100)}rem;
-                line-height: ${state.settings.lineHeight};
+                font-family: 'Crimson Text', Georgia, serif;
+                font-size: 1.1rem;
+                line-height: 1.6;
                 color: var(--text-primary);
+                text-align: justify;
                 overflow: hidden;
                 box-sizing: border-box;
             `;
-            document.body.appendChild(measureContainer);
+            document.body.appendChild(tempContainer);
             
-            // Parse combined content
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = state.allContent;
+            // Split content into paragraphs
+            const paragraphs = state.allContent.split(/(?=<h1|<p)/g).filter(p => p.trim());
             
-            const allElements = Array.from(tempDiv.children);
+            const pages = [];
             let currentPageContent = '';
-            let currentChapterIndex = 0;
-            let isChapterStart = false;
             
-            allElements.forEach((chapterDiv, chapterIdx) => {
-                const chapterIndex = parseInt(chapterDiv.dataset.chapterIndex);
-                const chapterElements = Array.from(chapterDiv.children);
+            paragraphs.forEach(paragraph => {
+                const testContent = currentPageContent + paragraph;
+                tempContainer.innerHTML = testContent;
                 
-                chapterElements.forEach((element, elementIdx) => {
-                    const isFirstElementOfChapter = elementIdx === 0; // h1 title
-                    
-                    // Test adding this element
-                    const testContent = currentPageContent + element.outerHTML;
-                    measureContainer.innerHTML = testContent;
-                    
-                    const fits = measureContainer.scrollHeight <= measureContainer.clientHeight;
-                    
-                    if (!fits && currentPageContent.length > 0) {
-                        // Current page is full, save it
-                        state.pages.push({
-                            content: currentPageContent,
-                            chapterIndex: currentChapterIndex,
-                            chapterTitle: state.chapters[currentChapterIndex]?.title || `Глава ${currentChapterIndex + 1}`,
-                            isChapterStart: isChapterStart
-                        });
-                        
-                        // Start new page with current element
-                        currentPageContent = element.outerHTML;
-                        currentChapterIndex = chapterIndex;
-                        isChapterStart = isFirstElementOfChapter;
-                    } else {
-                        // Element fits, add to current page
-                        currentPageContent = testContent;
-                        if (isFirstElementOfChapter) {
-                            currentChapterIndex = chapterIndex;
-                            isChapterStart = true;
-                        }
-                    }
-                });
+                if (tempContainer.scrollHeight > tempContainer.clientHeight && currentPageContent) {
+                    // Save current page
+                    pages.push(currentPageContent);
+                    currentPageContent = paragraph;
+                } else {
+                    currentPageContent = testContent;
+                }
             });
             
             // Add last page
             if (currentPageContent.trim()) {
-                state.pages.push({
-                    content: currentPageContent,
-                    chapterIndex: currentChapterIndex,
-                    chapterTitle: state.chapters[currentChapterIndex]?.title || `Глава ${currentChapterIndex + 1}`,
-                    isChapterStart: isChapterStart
-                });
+                pages.push(currentPageContent);
             }
             
-            // Remove measure container
-            document.body.removeChild(measureContainer);
+            // Remove temp container
+            document.body.removeChild(tempContainer);
             
-            state.totalPages = state.pages.length;
+            // Create Turn.js pages
+            const book = document.getElementById('book');
+            book.innerHTML = '';
             
-            // Ensure current page is valid
-            if (state.currentPageIndex >= state.totalPages) {
-                state.currentPageIndex = Math.max(0, state.totalPages - 1);
-            }
+            pages.forEach((pageContent, index) => {
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'page';
+                pageDiv.innerHTML = pageContent;
+                book.appendChild(pageDiv);
+            });
             
-            console.log(`Created ${state.totalPages} continuous pages`);
+            state.totalPages = pages.length;
+            console.log(`Created ${state.totalPages} Turn.js pages`);
         },
         
-        render() {
-            const container = $('#readium-reader');
-            if (!container || !state.pages[state.currentPageIndex]) return;
+        initializeTurnJS() {
+            ui.showLoading('Инициализация Turn.js...');
             
-            const currentPage = state.pages[state.currentPageIndex];
+            const $book = $('#book');
             
-            // Apply current settings to content
-            let fontFamily = 'var(--font-reading-serif)';
-            if (state.settings.fontFamily === 'sans') {
-                fontFamily = 'var(--font-reading-sans)';
-            } else if (state.settings.fontFamily === 'mono') {
-                fontFamily = 'var(--font-reading-mono)';
-            }
-            
-            const fontSize = 1.125 * (state.settings.fontSize / 100);
-            const textAlign = state.settings.justifyText ? 'justify' : 'left';
-            
-            container.innerHTML = `
-                <div class="readium-page" style="
-                    max-width: 680px;
-                    margin: 0 auto;
-                    padding: 2rem;
-                    font-family: ${fontFamily};
-                    font-size: ${fontSize}rem;
-                    line-height: ${state.settings.lineHeight};
-                    color: var(--text-primary);
-                    text-align: ${textAlign};
-                    height: 100%;
-                    overflow: hidden;
-                ">
-                    ${currentPage.content}
-                </div>
-            `;
-            
-            // Style chapter titles
-            const chapterTitles = container.querySelectorAll('.chapter-title');
-            chapterTitles.forEach(title => {
-                title.style.cssText += `
-                    font-size: 2rem;
-                    font-weight: 700;
-                    margin-bottom: 2rem;
-                    text-align: center;
-                    color: var(--text-primary);
-                `;
+            $book.turn({
+                width: 800,
+                height: 600,
+                autoCenter: true,
+                elevation: 50,
+                gradients: true,
+                when: {
+                    turned: (event, page, view) => {
+                        state.currentPage = page;
+                        ui.updateProgress();
+                    }
+                }
             });
             
-            // Style chapter content
-            const chapterContents = container.querySelectorAll('.chapter-content');
-            chapterContents.forEach(content => {
-                content.style.cssText += `
-                    text-align: ${textAlign};
-                `;
-                
-                // Style paragraphs
-                const paragraphs = content.querySelectorAll('p');
-                paragraphs.forEach(p => {
-                    p.style.marginBottom = '1rem';
-                });
-            });
-            
-            progress.update();
-            ui.renderTOC();
+            // Set initial state
+            state.currentPage = 1;
+            ui.updateProgress();
         },
         
         nextPage() {
-            if (state.currentPageIndex < state.totalPages - 1) {
-                state.currentPageIndex++;
-                this.render();
-            }
+            $('#book').turn('next');
         },
         
         prevPage() {
-            if (state.currentPageIndex > 0) {
-                state.currentPageIndex--;
-                this.render();
-            }
-        },
-        
-        goToPage(pageIndex) {
-            if (pageIndex >= 0 && pageIndex < state.totalPages) {
-                state.currentPageIndex = pageIndex;
-                this.render();
-            }
-        },
-        
-        nextChapter() {
-            // Find next chapter start
-            for (let i = state.currentPageIndex + 1; i < state.totalPages; i++) {
-                if (state.pages[i].isChapterStart) {
-                    state.currentPageIndex = i;
-                    this.render();
-                    return;
-                }
-            }
-        },
-        
-        prevChapter() {
-            // Find previous chapter start
-            for (let i = state.currentPageIndex - 1; i >= 0; i--) {
-                if (state.pages[i].isChapterStart) {
-                    state.currentPageIndex = i;
-                    this.render();
-                    return;
-                }
-            }
+            $('#book').turn('previous');
         },
         
         bindEvents() {
-            // Navigation
-            on($('#nav-prev'), 'click', () => this.prevPage());
-            on($('#nav-next'), 'click', () => this.nextPage());
-            on($('#nav-center'), 'click', () => ui.toggleUI());
+            // Navigation buttons
+            document.getElementById('prev-btn')?.addEventListener('click', () => this.prevPage());
+            document.getElementById('next-btn')?.addEventListener('click', () => this.nextPage());
             
             // Header buttons
-            on($('#back-btn'), 'click', () => history.back());
-            on($('#toc-btn'), 'click', () => ui.showSidebar());
-            on($('#settings-btn'), 'click', () => ui.showSettings());
+            document.getElementById('back-btn')?.addEventListener('click', () => history.back());
             
-            // Footer controls
-            on($('#prev-chapter'), 'click', () => this.prevChapter());
-            on($('#next-chapter'), 'click', () => this.nextChapter());
+            // Click to toggle UI
+            document.getElementById('book')?.addEventListener('click', (e) => {
+                // Only toggle UI if clicking empty space, not on text
+                const rect = e.currentTarget.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const clickZone = Math.abs(e.clientX - centerX) / (rect.width / 2);
+                
+                if (clickZone > 0.6) {
+                    if (e.clientX < centerX) {
+                        this.prevPage();
+                    } else {
+                        this.nextPage();
+                    }
+                } else {
+                    ui.toggleUI();
+                }
+            });
             
             // Progress bar
-            on($('#progress-bar'), 'click', (e) => {
+            document.getElementById('progress-bar')?.addEventListener('click', (e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const ratio = (e.clientX - rect.left) / rect.width;
-                const pageIndex = Math.floor(ratio * state.totalPages);
-                this.goToPage(pageIndex);
-            });
-            
-            // Sidebar
-            on($('#close-toc'), 'click', () => ui.hideSidebar());
-            on($('#overlay'), 'click', () => ui.hideSidebar());
-            
-            // Settings
-            on($('#close-settings'), 'click', () => ui.hideSettings());
-            on($('#settings-modal .modal-backdrop'), 'click', () => ui.hideSettings());
-            
-            // Theme selection
-            $$('.theme-option').forEach(btn => {
-                on(btn, 'click', () => settings.update('theme', btn.dataset.theme));
-            });
-            
-            // Font family
-            on($('#font-family'), 'change', (e) => settings.update('fontFamily', e.target.value));
-            
-            // Font size
-            on($('#font-size'), 'input', (e) => {
-                const size = parseInt(e.target.value);
-                $('#font-size-display').textContent = `${size}%`;
-                settings.update('fontSize', size);
-            });
-            
-            // Line height
-            $$('[name="line-height"]').forEach(radio => {
-                on(radio, 'change', (e) => settings.update('lineHeight', parseFloat(e.target.value)));
-            });
-            
-            // Column width
-            $$('[name="column-width"]').forEach(radio => {
-                on(radio, 'change', (e) => settings.update('columnWidth', e.target.value));
-            });
-            
-            // Justify text
-            on($('#justify-text'), 'change', (e) => settings.update('justifyText', e.target.checked));
-            
-            // Resize handler
-            window.addEventListener('resize', () => {
-                setTimeout(() => {
-                    this.paginate();
-                    this.render();
-                }, 300);
+                const page = Math.ceil(ratio * state.totalPages);
+                $('#book').turn('page', page);
             });
             
             // Keyboard shortcuts
-            on(document, 'keydown', (e) => {
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-                
+            document.addEventListener('keydown', (e) => {
                 switch (e.key) {
                     case 'ArrowLeft':
                     case 'PageUp':
@@ -631,30 +299,31 @@
                         break;
                     case 'Home':
                         e.preventDefault();
-                        this.goToPage(0);
+                        $('#book').turn('page', 1);
                         break;
                     case 'End':
                         e.preventDefault();
-                        this.goToPage(state.totalPages - 1);
+                        $('#book').turn('page', state.totalPages);
                         break;
                     case 'Escape':
-                        if ($('#settings-modal')?.classList.contains('visible')) {
-                            ui.hideSettings();
-                        } else if ($('#toc-sidebar')?.classList.contains('visible')) {
-                            ui.hideSidebar();
-                        } else if (state.uiVisible) {
+                        if (state.uiVisible) {
                             ui.toggleUI();
                         }
                         break;
                 }
             });
+            
+            // Resize handler
+            window.addEventListener('resize', () => {
+                setTimeout(() => {
+                    $('#book').turn('resize');
+                }, 300);
+            });
         }
     };
 
-    // Initialize when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => reader.init());
-    } else {
+    // Initialize when DOM and jQuery are ready
+    $(document).ready(() => {
         reader.init();
-    }
+    });
 })();
