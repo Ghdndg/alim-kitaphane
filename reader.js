@@ -26,10 +26,6 @@
     // Application state
     const state = {
         bookText: '',
-        allWords: [], // ПРОСТО МАССИВ ВСЕХ СЛОВ
-        pages: [], // СТРАНИЦЫ
-        currentPageIndex: 0,
-        totalPages: 0,
         uiVisible: false,
         
         settings: {
@@ -42,7 +38,7 @@
     // Settings management
     const settings = {
         load() {
-            const saved = storage.get('crimchitalka_settings');
+            const saved = storage.get('scroll_reader_settings');
             if (saved) {
                 Object.assign(state.settings, saved);
             }
@@ -51,7 +47,7 @@
         },
         
         save() {
-            storage.set('crimchitalka_settings', state.settings);
+            storage.set('scroll_reader_settings', state.settings);
         },
         
         apply() {
@@ -67,19 +63,15 @@
             state.settings[key] = value;
             this.apply();
             this.updateUI();
-            
-            // Re-paginate when settings change
-            setTimeout(() => {
-                reader.createPages();
-                reader.render();
-            }, 100);
         },
         
         updateUI() {
+            // Update theme buttons
             $$('.option-btn[data-theme]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.theme === state.settings.theme);
             });
             
+            // Update sliders
             const fontSizeSlider = $('#font-size-slider');
             const fontSizeValue = $('#font-size-value');
             if (fontSizeSlider && fontSizeValue) {
@@ -99,43 +91,29 @@
     // Progress management
     const progress = {
         save() {
-            storage.set('crimchitalka_progress', {
-                pageIndex: state.currentPageIndex,
+            const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+            storage.set('scroll_reader_progress', {
+                scrollPercent: Math.max(0, Math.min(100, scrollPercent)),
                 timestamp: Date.now()
             });
         },
         
         load() {
-            const saved = storage.get('crimchitalka_progress');
-            if (saved && saved.pageIndex < state.totalPages) {
-                state.currentPageIndex = saved.pageIndex;
+            const saved = storage.get('scroll_reader_progress');
+            if (saved && saved.scrollPercent > 0) {
+                setTimeout(() => {
+                    const targetScroll = (saved.scrollPercent / 100) * (document.documentElement.scrollHeight - window.innerHeight);
+                    window.scrollTo(0, targetScroll);
+                }, 100);
             }
         },
         
         update() {
-            const currentPos = $('#current-page');
-            const totalPos = $('#total-pages');
-            const readingTime = $('#reading-time');
             const progressFill = $('#progress-fill');
-            const pageInput = $('#page-input');
-            
-            const currentPage = state.currentPageIndex + 1;
-            
-            if (currentPos) currentPos.textContent = currentPage;
-            if (totalPos) totalPos.textContent = state.totalPages;
-            if (pageInput) {
-                pageInput.value = currentPage;
-                pageInput.max = state.totalPages;
+            if (progressFill) {
+                const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+                progressFill.style.width = `${Math.max(0, Math.min(100, scrollPercent))}%`;
             }
-            
-            if (readingTime) {
-                const remainingPages = state.totalPages - currentPage;
-                const minutes = Math.ceil(remainingPages * 1.5);
-                readingTime.textContent = `~${minutes} мин`;
-            }
-            
-            const progressPercent = state.totalPages > 1 ? (state.currentPageIndex / (state.totalPages - 1)) * 100 : 0;
-            if (progressFill) progressFill.style.width = `${progressPercent}%`;
             
             this.save();
         }
@@ -158,10 +136,7 @@
         toggleUI() {
             state.uiVisible = !state.uiVisible;
             const header = $('#header');
-            const footer = $('#footer');
-            
             if (header) header.classList.toggle('visible', state.uiVisible);
-            if (footer) footer.classList.toggle('visible', state.uiVisible);
         },
         
         showSettings() {
@@ -183,12 +158,10 @@
                 
                 settings.load();
                 await this.loadBook();
-                this.prepareWords();
-                this.createPages();
+                this.renderBook();
                 
-                progress.load();
                 this.bindEvents();
-                this.render();
+                progress.load();
                 
                 ui.hideLoading();
                 
@@ -197,6 +170,8 @@
                     ui.toggleUI();
                     setTimeout(() => ui.toggleUI(), 3000);
                 }, 500);
+                
+                console.log('📖 Scroll reader initialized successfully!');
                 
             } catch (error) {
                 console.error('Failed to initialize reader:', error);
@@ -214,7 +189,7 @@
                 }
                 
                 state.bookText = await response.text();
-                console.log('📖 Book loaded, length:', state.bookText.length, 'characters');
+                console.log('📖 Book loaded:', state.bookText.length, 'characters');
                 
                 if (!state.bookText.trim()) {
                     throw new Error('Book file is empty');
@@ -226,210 +201,69 @@
             }
         },
         
-        prepareWords() {
-            ui.showLoading('Разбиение на слова...');
+        renderBook() {
+            ui.showLoading('Форматирование текста...');
             
-            // Очистка текста
+            const content = $('#content');
+            if (!content) return;
+            
+            // Clean text
             const cleanText = state.bookText
-                .replace(/\r\n/g, ' ')
-                .replace(/\n/g, ' ')
-                .replace(/\s+/g, ' ')
+                .replace(/\r\n/g, '\n')
+                .replace(/\n{3,}/g, '\n\n')
                 .trim();
             
-            // ПРОСТО РАЗБИВАЕМ НА СЛОВА
-            state.allWords = cleanText.split(' ').filter(word => word.trim().length > 0);
+            // Split into paragraphs
+            const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
             
-            console.log('📝 Prepared', state.allWords.length, 'words');
-        },
-        
-        createPages() {
-            ui.showLoading('Создание страниц по словам...');
+            let html = '';
             
-            state.pages = [];
-            
-            // Создаем контейнер для измерений
-            const measuringContainer = document.createElement('div');
-            measuringContainer.style.cssText = `
-                position: absolute;
-                visibility: hidden;
-                top: -9999px;
-                left: 0;
-                width: 100%;
-                max-width: 680px;
-                margin: 0 auto;
-                padding: 20px;
-                font-family: "Crimson Text", Georgia, serif;
-                font-size: ${state.settings.fontSize}px;
-                line-height: ${state.settings.lineHeight};
-                color: var(--text-primary);
-                overflow: hidden;
-                box-sizing: border-box;
-            `;
-            
-            // Высота доступного места для текста
-            const availableHeight = window.innerHeight - 56 - 80 - 40; // header - footer - padding
-            measuringContainer.style.height = `${availableHeight}px`;
-            document.body.appendChild(measuringContainer);
-            
-            let currentPageWords = []; // Слова текущей страницы
-            let wordIndex = 0; // Индекс текущего слова
-            
-            console.log('📊 Processing', state.allWords.length, 'words...');
-            
-            // ОБРАБАТЫВАЕМ КАЖДОЕ СЛОВО ПО ПОРЯДКУ
-            while (wordIndex < state.allWords.length) {
-                const word = state.allWords[wordIndex];
+            paragraphs.forEach(paragraph => {
+                const trimmed = paragraph.trim().replace(/\n/g, ' ');
+                if (!trimmed) return;
                 
-                // Тестируем добавление этого слова
-                const testWords = [...currentPageWords, word];
-                const testText = testWords.join(' ');
-                
-                measuringContainer.innerHTML = `<p>${testText}</p>`;
-                
-                const fits = measuringContainer.scrollHeight <= availableHeight;
-                
-                if (fits) {
-                    // СЛОВО ПОМЕЩАЕТСЯ - добавляем
-                    currentPageWords.push(word);
-                    wordIndex++;
-                } else {
-                    // СЛОВО НЕ ПОМЕЩАЕТСЯ
-                    if (currentPageWords.length > 0) {
-                        // Сохраняем текущую страницу
-                        const pageText = currentPageWords.join(' ');
-                        state.pages.push(`<p>${pageText}</p>`);
-                        console.log(`📄 Page ${state.pages.length}: ${currentPageWords.length} words`);
-                        
-                        // Начинаем новую страницу с этого слова
-                        currentPageWords = [word];
-                        wordIndex++;
+                // Check if it looks like a title
+                if (trimmed.length < 100 && (
+                    trimmed === trimmed.toUpperCase() || 
+                    /^[А-ЯЁ\s\-]+$/.test(trimmed) ||
+                    trimmed.startsWith('Глава') ||
+                    trimmed.startsWith('ГЛАВА') ||
+                    trimmed === 'Хаджи-Гирай' ||
+                    trimmed === 'Алим Къуртсеит'
+                )) {
+                    if (trimmed === 'Хаджи-Гирай') {
+                        html += `<h1>${trimmed}</h1>`;
                     } else {
-                        // Даже одно слово не помещается - принудительно добавляем
-                        state.pages.push(`<p>${word}</p>`);
-                        console.log(`📄 Page ${state.pages.length}: 1 word (forced)`);
-                        
-                        currentPageWords = [];
-                        wordIndex++;
+                        html += `<h2>${trimmed}</h2>`;
                     }
-                }
-            }
-            
-            // Добавляем последнюю страницу
-            if (currentPageWords.length > 0) {
-                const pageText = currentPageWords.join(' ');
-                state.pages.push(`<p>${pageText}</p>`);
-                console.log(`📄 Page ${state.pages.length}: ${currentPageWords.length} words (final)`);
-            }
-            
-            // Убираем контейнер для измерений
-            document.body.removeChild(measuringContainer);
-            
-            state.totalPages = state.pages.length;
-            
-            // ПРОВЕРКА НА ПОТЕРИ
-            let totalWordsInPages = 0;
-            
-            state.pages.forEach((pageHTML, pageIndex) => {
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = pageHTML;
-                const text = tempDiv.textContent || tempDiv.innerText || '';
-                const wordsInPage = text.trim().split(/\s+/).filter(w => w.length > 0).length;
-                totalWordsInPages += wordsInPage;
-                
-                // Log first few pages for debugging
-                if (pageIndex < 5) {
-                    console.log(`📄 Page ${pageIndex + 1}: ${wordsInPage} words, starts with: "${text.substring(0, 50)}..."`);
+                } else {
+                    html += `<p>${trimmed}</p>`;
                 }
             });
             
-            console.log('✅ СОЗДАНО', state.totalPages, 'страниц');
-            console.log('📊 СЛОВ В ОРИГИНАЛЕ:', state.allWords.length);
-            console.log('📊 СЛОВ НА СТРАНИЦАХ:', totalWordsInPages);
+            content.innerHTML = html;
             
-            if (state.allWords.length === totalWordsInPages) {
-                console.log('🎉 ВСЕ СЛОВА СОХРАНЕНЫ! ПОТЕРЬ НЕТ!');
-            } else {
-                console.error('❌ ПОТЕРЯ СЛОВ!', state.allWords.length - totalWordsInPages, 'слов потеряно');
-                
-                // Debug: log all pages
-                state.pages.forEach((pageHTML, index) => {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = pageHTML;
-                    const text = tempDiv.textContent || tempDiv.innerText || '';
-                    console.log(`DEBUG Page ${index + 1}:`, text.length, 'chars');
-                });
-            }
-        },
-        
-        render() {
-            const pageContent = $('#page-content');
-            if (!pageContent || !state.pages[state.currentPageIndex]) return;
-            
-            const currentPage = state.pages[state.currentPageIndex];
-            pageContent.innerHTML = currentPage;
-            
-            progress.update();
-            
-            console.log(`📖 Показана страница ${state.currentPageIndex + 1}/${state.totalPages}`);
-        },
-        
-        nextPage() {
-            if (state.currentPageIndex < state.totalPages - 1) {
-                state.currentPageIndex++;
-                this.render();
-            }
-        },
-        
-        prevPage() {
-            if (state.currentPageIndex > 0) {
-                state.currentPageIndex--;
-                this.render();
-            }
-        },
-        
-        goToPage(pageNumber) {
-            const pageIndex = Math.max(0, Math.min(pageNumber - 1, state.totalPages - 1));
-            if (pageIndex !== state.currentPageIndex) {
-                state.currentPageIndex = pageIndex;
-                this.render();
-            }
+            console.log('📝 Rendered', paragraphs.length, 'paragraphs');
         },
         
         bindEvents() {
-            // Touch zones
-            on($('#prev-zone'), 'click', () => this.prevPage());
-            on($('#next-zone'), 'click', () => this.nextPage());
-            on($('#menu-zone'), 'click', () => ui.toggleUI());
-            
-            // Navigation buttons
-            on($('#prev-btn'), 'click', () => this.prevPage());
-            on($('#next-btn'), 'click', () => this.nextPage());
-            
-            // Header buttons
-            on($('#back-btn'), 'click', () => history.back());
+            // Settings
             on($('#settings-btn'), 'click', () => ui.showSettings());
+            on($('#close-settings'), 'click', () => ui.hideSettings());
             
-            // Page input
-            on($('#page-input'), 'change', (e) => this.goToPage(parseInt(e.target.value) || 1));
-            
-            // Progress bar
-            on($('#progress-bar'), 'click', (e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const ratio = (e.clientX - rect.left) / rect.width;
-                const page = Math.ceil(ratio * state.totalPages);
-                this.goToPage(page);
+            // Click outside modal to close
+            on($('#settings-modal'), 'click', (e) => {
+                if (e.target.id === 'settings-modal') {
+                    ui.hideSettings();
+                }
             });
             
-            // Settings modal
-            on($('#close-settings'), 'click', () => ui.hideSettings());
-            on($('#settings-modal .modal-backdrop'), 'click', () => ui.hideSettings());
-            
-            // Settings buttons
+            // Theme buttons
             $$('.option-btn[data-theme]').forEach(btn => {
                 on(btn, 'click', () => settings.update('theme', btn.dataset.theme));
             });
             
-            // Range sliders
+            // Font size slider
             const fontSizeSlider = $('#font-size-slider');
             const fontSizeValue = $('#font-size-value');
             if (fontSizeSlider && fontSizeValue) {
@@ -440,6 +274,7 @@
                 });
             }
             
+            // Line height slider
             const lineHeightSlider = $('#line-height-slider');
             const lineHeightValue = $('#line-height-value');
             if (lineHeightSlider && lineHeightValue) {
@@ -450,37 +285,47 @@
                 });
             }
             
-            // Window resize
-            window.addEventListener('resize', () => {
-                setTimeout(() => {
-                    this.createPages();
-                    this.render();
-                }, 300);
+            // Scroll progress
+            let scrollTimeout;
+            window.addEventListener('scroll', () => {
+                progress.update();
+                
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    progress.save();
+                }, 150);
+            });
+            
+            // Tap to toggle UI
+            let tapTimeout;
+            document.addEventListener('click', (e) => {
+                // Don't toggle UI if clicking on buttons or modal
+                if (e.target.closest('button') || e.target.closest('.modal')) return;
+                
+                clearTimeout(tapTimeout);
+                tapTimeout = setTimeout(() => {
+                    ui.toggleUI();
+                }, 100);
             });
             
             // Keyboard shortcuts
-            on(document, 'keydown', (e) => {
-                if (e.target.tagName === 'INPUT') return;
-                
+            document.addEventListener('keydown', (e) => {
                 switch (e.key) {
-                    case 'ArrowLeft':
+                    case 'ArrowUp':
                     case 'PageUp':
-                        e.preventDefault();
-                        this.prevPage();
+                        window.scrollBy(0, -window.innerHeight * 0.8);
                         break;
-                    case 'ArrowRight':
+                    case 'ArrowDown':
                     case 'PageDown':
                     case ' ':
                         e.preventDefault();
-                        this.nextPage();
+                        window.scrollBy(0, window.innerHeight * 0.8);
                         break;
                     case 'Home':
-                        e.preventDefault();
-                        this.goToPage(1);
+                        window.scrollTo(0, 0);
                         break;
                     case 'End':
-                        e.preventDefault();
-                        this.goToPage(state.totalPages);
+                        window.scrollTo(0, document.documentElement.scrollHeight);
                         break;
                     case 'Escape':
                         if ($('#settings-modal')?.classList.contains('visible')) {
