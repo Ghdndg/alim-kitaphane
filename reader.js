@@ -91,12 +91,9 @@
     // Progress management
     const progress = {
         save() {
-            const container = $('#content-container');
-            if (!container) return;
-            
-            const scrollPercent = (container.scrollTop / (container.scrollHeight - container.clientHeight)) * 100;
+            const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
             storage.set('scroll_reader_progress', {
-                scrollPercent: Math.max(0, Math.min(100, scrollPercent || 0)),
+                scrollPercent: Math.max(0, Math.min(100, scrollPercent)),
                 timestamp: Date.now()
             });
         },
@@ -105,25 +102,19 @@
             const saved = storage.get('scroll_reader_progress');
             if (saved && saved.scrollPercent > 0) {
                 setTimeout(() => {
-                    const container = $('#content-container');
-                    if (container) {
-                        const targetScroll = (saved.scrollPercent / 100) * (container.scrollHeight - container.clientHeight);
-                        container.scrollTo({ top: targetScroll, behavior: 'smooth' });
-                    }
+                    const targetScroll = (saved.scrollPercent / 100) * (document.documentElement.scrollHeight - window.innerHeight);
+                    window.scrollTo({ top: targetScroll, behavior: 'smooth' });
                 }, 500);
             }
         },
         
         update() {
-            const container = $('#content-container');
             const progressFill = $('#progress-fill');
-            
-            if (container && progressFill) {
-                const scrollPercent = (container.scrollTop / (container.scrollHeight - container.clientHeight)) * 100;
-                progressFill.style.width = `${Math.max(0, Math.min(100, scrollPercent || 0))}%`;
+            if (progressFill) {
+                const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+                const scrollPercent = maxScroll > 0 ? (window.scrollY / maxScroll) * 100 : 0;
+                progressFill.style.width = `${Math.max(0, Math.min(100, scrollPercent))}%`;
             }
-            
-            this.save();
         }
     };
 
@@ -144,10 +135,7 @@
         toggleUI() {
             state.uiVisible = !state.uiVisible;
             const header = $('#header');
-            const navControls = $('#nav-controls');
-            
             if (header) header.classList.toggle('visible', state.uiVisible);
-            if (navControls) navControls.classList.toggle('visible', state.uiVisible);
         },
         
         showSettings() {
@@ -158,43 +146,6 @@
         hideSettings() {
             const modal = $('#settings-modal');
             if (modal) modal.classList.remove('visible');
-        }
-    };
-
-    // Navigation controls
-    const navigation = {
-        scrollUp() {
-            const container = $('#content-container');
-            if (container) {
-                container.scrollBy({ 
-                    top: -window.innerHeight * 0.8, 
-                    behavior: 'smooth' 
-                });
-            }
-        },
-        
-        scrollDown() {
-            const container = $('#content-container');
-            if (container) {
-                container.scrollBy({ 
-                    top: window.innerHeight * 0.8, 
-                    behavior: 'smooth' 
-                });
-            }
-        },
-        
-        scrollToTop() {
-            const container = $('#content-container');
-            if (container) {
-                container.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        },
-        
-        scrollToBottom() {
-            const container = $('#content-container');
-            if (container) {
-                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-            }
         }
     };
 
@@ -209,17 +160,22 @@
                 this.renderBook();
                 
                 this.bindEvents();
-                progress.load();
                 
                 ui.hideLoading();
+                
+                // Load progress after content is rendered
+                setTimeout(() => {
+                    progress.load();
+                    progress.update();
+                }, 100);
                 
                 // Show UI briefly
                 setTimeout(() => {
                     ui.toggleUI();
-                    setTimeout(() => ui.toggleUI(), 4000);
+                    setTimeout(() => ui.toggleUI(), 3000);
                 }, 1000);
                 
-                console.log('📖 Button-controlled reader initialized successfully!');
+                console.log('📖 Scroll reader initialized successfully!');
                 
             } catch (error) {
                 console.error('Failed to initialize reader:', error);
@@ -265,26 +221,34 @@
             const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
             
             let html = '';
+            let foundTitle = false;
+            let foundAuthor = false;
             
-            paragraphs.forEach(paragraph => {
+            paragraphs.forEach((paragraph, index) => {
                 const trimmed = paragraph.trim().replace(/\n/g, ' ');
                 if (!trimmed) return;
                 
-                // Check if it looks like a title
-                if (trimmed.length < 100 && (
-                    trimmed === trimmed.toUpperCase() || 
-                    /^[А-ЯЁ\s\-]+$/.test(trimmed) ||
+                // Main title
+                if (!foundTitle && (trimmed === 'Хаджи-Гирай' || trimmed.includes('Хаджи-Гирай'))) {
+                    html += `<h1>Хаджи-Гирай</h1>`;
+                    foundTitle = true;
+                } 
+                // Author name 
+                else if (!foundAuthor && (trimmed === 'Алим Къуртсеит' || trimmed.includes('Алим Къуртсеит'))) {
+                    html += `<div class="author">Алим Къуртсеит</div>`;
+                    foundAuthor = true;
+                }
+                // Chapter headings
+                else if (trimmed.length < 100 && (
                     trimmed.startsWith('Глава') ||
                     trimmed.startsWith('ГЛАВА') ||
-                    trimmed === 'Хаджи-Гирай' ||
-                    trimmed === 'Алим Къуртсеит'
+                    /^[А-ЯЁ\s\-]{3,50}$/.test(trimmed) ||
+                    trimmed === trimmed.toUpperCase()
                 )) {
-                    if (trimmed === 'Хаджи-Гирай') {
-                        html += `<h1>${trimmed}</h1>`;
-                    } else {
-                        html += `<h2>${trimmed}</h2>`;
-                    }
-                } else {
+                    html += `<h2>${trimmed}</h2>`;
+                } 
+                // Regular paragraphs
+                else {
                     html += `<p>${trimmed}</p>`;
                 }
             });
@@ -298,10 +262,6 @@
             // Settings
             on($('#settings-btn'), 'click', () => ui.showSettings());
             on($('#close-settings'), 'click', () => ui.hideSettings());
-            
-            // Navigation buttons
-            on($('#up-btn'), 'click', () => navigation.scrollUp());
-            on($('#down-btn'), 'click', () => navigation.scrollDown());
             
             // Click outside modal to close
             on($('#settings-modal'), 'click', (e) => {
@@ -337,19 +297,16 @@
                 });
             }
             
-            // Scroll progress tracking
-            const container = $('#content-container');
-            if (container) {
-                let scrollTimeout;
-                container.addEventListener('scroll', () => {
-                    progress.update();
-                    
-                    clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(() => {
-                        progress.save();
-                    }, 150);
-                });
-            }
+            // Scroll progress
+            let scrollTimeout;
+            window.addEventListener('scroll', () => {
+                progress.update();
+                
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    progress.save();
+                }, 200);
+            });
             
             // Tap to toggle UI
             let tapTimeout;
@@ -368,22 +325,19 @@
                 switch (e.key) {
                     case 'ArrowUp':
                     case 'PageUp':
-                        e.preventDefault();
-                        navigation.scrollUp();
+                        window.scrollBy({ top: -window.innerHeight * 0.8, behavior: 'smooth' });
                         break;
                     case 'ArrowDown':
                     case 'PageDown':
                     case ' ':
                         e.preventDefault();
-                        navigation.scrollDown();
+                        window.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' });
                         break;
                     case 'Home':
-                        e.preventDefault();
-                        navigation.scrollToTop();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                         break;
                     case 'End':
-                        e.preventDefault();
-                        navigation.scrollToBottom();
+                        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
                         break;
                     case 'Escape':
                         if ($('#settings-modal')?.classList.contains('visible')) {
