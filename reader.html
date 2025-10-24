@@ -4,92 +4,412 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>КрымЧиталка — Хаджи-Гирай</title>
-    <link rel="stylesheet" href="reader.css">
+    <style>
+        /* Minimal styles for the reader */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .loading {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            z-index: 9999;
+        }
+        
+        .loading.hidden {
+            display: none;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .reader-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .reader-header {
+            height: 60px;
+            background: #111;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .reader-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .reader-main {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .reader-content {
+            width: 100%;
+            height: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            font-family: 'Crimson Text', Georgia, serif;
+            font-size: 18px;
+            line-height: 1.6;
+            text-align: justify;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .reader-content h1 {
+            font-size: 28px;
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 700;
+        }
+        
+        .reader-content p {
+            margin-bottom: 20px;
+            hyphens: auto;
+            -webkit-hyphens: auto;
+        }
+        
+        .reader-footer {
+            height: 80px;
+            background: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            border-top: 1px solid #333;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: #333;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover {
+            background: #555;
+        }
+        
+        .page-info {
+            font-size: 14px;
+            color: #ccc;
+        }
+        
+        .nav-zones {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            z-index: 10;
+        }
+        
+        .nav-zone {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        
+        @media (max-width: 768px) {
+            .reader-content {
+                padding: 20px;
+                font-size: 16px;
+            }
+            
+            .reader-header {
+                height: 50px;
+                padding: 0 15px;
+            }
+            
+            .reader-footer {
+                height: 70px;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
-<body data-theme="dark">
-    <div class="app">
-        <!-- Loading -->
-        <div id="loading" class="loading">
-            <div class="loading-content">
-                <div class="spinner"></div>
-                <h2>КрымЧиталка</h2>
-                <p id="loading-status">Загрузка...</p>
-            </div>
+<body>
+    <div class="loading" id="loading">
+        <div>
+            <div class="spinner"></div>
+            <p style="margin-top: 20px;">Загрузка книги...</p>
         </div>
-
-        <!-- Header -->
-        <header id="header" class="header">
-            <button class="btn" id="back-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="m15 18-6-6 6-6"/>
-                </svg>
-            </button>
-            
-            <div class="header-title">
-                <h1>Хаджи-Гирай</h1>
-                <span>Алим Къуртсеит</span>
-            </div>
-            
-            <div class="header-actions">
-                <button class="btn" id="toc-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="8" y1="6" x2="21" y2="6"/>
-                        <line x1="8" y1="12" x2="21" y2="12"/>
-                        <line x1="8" y1="18" x2="21" y2="18"/>
-                        <line x1="3" y1="6" x2="3.01" y2="6"/>
-                        <line x1="3" y1="12" x2="3.01" y2="12"/>
-                        <line x1="3" y1="18" x2="3.01" y2="18"/>
-                    </svg>
-                </button>
-                <button class="btn" id="settings-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="m12 1 1.57 4.13L17 4l2 2-1.13 3.43L22 11v2l-4.13 1.57L19 18l-2 2-3.43-1.13L11 23H9l-1.57-4.13L4 20l-2-2 1.13-3.43L1 13v-2l4.13-1.57L4 6l2-2 3.43 1.13L11 1h2z"/>
-                    </svg>
-                </button>
-            </div>
+    </div>
+    
+    <div class="reader-container" id="reader-container" style="display: none;">
+        <header class="reader-header">
+            <div class="reader-title">Хаджи-Гирай — Алим Къуртсеит</div>
         </header>
-
-        <!-- Main Reader -->
-        <main class="reader">
-            <div id="book" class="book">
-                <!-- Pages will be generated here -->
+        
+        <main class="reader-main">
+            <div class="reader-content" id="reader-content">
+                <!-- Content will be loaded here -->
+            </div>
+            
+            <div class="nav-zones">
+                <button class="nav-zone" id="prev-zone"></button>
+                <button class="nav-zone" id="menu-zone"></button>
+                <button class="nav-zone" id="next-zone"></button>
             </div>
         </main>
-
-        <!-- Footer -->
-        <footer id="footer" class="footer">
-            <div class="progress-info">
-                <span id="current-page">1</span> / <span id="total-pages">100</span>
-                <span class="separator">•</span>
-                <span id="reading-time">~45 мин</span>
+        
+        <footer class="reader-footer">
+            <button class="btn" id="prev-btn">← Назад</button>
+            <div class="page-info">
+                <span id="current-page">1</span> / <span id="total-pages">1</span>
             </div>
-            
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="progress-bar">
-                    <div class="progress-fill" id="progress-fill"></div>
-                </div>
-            </div>
-            
-            <div class="controls">
-                <button class="btn" id="prev-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="m15 18-6-6 6-6"/>
-                    </svg>
-                </button>
-                <button class="btn" id="next-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="m9 18 6-6-6-6"/>
-                    </svg>
-                </button>
-            </div>
+            <button class="btn" id="next-btn">Вперед →</button>
         </footer>
     </div>
 
-    <!-- jQuery (required for Turn.js) -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- Turn.js library -->
-    <script src="https://cdn.rawgit.com/blasten/turn.js/master/turn.min.js"></script>
-    <script src="reader.js"></script>
+    <script>
+        // ПРОСТЕЙШИЙ WORKING READER
+        class SimpleReader {
+            constructor() {
+                this.chapters = [];
+                this.pages = [];
+                this.currentPage = 0;
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    await this.loadBook();
+                    this.createPages();
+                    this.bindEvents();
+                    this.render();
+                    this.hideLoading();
+                } catch (error) {
+                    console.error('Reader error:', error);
+                    document.getElementById('loading').innerHTML = `
+                        <div>
+                            <p>Ошибка загрузки: ${error.message}</p>
+                            <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+                                Попробовать снова
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+            
+            async loadBook() {
+                // Try to load chapters.json first
+                try {
+                    const response = await fetch('book/chapters.json');
+                    if (response.ok) {
+                        this.chapters = await response.json();
+                        
+                        // Load all chapters
+                        let allContent = '';
+                        for (let i = 0; i < this.chapters.length; i++) {
+                            try {
+                                const chapterResponse = await fetch(this.chapters[i].href);
+                                if (chapterResponse.ok) {
+                                    const content = await chapterResponse.text();
+                                    allContent += `<h1>${this.chapters[i].title || `Глава ${i + 1}`}</h1>${content}`;
+                                }
+                            } catch (e) {
+                                allContent += `<h1>${this.chapters[i].title || `Глава ${i + 1}`}</h1><p>Ошибка загрузки главы.</p>`;
+                            }
+                        }
+                        
+                        if (allContent) {
+                            this.fullContent = allContent;
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Could not load chapters.json, trying fallback');
+                }
+                
+                // Fallback: try to load individual chapter files
+                const fallbackChapters = [];
+                for (let i = 0; i <= 10; i++) {
+                    try {
+                        const response = await fetch(`book/ch${i}.html`);
+                        if (response.ok) {
+                            const content = await response.text();
+                            fallbackChapters.push({
+                                title: `Глава ${i + 1}`,
+                                content: content
+                            });
+                        }
+                    } catch (e) {
+                        // Skip missing chapters
+                    }
+                }
+                
+                if (fallbackChapters.length > 0) {
+                    this.fullContent = fallbackChapters.map(ch => `<h1>${ch.title}</h1>${ch.content}`).join('');
+                    return;
+                }
+                
+                // Final fallback: demo content
+                this.fullContent = `
+                    <h1>Хаджи-Гирай</h1>
+                    <p>Демо-версия КрымЧиталки.</p>
+                    <p>Не удалось загрузить книгу. Проверьте, что файлы находятся в папке book/:</p>
+                    <p>• book/chapters.json</p>
+                    <p>• book/ch0.html, book/ch1.html, и т.д.</p>
+                    <h1>Тестовый контент</h1>
+                    <p>Это тестовая страница для демонстрации работы ридера. Здесь должен быть текст книги "Хаджи-Гирай" Алима Къуртсеита.</p>
+                    <p>Ридер поддерживает:</p>
+                    <p>• Постраничную навигацию</p>
+                    <p>• Красивую типографику</p>
+                    <p>• Адаптивный дизайн</p>
+                    <p>• Touch-навигацию на мобильных</p>
+                `;
+            }
+            
+            createPages() {
+                // Split content into pages based on character count
+                const wordsPerPage = window.innerWidth <= 768 ? 800 : 1200;
+                const words = this.fullContent.split(/\s+/);
+                
+                this.pages = [];
+                let currentPage = '';
+                let wordCount = 0;
+                
+                for (let word of words) {
+                    currentPage += word + ' ';
+                    wordCount++;
+                    
+                    if (wordCount >= wordsPerPage) {
+                        this.pages.push(currentPage.trim());
+                        currentPage = '';
+                        wordCount = 0;
+                    }
+                }
+                
+                if (currentPage.trim()) {
+                    this.pages.push(currentPage.trim());
+                }
+                
+                // Ensure we have at least one page
+                if (this.pages.length === 0) {
+                    this.pages = [this.fullContent];
+                }
+            }
+            
+            render() {
+                const content = document.getElementById('reader-content');
+                const currentPageEl = document.getElementById('current-page');
+                const totalPagesEl = document.getElementById('total-pages');
+                
+                if (content && this.pages[this.currentPage]) {
+                    content.innerHTML = this.pages[this.currentPage];
+                }
+                
+                if (currentPageEl) currentPageEl.textContent = this.currentPage + 1;
+                if (totalPagesEl) totalPagesEl.textContent = this.pages.length;
+                
+                // Update buttons
+                const prevBtn = document.getElementById('prev-btn');
+                const nextBtn = document.getElementById('next-btn');
+                
+                if (prevBtn) prevBtn.disabled = this.currentPage === 0;
+                if (nextBtn) nextBtn.disabled = this.currentPage === this.pages.length - 1;
+                
+                // Save progress
+                localStorage.setItem('reader_progress', JSON.stringify({
+                    page: this.currentPage,
+                    timestamp: Date.now()
+                }));
+            }
+            
+            nextPage() {
+                if (this.currentPage < this.pages.length - 1) {
+                    this.currentPage++;
+                    this.render();
+                }
+            }
+            
+            prevPage() {
+                if (this.currentPage > 0) {
+                    this.currentPage--;
+                    this.render();
+                }
+            }
+            
+            bindEvents() {
+                // Load saved progress
+                try {
+                    const saved = JSON.parse(localStorage.getItem('reader_progress') || '{}');
+                    if (saved.page && saved.page < this.pages.length) {
+                        this.currentPage = saved.page;
+                    }
+                } catch (e) {}
+                
+                // Button events
+                document.getElementById('prev-btn')?.addEventListener('click', () => this.prevPage());
+                document.getElementById('next-btn')?.addEventListener('click', () => this.nextPage());
+                
+                // Touch zones
+                document.getElementById('prev-zone')?.addEventListener('click', () => this.prevPage());
+                document.getElementById('next-zone')?.addEventListener('click', () => this.nextPage());
+                
+                // Keyboard events
+                document.addEventListener('keydown', (e) => {
+                    switch (e.key) {
+                        case 'ArrowLeft':
+                        case 'PageUp':
+                            e.preventDefault();
+                            this.prevPage();
+                            break;
+                        case 'ArrowRight':
+                        case 'PageDown':
+                        case ' ':
+                            e.preventDefault();
+                            this.nextPage();
+                            break;
+                    }
+                });
+            }
+            
+            hideLoading() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('reader-container').style.display = 'flex';
+            }
+        }
+        
+        // Start reader when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new SimpleReader();
+        });
+    </script>
 </body>
 </html>
