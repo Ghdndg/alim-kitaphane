@@ -1,7 +1,6 @@
 (() => {
     'use strict';
 
-    // Simple DOM utilities
     const $ = (selector) => document.querySelector(selector);
     const $$ = (selector) => Array.from(document.querySelectorAll(selector));
     const on = (element, event, handler) => element?.addEventListener(event, handler);
@@ -26,12 +25,11 @@
 
     // Application state
     const state = {
-        reader: null,
-        publication: null,
         chapters: [],
-        currentChapter: 0,
-        currentPosition: 0,
-        totalChapters: 0,
+        allContent: '', // All chapters combined
+        pages: [], // Paginated content
+        currentPageIndex: 0,
+        totalPages: 0,
         uiVisible: false,
         
         settings: {
@@ -60,24 +58,16 @@
         
         apply() {
             document.body.setAttribute('data-theme', state.settings.theme);
-            
-            // Apply Readium CSS settings
-            if (state.reader) {
-                const userSettings = {
-                    appearance: state.settings.theme === 'dark' ? 'night' : 
-                               state.settings.theme === 'sepia' ? 'sepia' : 'default',
-                    fontSize: `${state.settings.fontSize}%`,
-                    fontFamily: state.settings.fontFamily,
-                    lineHeight: state.settings.lineHeight,
-                    columnWidth: state.settings.columnWidth,
-                    textAlign: state.settings.justifyText ? 'justify' : 'start'
-                };
-                
-                state.reader.updateSettings(userSettings);
-            }
-            
             this.updateUI();
             this.save();
+            
+            // Re-paginate when settings change
+            if (state.allContent) {
+                setTimeout(() => {
+                    reader.paginate();
+                    reader.render();
+                }, 100);
+            }
         },
         
         update(key, value) {
@@ -121,17 +111,16 @@
     const progress = {
         save() {
             storage.set('readium_reader_progress', {
-                chapter: state.currentChapter,
-                position: state.currentPosition,
+                pageIndex: state.currentPageIndex,
                 timestamp: Date.now()
             });
         },
         
         load() {
             const saved = storage.get('readium_reader_progress');
-            if (saved && state.reader) {
-                // Restore reading position
-                state.reader.goToChapter(saved.chapter, saved.position);
+            if (saved && saved.pageIndex < state.totalPages) {
+                state.currentPageIndex = saved.pageIndex;
+                reader.render();
             }
         },
         
@@ -144,33 +133,40 @@
             const currentPage = $('#current-page');
             const totalPages = $('#total-pages');
             
-            if (state.reader && state.publication) {
-                const location = state.reader.getCurrentLocation();
-                
-                if (currentPos) {
-                    const chapterTitle = state.chapters[state.currentChapter]?.title || `Глава ${state.currentChapter + 1}`;
-                    currentPos.textContent = chapterTitle;
-                }
-                
-                if (progressPercent && location) {
-                    const percent = Math.round(location.progression * 100);
-                    progressPercent.textContent = `${percent}%`;
-                    
-                    if (progressFill) progressFill.style.width = `${percent}%`;
-                    if (progressHandle) progressHandle.style.left = `${percent}%`;
-                }
-                
-                if (readingTime && location) {
-                    const remainingPercent = 100 - (location.progression * 100);
-                    const estimatedMinutes = Math.ceil((remainingPercent / 100) * 45); // Estimate 45 min total
-                    readingTime.textContent = `~${estimatedMinutes} мин`;
-                }
-                
-                if (currentPage && totalPages && location) {
-                    currentPage.textContent = location.position || '1';
-                    totalPages.textContent = location.total || '100';
+            const currentPageNum = state.currentPageIndex + 1;
+            const progressPercentValue = state.totalPages > 0 ? 
+                Math.round((state.currentPageIndex / (state.totalPages - 1)) * 100) : 0;
+            
+            if (currentPos) {
+                // Find current chapter based on page content
+                const currentPageData = state.pages[state.currentPageIndex];
+                if (currentPageData && currentPageData.chapterTitle) {
+                    currentPos.textContent = currentPageData.chapterTitle;
+                } else {
+                    currentPos.textContent = `Страница ${currentPageNum}`;
                 }
             }
+            
+            if (progressPercent) {
+                progressPercent.textContent = `${progressPercentValue}%`;
+            }
+            
+            if (progressFill) {
+                progressFill.style.width = `${progressPercentValue}%`;
+            }
+            
+            if (progressHandle) {
+                progressHandle.style.left = `${progressPercentValue}%`;
+            }
+            
+            if (readingTime) {
+                const remainingPages = state.totalPages - currentPageNum;
+                const estimatedMinutes = Math.ceil(remainingPages * 1.5); // 1.5 min per page
+                readingTime.textContent = `~${estimatedMinutes} мин`;
+            }
+            
+            if (currentPage) currentPage.textContent = currentPageNum;
+            if (totalPages) totalPages.textContent = state.totalPages;
             
             this.save();
         }
@@ -231,19 +227,36 @@
             
             tocList.innerHTML = '';
             
+            // Create TOC with page numbers for each chapter
+            const chapterStartPages = new Map();
+            state.pages.forEach((page, index) => {
+                if (page.isChapterStart && !chapterStartPages.has(page.chapterIndex)) {
+                    chapterStartPages.set(page.chapterIndex, index + 1);
+                }
+            });
+            
             state.chapters.forEach((chapter, index) => {
                 const item = document.createElement('div');
                 item.className = 'toc-item';
-                if (index === state.currentChapter) item.classList.add('active');
+                
+                // Check if current page is in this chapter
+                const currentPageData = state.pages[state.currentPageIndex];
+                if (currentPageData && currentPageData.chapterIndex === index) {
+                    item.classList.add('active');
+                }
+                
+                const startPage = chapterStartPages.get(index) || 1;
                 
                 item.innerHTML = `
                     <div class="toc-item-title">${chapter.title || `Глава ${index + 1}`}</div>
-                    <div class="toc-item-page">Глава ${index + 1}</div>
+                    <div class="toc-item-page">Страница ${startPage}</div>
                 `;
                 
                 on(item, 'click', () => {
-                    if (state.reader) {
-                        state.reader.goToChapter(index);
+                    const pageIndex = state.pages.findIndex(p => p.chapterIndex === index && p.isChapterStart);
+                    if (pageIndex >= 0) {
+                        state.currentPageIndex = pageIndex;
+                        reader.render();
                         ui.hideSidebar();
                     }
                 });
@@ -257,15 +270,16 @@
     const reader = {
         async init() {
             try {
-                ui.showLoading('Инициализация Readium Reader...');
+                ui.showLoading('Инициализация профессионального ридера...');
                 
                 settings.load();
                 await this.loadBook();
-                await this.initializeReader();
+                this.paginate();
                 
                 progress.load();
                 ui.renderTOC();
                 this.bindEvents();
+                this.render();
                 
                 ui.hideLoading();
                 
@@ -290,25 +304,39 @@
                 if (!response.ok) throw new Error('Failed to load chapters.json');
                 
                 state.chapters = await response.json();
-                state.totalChapters = state.chapters.length;
                 
-                // Create publication manifest for Readium
-                const manifest = {
-                    "@context": "https://readium.org/webpub-manifest/context.jsonld",
-                    "metadata": {
-                        "title": "Хаджи-Гирай",
-                        "author": "Алим Къуртсеит",
-                        "language": "crh",
-                        "publisher": "КрымЧиталка"
-                    },
-                    "readingOrder": state.chapters.map((chapter, index) => ({
-                        "href": chapter.href,
-                        "type": "text/html",
-                        "title": chapter.title || `Глава ${index + 1}`
-                    }))
-                };
+                // Load all chapters and combine
+                let combinedContent = '';
                 
-                state.publication = manifest;
+                for (let i = 0; i < state.chapters.length; i++) {
+                    ui.showLoading(`Загрузка главы ${i + 1} из ${state.chapters.length}...`);
+                    
+                    try {
+                        const chapterResponse = await fetch(state.chapters[i].href);
+                        const chapterContent = await chapterResponse.text();
+                        
+                        // Add chapter with metadata
+                        combinedContent += `
+                            <div data-chapter-index="${i}" data-chapter-start="true">
+                                <h1 class="chapter-title">${state.chapters[i].title || `Глава ${i + 1}`}</h1>
+                                <div class="chapter-content">${chapterContent}</div>
+                            </div>
+                        `;
+                        
+                    } catch (error) {
+                        console.warn(`Failed to load chapter ${i}:`, error);
+                        combinedContent += `
+                            <div data-chapter-index="${i}" data-chapter-start="true">
+                                <h1 class="chapter-title">${state.chapters[i].title || `Глава ${i + 1}`}</h1>
+                                <div class="chapter-content">
+                                    <p>Ошибка загрузки главы. Попробуйте обновить страницу.</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                state.allContent = combinedContent;
                 
             } catch (error) {
                 console.error('Failed to load book:', error);
@@ -316,136 +344,212 @@
             }
         },
         
-        async initializeReader() {
-            try {
-                ui.showLoading('Инициализация читалки...');
+        paginate() {
+            ui.showLoading('Создание страниц...');
+            
+            state.pages = [];
+            const isMobile = window.innerWidth <= 768;
+            
+            // Create temporary container to measure content
+            const measureContainer = document.createElement('div');
+            measureContainer.style.cssText = `
+                position: absolute;
+                visibility: hidden;
+                top: -9999px;
+                left: 0;
+                width: 100%;
+                max-width: 680px;
+                height: calc(100vh - 120px); /* Account for header/footer */
+                padding: 2rem;
+                font-family: var(--font-reading-serif);
+                font-size: ${(1.125 * state.settings.fontSize / 100)}rem;
+                line-height: ${state.settings.lineHeight};
+                color: var(--text-primary);
+                overflow: hidden;
+                box-sizing: border-box;
+            `;
+            document.body.appendChild(measureContainer);
+            
+            // Parse combined content
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = state.allContent;
+            
+            const allElements = Array.from(tempDiv.children);
+            let currentPageContent = '';
+            let currentChapterIndex = 0;
+            let isChapterStart = false;
+            
+            allElements.forEach((chapterDiv, chapterIdx) => {
+                const chapterIndex = parseInt(chapterDiv.dataset.chapterIndex);
+                const chapterElements = Array.from(chapterDiv.children);
                 
-                const container = $('#readium-reader');
-                if (!container) throw new Error('Reader container not found');
-                
-                // Initialize Readium Navigator
-                // Note: This is a simplified version - real Readium integration would be more complex
-                state.reader = {
-                    container: container,
-                    currentChapter: 0,
-                    currentPosition: 0,
+                chapterElements.forEach((element, elementIdx) => {
+                    const isFirstElementOfChapter = elementIdx === 0; // h1 title
                     
-                    async loadChapter(chapterIndex) {
-                        if (chapterIndex < 0 || chapterIndex >= state.chapters.length) return;
+                    // Test adding this element
+                    const testContent = currentPageContent + element.outerHTML;
+                    measureContainer.innerHTML = testContent;
+                    
+                    const fits = measureContainer.scrollHeight <= measureContainer.clientHeight;
+                    
+                    if (!fits && currentPageContent.length > 0) {
+                        // Current page is full, save it
+                        state.pages.push({
+                            content: currentPageContent,
+                            chapterIndex: currentChapterIndex,
+                            chapterTitle: state.chapters[currentChapterIndex]?.title || `Глава ${currentChapterIndex + 1}`,
+                            isChapterStart: isChapterStart
+                        });
                         
-                        try {
-                            const chapter = state.chapters[chapterIndex];
-                            const response = await fetch(chapter.href);
-                            const content = await response.text();
-                            
-                            // Create a styled chapter container
-                            container.innerHTML = `
-                                <div class="readium-chapter" style="
-                                    max-width: 680px;
-                                    margin: 0 auto;
-                                    padding: 2rem;
-                                    font-family: var(--font-reading-serif);
-                                    font-size: 1.125rem;
-                                    line-height: 1.6;
-                                    color: var(--text-primary);
-                                ">
-                                    <h1 style="
-                                        font-size: 2rem;
-                                        font-weight: 700;
-                                        margin-bottom: 2rem;
-                                        text-align: center;
-                                        color: var(--text-primary);
-                                    ">${chapter.title || `Глава ${chapterIndex + 1}`}</h1>
-                                    <div style="text-align: justify;">${content}</div>
-                                </div>
-                            `;
-                            
-                            state.currentChapter = chapterIndex;
-                            progress.update();
-                            ui.renderTOC();
-                            
-                        } catch (error) {
-                            console.error(`Failed to load chapter ${chapterIndex}:`, error);
-                            container.innerHTML = `
-                                <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
-                                    <h2>Ошибка загрузки главы</h2>
-                                    <p>Попробуйте обновить страницу</p>
-                                </div>
-                            `;
-                        }
-                    },
-                    
-                    goToChapter(chapterIndex, position = 0) {
-                        this.loadChapter(chapterIndex);
-                        state.currentPosition = position;
-                    },
-                    
-                    nextChapter() {
-                        if (state.currentChapter < state.totalChapters - 1) {
-                            this.goToChapter(state.currentChapter + 1);
-                        }
-                    },
-                    
-                    prevChapter() {
-                        if (state.currentChapter > 0) {
-                            this.goToChapter(state.currentChapter - 1);
-                        }
-                    },
-                    
-                    getCurrentLocation() {
-                        return {
-                            progression: (state.currentChapter + 1) / state.totalChapters,
-                            position: state.currentChapter + 1,
-                            total: state.totalChapters
-                        };
-                    },
-                    
-                    updateSettings(userSettings) {
-                        const chapterEl = container.querySelector('.readium-chapter');
-                        if (chapterEl) {
-                            // Apply font settings
-                            if (userSettings.fontFamily === 'serif') {
-                                chapterEl.style.fontFamily = 'var(--font-reading-serif)';
-                            } else if (userSettings.fontFamily === 'sans') {
-                                chapterEl.style.fontFamily = 'var(--font-reading-sans)';
-                            } else if (userSettings.fontFamily === 'mono') {
-                                chapterEl.style.fontFamily = 'var(--font-reading-mono)';
-                            }
-                            
-                            // Apply font size
-                            if (userSettings.fontSize) {
-                                const baseSize = 1.125; // 18px equivalent
-                                const newSize = baseSize * (parseInt(userSettings.fontSize) / 100);
-                                chapterEl.style.fontSize = `${newSize}rem`;
-                            }
-                            
-                            // Apply line height
-                            if (userSettings.lineHeight) {
-                                chapterEl.style.lineHeight = userSettings.lineHeight;
-                            }
-                            
-                            // Apply text alignment
-                            const contentEl = chapterEl.querySelector('div');
-                            if (contentEl) {
-                                contentEl.style.textAlign = userSettings.textAlign || 'justify';
-                            }
+                        // Start new page with current element
+                        currentPageContent = element.outerHTML;
+                        currentChapterIndex = chapterIndex;
+                        isChapterStart = isFirstElementOfChapter;
+                    } else {
+                        // Element fits, add to current page
+                        currentPageContent = testContent;
+                        if (isFirstElementOfChapter) {
+                            currentChapterIndex = chapterIndex;
+                            isChapterStart = true;
                         }
                     }
-                };
+                });
+            });
+            
+            // Add last page
+            if (currentPageContent.trim()) {
+                state.pages.push({
+                    content: currentPageContent,
+                    chapterIndex: currentChapterIndex,
+                    chapterTitle: state.chapters[currentChapterIndex]?.title || `Глава ${currentChapterIndex + 1}`,
+                    isChapterStart: isChapterStart
+                });
+            }
+            
+            // Remove measure container
+            document.body.removeChild(measureContainer);
+            
+            state.totalPages = state.pages.length;
+            
+            // Ensure current page is valid
+            if (state.currentPageIndex >= state.totalPages) {
+                state.currentPageIndex = Math.max(0, state.totalPages - 1);
+            }
+            
+            console.log(`Created ${state.totalPages} continuous pages`);
+        },
+        
+        render() {
+            const container = $('#readium-reader');
+            if (!container || !state.pages[state.currentPageIndex]) return;
+            
+            const currentPage = state.pages[state.currentPageIndex];
+            
+            // Apply current settings to content
+            let fontFamily = 'var(--font-reading-serif)';
+            if (state.settings.fontFamily === 'sans') {
+                fontFamily = 'var(--font-reading-sans)';
+            } else if (state.settings.fontFamily === 'mono') {
+                fontFamily = 'var(--font-reading-mono)';
+            }
+            
+            const fontSize = 1.125 * (state.settings.fontSize / 100);
+            const textAlign = state.settings.justifyText ? 'justify' : 'left';
+            
+            container.innerHTML = `
+                <div class="readium-page" style="
+                    max-width: 680px;
+                    margin: 0 auto;
+                    padding: 2rem;
+                    font-family: ${fontFamily};
+                    font-size: ${fontSize}rem;
+                    line-height: ${state.settings.lineHeight};
+                    color: var(--text-primary);
+                    text-align: ${textAlign};
+                    height: 100%;
+                    overflow: hidden;
+                ">
+                    ${currentPage.content}
+                </div>
+            `;
+            
+            // Style chapter titles
+            const chapterTitles = container.querySelectorAll('.chapter-title');
+            chapterTitles.forEach(title => {
+                title.style.cssText += `
+                    font-size: 2rem;
+                    font-weight: 700;
+                    margin-bottom: 2rem;
+                    text-align: center;
+                    color: var(--text-primary);
+                `;
+            });
+            
+            // Style chapter content
+            const chapterContents = container.querySelectorAll('.chapter-content');
+            chapterContents.forEach(content => {
+                content.style.cssText += `
+                    text-align: ${textAlign};
+                `;
                 
-                // Load first chapter
-                await state.reader.loadChapter(0);
-                
-            } catch (error) {
-                console.error('Failed to initialize reader:', error);
-                throw error;
+                // Style paragraphs
+                const paragraphs = content.querySelectorAll('p');
+                paragraphs.forEach(p => {
+                    p.style.marginBottom = '1rem';
+                });
+            });
+            
+            progress.update();
+            ui.renderTOC();
+        },
+        
+        nextPage() {
+            if (state.currentPageIndex < state.totalPages - 1) {
+                state.currentPageIndex++;
+                this.render();
+            }
+        },
+        
+        prevPage() {
+            if (state.currentPageIndex > 0) {
+                state.currentPageIndex--;
+                this.render();
+            }
+        },
+        
+        goToPage(pageIndex) {
+            if (pageIndex >= 0 && pageIndex < state.totalPages) {
+                state.currentPageIndex = pageIndex;
+                this.render();
+            }
+        },
+        
+        nextChapter() {
+            // Find next chapter start
+            for (let i = state.currentPageIndex + 1; i < state.totalPages; i++) {
+                if (state.pages[i].isChapterStart) {
+                    state.currentPageIndex = i;
+                    this.render();
+                    return;
+                }
+            }
+        },
+        
+        prevChapter() {
+            // Find previous chapter start
+            for (let i = state.currentPageIndex - 1; i >= 0; i--) {
+                if (state.pages[i].isChapterStart) {
+                    state.currentPageIndex = i;
+                    this.render();
+                    return;
+                }
             }
         },
         
         bindEvents() {
             // Navigation
-            on($('#nav-prev'), 'click', () => state.reader?.prevChapter());
-            on($('#nav-next'), 'click', () => state.reader?.nextChapter());
+            on($('#nav-prev'), 'click', () => this.prevPage());
+            on($('#nav-next'), 'click', () => this.nextPage());
             on($('#nav-center'), 'click', () => ui.toggleUI());
             
             // Header buttons
@@ -454,15 +558,15 @@
             on($('#settings-btn'), 'click', () => ui.showSettings());
             
             // Footer controls
-            on($('#prev-chapter'), 'click', () => state.reader?.prevChapter());
-            on($('#next-chapter'), 'click', () => state.reader?.nextChapter());
+            on($('#prev-chapter'), 'click', () => this.prevChapter());
+            on($('#next-chapter'), 'click', () => this.nextChapter());
             
             // Progress bar
             on($('#progress-bar'), 'click', (e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const ratio = (e.clientX - rect.left) / rect.width;
-                const chapterIndex = Math.floor(ratio * state.totalChapters);
-                state.reader?.goToChapter(chapterIndex);
+                const pageIndex = Math.floor(ratio * state.totalPages);
+                this.goToPage(pageIndex);
             });
             
             // Sidebar
@@ -501,6 +605,14 @@
             // Justify text
             on($('#justify-text'), 'change', (e) => settings.update('justifyText', e.target.checked));
             
+            // Resize handler
+            window.addEventListener('resize', () => {
+                setTimeout(() => {
+                    this.paginate();
+                    this.render();
+                }, 300);
+            });
+            
             // Keyboard shortcuts
             on(document, 'keydown', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -509,21 +621,21 @@
                     case 'ArrowLeft':
                     case 'PageUp':
                         e.preventDefault();
-                        state.reader?.prevChapter();
+                        this.prevPage();
                         break;
                     case 'ArrowRight':
                     case 'PageDown':
                     case ' ':
                         e.preventDefault();
-                        state.reader?.nextChapter();
+                        this.nextPage();
                         break;
                     case 'Home':
                         e.preventDefault();
-                        state.reader?.goToChapter(0);
+                        this.goToPage(0);
                         break;
                     case 'End':
                         e.preventDefault();
-                        state.reader?.goToChapter(state.totalChapters - 1);
+                        this.goToPage(state.totalPages - 1);
                         break;
                     case 'Escape':
                         if ($('#settings-modal')?.classList.contains('visible')) {
