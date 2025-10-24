@@ -26,11 +26,12 @@
     // Application state
     const state = {
         bookText: '',
-        textChunks: [], // Все куски текста по порядку
-        pages: [], // Страницы с правильной пагинацией
+        pages: [],
         currentPageIndex: 0,
         totalPages: 0,
         uiVisible: false,
+        pageWidth: 0,
+        pageHeight: 0,
         
         settings: {
             theme: 'dark',
@@ -177,7 +178,7 @@
         }
     };
 
-    // Main reader functionality  
+    // Main reader functionality
     const reader = {
         async init() {
             try {
@@ -185,7 +186,7 @@
                 
                 settings.load();
                 await this.loadBook();
-                this.prepareText();
+                this.calculatePageDimensions();
                 this.createPages();
                 
                 progress.load();
@@ -228,173 +229,148 @@
             }
         },
         
-        prepareText() {
-            ui.showLoading('Подготовка текста...');
+        calculatePageDimensions() {
+            // Calculate exact page dimensions
+            const reader = $('.reader');
+            if (reader) {
+                const rect = reader.getBoundingClientRect();
+                state.pageWidth = Math.floor(rect.width - 40); // 40px padding
+                state.pageHeight = Math.floor(rect.height - 40); // 40px padding
+            } else {
+                // Fallback
+                state.pageWidth = Math.floor(window.innerWidth - 40);
+                state.pageHeight = Math.floor(window.innerHeight - 136 - 40); // header + footer + padding
+            }
             
-            // Clean and split text into small manageable chunks
+            console.log(`Page dimensions: ${state.pageWidth} x ${state.pageHeight}`);
+        },
+        
+        createPages() {
+            ui.showLoading('Создание идеальной пагинации...');
+            
+            state.pages = [];
+            
+            // Clean text
             const cleanText = state.bookText
                 .replace(/\r\n/g, '\n')
                 .replace(/\n{3,}/g, '\n\n')
                 .trim();
             
-            // Split by paragraphs first
-            const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
+            // Format text as HTML
+            const formattedHTML = this.formatTextAsHTML(cleanText);
             
-            state.textChunks = [];
-            
-            // Further split large paragraphs into smaller chunks
-            paragraphs.forEach(paragraph => {
-                const trimmedParagraph = paragraph.trim();
-                if (!trimmedParagraph) return;
-                
-                // If paragraph is very long, split by sentences
-                if (trimmedParagraph.length > 800) {
-                    const sentences = trimmedParagraph.split(/(?<=[.!?])\s+/);
-                    sentences.forEach(sentence => {
-                        if (sentence.trim()) {
-                            state.textChunks.push(sentence.trim());
-                        }
-                    });
-                } else {
-                    state.textChunks.push(trimmedParagraph);
-                }
-            });
-            
-            console.log(`Prepared ${state.textChunks.length} text chunks`);
-        },
-        
-        createPages() {
-            ui.showLoading('Создание страниц без потерь...');
-            
-            state.pages = [];
-            
-            // Create measuring container
-            const measuringContainer = document.createElement('div');
-            measuringContainer.style.cssText = `
+            // Create invisible container for CSS column pagination
+            const paginationContainer = document.createElement('div');
+            paginationContainer.style.cssText = `
                 position: absolute;
                 visibility: hidden;
-                top: -9999px;
+                top: -99999px;
                 left: 0;
-                width: 100%;
-                max-width: 680px;
-                margin: 0 auto;
+                width: ${state.pageWidth}px;
+                height: ${state.pageHeight}px;
                 padding: 20px;
+                margin: 0;
                 font-family: "Crimson Text", Georgia, serif;
                 font-size: ${state.settings.fontSize}px;
                 line-height: ${state.settings.lineHeight};
                 color: var(--text-primary);
+                column-width: ${state.pageWidth - 40}px;
+                column-gap: 0;
+                column-fill: auto;
                 overflow: hidden;
                 box-sizing: border-box;
             `;
             
-            // Calculate available height
-            const availableHeight = window.innerHeight - 56 - 80 - 40; // header - footer - padding
-            measuringContainer.style.height = `${availableHeight}px`;
-            document.body.appendChild(measuringContainer);
+            paginationContainer.innerHTML = formattedHTML;
+            document.body.appendChild(paginationContainer);
             
-            let currentPageContent = [];
-            let chunkIndex = 0;
+            // Calculate how many columns (pages) are needed
+            const totalWidth = paginationContainer.scrollWidth;
+            const pageCount = Math.ceil(totalWidth / (state.pageWidth - 40));
             
-            // Process ALL chunks sequentially - NO CHUNK IS LOST
-            while (chunkIndex < state.textChunks.length) {
-                const chunk = state.textChunks[chunkIndex];
+            console.log(`Total width: ${totalWidth}, Pages needed: ${pageCount}`);
+            
+            // Create pages by extracting visible content at each column position
+            for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+                const pageContainer = document.createElement('div');
+                pageContainer.style.cssText = `
+                    position: absolute;
+                    visibility: hidden;
+                    top: -99999px;
+                    left: 0;
+                    width: ${state.pageWidth}px;
+                    height: ${state.pageHeight}px;
+                    padding: 20px;
+                    margin: 0;
+                    font-family: "Crimson Text", Georgia, serif;
+                    font-size: ${state.settings.fontSize}px;
+                    line-height: ${state.settings.lineHeight};
+                    color: var(--text-primary);
+                    column-width: ${state.pageWidth - 40}px;
+                    column-gap: 0;
+                    column-fill: auto;
+                    overflow: hidden;
+                    box-sizing: border-box;
+                    transform: translateX(-${pageIndex * (state.pageWidth - 40)}px);
+                `;
                 
-                // Test adding this chunk to current page
-                const testChunks = [...currentPageContent, chunk];
-                const testHTML = this.formatChunksAsHTML(testChunks);
+                pageContainer.innerHTML = formattedHTML;
+                document.body.appendChild(pageContainer);
                 
-                measuringContainer.innerHTML = testHTML;
+                // Extract visible text from this page
+                const pageContent = this.extractVisibleContent(pageContainer);
+                state.pages.push(pageContent);
                 
-                const contentFits = measuringContainer.scrollHeight <= availableHeight;
-                
-                if (contentFits) {
-                    // Chunk fits, add to current page
-                    currentPageContent.push(chunk);
-                    chunkIndex++;
-                } else {
-                    // Chunk doesn't fit
-                    if (currentPageContent.length > 0) {
-                        // Save current page and start new page with this chunk
-                        const pageHTML = this.formatChunksAsHTML(currentPageContent);
-                        state.pages.push(pageHTML);
-                        currentPageContent = [chunk];
-                        chunkIndex++;
-                    } else {
-                        // Even single chunk doesn't fit, need to split it
-                        const words = chunk.split(' ');
-                        let wordBuffer = [];
-                        
-                        for (const word of words) {
-                            const testWords = [...wordBuffer, word];
-                            const testHTML = this.formatChunksAsHTML([testWords.join(' ')]);
-                            
-                            measuringContainer.innerHTML = testHTML;
-                            
-                            if (measuringContainer.scrollHeight <= availableHeight) {
-                                wordBuffer.push(word);
-                            } else {
-                                if (wordBuffer.length > 0) {
-                                    // Save current words as page
-                                    const pageHTML = this.formatChunksAsHTML([wordBuffer.join(' ')]);
-                                    state.pages.push(pageHTML);
-                                    wordBuffer = [word];
-                                } else {
-                                    // Even single word doesn't fit, just add it
-                                    const pageHTML = this.formatChunksAsHTML([word]);
-                                    state.pages.push(pageHTML);
-                                    wordBuffer = [];
-                                }
-                            }
-                        }
-                        
-                        // Add remaining words to current page
-                        if (wordBuffer.length > 0) {
-                            currentPageContent = [wordBuffer.join(' ')];
-                        }
-                        
-                        chunkIndex++;
-                    }
-                }
+                document.body.removeChild(pageContainer);
             }
             
-            // Add last page if there's content
-            if (currentPageContent.length > 0) {
-                const pageHTML = this.formatChunksAsHTML(currentPageContent);
-                state.pages.push(pageHTML);
-            }
-            
-            // Remove measuring container
-            document.body.removeChild(measuringContainer);
+            // Remove pagination container
+            document.body.removeChild(paginationContainer);
             
             state.totalPages = state.pages.length;
             
-            console.log(`Created ${state.totalPages} pages with NO TEXT LOSS`);
-            console.log(`Total text chunks: ${state.textChunks.length}`);
-            
-            // Verification: count chunks in pages
-            let totalChunksInPages = 0;
-            state.pages.forEach(page => {
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = page;
-                const paragraphs = tempDiv.querySelectorAll('p, h2');
-                totalChunksInPages += paragraphs.length;
-            });
-            
-            console.log(`Chunks in pages: ${totalChunksInPages} (should equal ${state.textChunks.length})`);
+            console.log(`Created ${state.totalPages} pages with CSS column pagination`);
         },
         
-        formatChunksAsHTML(chunks) {
-            return chunks.map(chunk => {
-                const trimmed = chunk.trim();
-                if (!trimmed) return '';
+        formatTextAsHTML(text) {
+            return text
+                .split('\n\n')
+                .map(paragraph => {
+                    const trimmed = paragraph.trim();
+                    if (!trimmed) return '';
+                    
+                    // Check if it looks like a title
+                    if (trimmed.length < 50 && (trimmed === trimmed.toUpperCase() || /^[А-ЯЁ\s\-]+$/.test(trimmed))) {
+                        return `<h2>${trimmed}</h2>`;
+                    } else {
+                        return `<p>${trimmed}</p>`;
+                    }
+                })
+                .filter(p => p)
+                .join('');
+        },
+        
+        extractVisibleContent(container) {
+            // Clone the container to get visible content
+            const cloned = container.cloneNode(true);
+            cloned.style.visibility = 'visible';
+            cloned.style.position = 'static';
+            cloned.style.top = 'auto';
+            cloned.style.left = 'auto';
+            cloned.style.transform = 'none';
+            
+            // Remove any content that might overflow
+            const elements = cloned.querySelectorAll('*');
+            elements.forEach(element => {
+                const rect = element.getBoundingClientRect();
+                const containerRect = cloned.getBoundingClientRect();
                 
-                // Check if it looks like a title
-                if (trimmed.length < 50 && (trimmed === trimmed.toUpperCase() || /^[А-ЯЁ\s\-]+$/.test(trimmed))) {
-                    return `<h2>${trimmed}</h2>`;
-                } else {
-                    return `<p>${trimmed}</p>`;
+                if (rect.bottom > containerRect.bottom + 5) { // 5px tolerance
+                    element.remove();
                 }
-            }).filter(p => p).join('');
+            });
+            
+            return cloned.innerHTML;
         },
         
         render() {
@@ -487,6 +463,7 @@
             // Window resize
             window.addEventListener('resize', () => {
                 setTimeout(() => {
+                    this.calculatePageDimensions();
                     this.createPages();
                     this.render();
                 }, 300);
