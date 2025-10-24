@@ -2,450 +2,181 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1c1c1e">
     <title>КрымЧиталка — Хаджи-Гирай</title>
-    <style>
-        /* МИНИМАЛЬНЫЕ СТИЛИ */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; 
-            background: #000; 
-            color: #fff; 
-            overflow: hidden;
-        }
-        
-        .loading {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #000;
-            z-index: 9999;
-        }
-        
-        .loading.hidden { display: none; }
-        
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #333;
-            border-top-color: #0a84ff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
-        }
-        
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        .reader-container {
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-            color: #fff;
-            font-family: 'Crimson Text', Georgia, serif;
-            font-size: 18px;
-            line-height: 1.6;
-            overflow: hidden;
-        }
-        
-        .page {
-            width: 100%;
-            height: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            overflow: hidden;
-            position: relative;
-        }
-        
-        .page h1 {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 30px;
-            text-align: center;
-            color: #fff;
-        }
-        
-        .page p {
-            margin-bottom: 18px;
-            text-align: justify;
-            hyphens: auto;
-            -webkit-hyphens: auto;
-        }
-        
-        .controls {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 10px 20px;
-            border-radius: 25px;
-            backdrop-filter: blur(10px);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        
-        .controls.visible { opacity: 1; }
-        
-        .btn {
-            background: #0a84ff;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 15px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        
-        .btn:hover { background: #0066cc; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        .page-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #fff;
-            font-size: 14px;
-        }
-        
-        .click-zones {
-            position: absolute;
-            inset: 0;
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            z-index: 10;
-        }
-        
-        .click-zone {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-        }
-    </style>
     
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="reader.css">
 </head>
-<body>
-    <div class="loading" id="loading">
-        <div style="text-align: center;">
-            <div class="spinner"></div>
-            <h2>КрымЧиталка</h2>
-            <p id="loading-status">Загрузка...</p>
-        </div>
-    </div>
-
-    <div class="reader-container" id="reader">
-        <div class="page" id="current-page">
-            <!-- Контент будет здесь -->
-        </div>
+<body data-theme="dark">
+    <div class="app">
         
-        <div class="click-zones">
-            <button class="click-zone" id="prev-zone"></button>
-            <button class="click-zone" id="menu-zone"></button>
-            <button class="click-zone" id="next-zone"></button>
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <h2>КрымЧиталка</h2>
+                <p id="loading-status">Загрузка...</p>
+            </div>
         </div>
+
+        <!-- Header -->
+        <header id="header" class="header">
+            <button class="header-btn" id="back-btn" aria-label="Назад">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m15 18-6-6 6-6"/>
+                </svg>
+            </button>
+            
+            <div class="header-title">
+                <h1>Хаджи-Гирай</h1>
+                <span>Алим Къуртсеит</span>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" id="toc-btn" aria-label="Содержание">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6"/>
+                        <line x1="8" y1="12" x2="21" y2="12"/>
+                        <line x1="8" y1="18" x2="21" y2="18"/>
+                        <line x1="3" y1="6" x2="3.01" y2="6"/>
+                        <line x1="3" y1="12" x2="3.01" y2="12"/>
+                        <line x1="3" y1="18" x2="3.01" y2="18"/>
+                    </svg>
+                </button>
+                <button class="header-btn" id="settings-btn" aria-label="Настройки">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        ircle cx="12" cy="12"2" r="3"/>
+                        <path d="m12 1 1.57 4.13L17 4l2 2-1.13 3.43L22 11v2l-4.13 1.57L19 18l-2 2-3.43-1.13L11 23H9l-1.57-4.13L4 20l-2-2 1.13-3.43L1 13v-2l4.13-1.57L4 6l2-2 3.43 1.13L11 1h2z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Reader -->
+        <main class="reader">
+            <div id="page-content" class="page-content">
+                <!-- Контент страницы будет здесь -->
+            </div>
+            
+            <!-- Touch zones -->
+            <div class="touch-zones">
+                <button class="touch-zone" id="prev-zone" aria-label="Предыдущая страница"></button>
+                <button class="touch-zone" id="menu-zone" aria-label="Показать/скрыть меню"></button>
+                <button class="touch-zone" id="next-zone" aria-label="Следующая страница"></button>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer id="footer" class="footer">
+            <div class="progress-section">
+                <div class="progress-info">
+                    <span id="current-page">1</span> / <span id="total-pages">100</span>
+                    <span class="separator">•</span>
+                    <span id="reading-time">~5 мин</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="nav-controls">
+                <button class="nav-btn" id="prev-btn" aria-label="Назад">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                </button>
+                <input type="number" id="page-input" class="page-input" min="1" value="1">
+                <button class="nav-btn" id="next-btn" aria-label="Вперед">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </footer>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h3>Содержание</h3>
+                <button class="close-btn" id="close-sidebar" aria-label="Закрыть">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m18 6-12 12"/>
+                        <path d="m6 6 12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="sidebar-content">
+                <nav id="toc-list" class="toc-list"></nav>
+            </div>
+        </aside>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Настройки чтения</h3>
+                    <button class="close-btn" id="close-settings">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m18 6-12 12"/>
+                            <path d="m6 6 12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="setting-group">
+                        <label>Тема оформления</label>
+                        <div class="option-buttons">
+                            <button class="option-btn" data-theme="light">Светлая</button>
+                            <button class="option-btn active" data-theme="dark">Тёмная</button>
+                            <button class="option-btn" data-theme="sepia">Сепия</button>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Шрифт</label>
+                        <div class="option-buttons">
+                            <button class="option-btn active" data-font="crimson">Crimson Text</button>
+                            <button class="option-btn" data-font="inter">Inter</button>
+                            <button class="option-btn" data-font="georgia">Georgia</button>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Размер шрифта: <span id="font-size-value">18px</span></label>
+                        <input type="range" id="font-size-slider" min="14" max="24" value="18" step="1" class="range-slider">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Междустрочный интервал: <span id="line-height-value">1.6</span></label>
+                        <input type="range" id="line-height-slider" min="1.2" max="2.0" value="1.6" step="0.1" class="range-slider">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Ширина текста</label>
+                        <div class="option-buttons">
+                            <button class="option-btn" data-width="narrow">Узкая</button>
+                            <button class="option-btn active" data-width="medium">Средняя</button>
+                            <button class="option-btn" data-width="wide">Широкая</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overlay -->
+        <div id="overlay" class="overlay"></div>
     </div>
 
-    <div class="controls" id="controls">
-        <button class="btn" id="prev-btn">◀ Назад</button>
-        <div class="page-info">
-            <span id="current-page-num">1</span> / <span id="total-pages">1</span>
-        </div>
-        <button class="btn" id="next-btn">Вперед ▶</button>
-    </div>
-
-    <script>
-        (() => {
-            'use strict';
-            
-            // ВЕСЬ ТЕКСТ КНИГИ (просто вставьте сюда ваш текст)
-            const BOOK_TEXT = `
-            Хаджи-Гирай
-            
-            Алим Къуртсеит
-            
-            Глава 1
-            
-            джедвельдир. Алим оджа КЪУРТСЕИТНИНЪ иджадий арекетлери саесинде бугунь онъа Хаджи Герай къошулмакъта. Алим Мидат огълу гъурбет топракъларда, Ташкент вилаетининъ Чирчикъ шеэринде догъды, окъуды, буюди. 1985 сенеси Ташкент педагогика институтынынъ къырымтатар филолягасы болюгини битирди. Бир къач йыл мектепте зенааты боюнджа дерслер берди. 1993-96 сс. Алим бей Таврия миллий университети къырымтатар тили кафедрасынынъ аспиранты олды ве шу ерде де оджалыкъ фаалиетини девам этти. 2006 сенеси къырымтатар фразеология - яни дургъун ибарелер боюнджа намзетлик диссертацияны къорчалады. «Земаневий къырымтатар тили», «Къадимий тюрк тили», къырымтатар фразеологянен багълы махсус курс ве дигер фенлер боюнджа дерслер алып бара. Доцент унванынынъ саиби. Алим оджа омюр аркъадашы иле учь эвлят остюрдилер, энди оларда торунчыкъ да бар. Августынъ сонъунда Алим оджа муарриетимизге озъ илькве салмакълы эдебий эсери - буюк колемли тарихий икяени кетирди. Онынъ ичиндеки тарифленеяткъан вакъалар XV асырнынъ орталарына аит. Муэллиф бойнуна баягъы бир месулиет юкледи ве оны белли бир иджадий джесюрликнен бедjerмекте. О, миллий девлетимиз. Къыым ханлыгъына темель къойгъан биринджи укъомдар ве Герайлар сюлалесининъ эсасчысы - Хаджи Девлет Герайнынъ омюриниозъ эсеринынъ мевзусы ве сюжети этип алды
-
-            Глава 2
-            
-            - Dzień dobry, эгер меним эвим сагъа фукъаре олып корюнмесе, хош кельдинъ, урьметли шахзаде! – деди къарт. Оны, агълаынынъ къалан йипсектен тиклилген мор тюсте штаны ве эсасен къыралар мингген, дюльбер айгъыры айретте къалдырды.
-
-            - Селям алейкум! Сизде арпа бармы? Мен эки фиятыны телерим. Бу ерлерде отъмек акъчадан наалы, - деди Хаджи.
-
-            - Урьметли мусафир ичюн истеген шейи тапылыр, атынъ арпа эринсе богъдайнен бакъыылыр...
-
-            Эв ичинден эль дегирмениннъ давушы эшитилди, анда бир къадын богъдай чеке эди.
-
-            - Эй, чыкъ мында! Атны ал!
-
-            Эвден, табанларындже узунь колмекте бир къыз, башындаки явлугъынен бираз бетини къапатып, чыкъты. Атны къабул этип, алып кетти.
-
-            - Хан эвининъ ичине кирди, олджакъта къатранлы одунларнынъ алеви тютедж оданынъ ичини къыздыра эди. Бир адам книгъа атакъта джевар янында чалкъа тюшюп ята. Онынъ культ ренкинде къансыз чырайы ве кокрегине къюльган къюллары, джам бермеге азырлангъаны акъкъында хабер эте эдилер. Атгъыр нефес алувы, онынъ аяты бу кучюю кесильген беденде умютсизликнен куреешкенини коьстере.
-
-            Глава 3
-            
-            Хастанынъ янында, кятипнинъ белгиси олгъан, узунь къьюшаклы адам отура. Онынъ устюнде чокъ ренкли ямалары олгъан кепъ ягъмурлыгъы бар эди.
-
-            - Эй, къарындаш! Ким олып чыкъар? - деди къарт, кетиреджи эки элинен арпа ве богъдай эркеклер айретинде дурды.
-
-            - Дост эви, менен чальмалы олмасынъ! Бу адам кимдир? Не истейсинъ биздян? - деди Хаджи эвнинъ ич тарафына бакъып.
-
-            - О, оджам! Бу адам бизимнен тиль билмей. О къадар вакъыт ичюн анълатувгъа чальшып та анълата билмеди. Анда бир кесе кагъыт бар. Энди къарайым... - деди дядя.
-
-            Глава 4
-            
-            – Куйну меним! Сизден ярдым истермен. Мен Краковдан келем, кеми батарыкъ, ер алтындан мал, пара, алтын чыкъарын деп кельгенимде. Лякин кеми къыраякъгъа чарпылып парчаланды. Аман бир адам оларакъ къутулдым. Энди не япармен, ким биле? – деди.
-
-            – Сенинъ юзюндян анълашыла ки, сен бизден къатты узакъ ерлерден келип. Бир адам экенсинъ. Биз де бундай вазиетке душмишиз. Сана ярдым эдип билириз. Лякин биз де юртсызмыз, эвсизмиз, - деди дядя.
-
-            Глава 5
-            
-            Сонъундан бир вакъыт сонъ адам арасындакы алан чыкъта бир фукъаре эв тюстю штапы ве эсасен къыраллар мигген, дюльбер айгъыры айретте къалдырды... Амма будеки джесарет кемимиз эки адам ве тынчлыкъ оларакъ эвлендик. Атаман Хаджи Герай дедиклери киши шималден келип, башкъалардан айырлып, халкъны бир арая топлады.
-
-            Глава 6
-            
-            1434 сенеси. Башы зор ачы дерт. Чокъ адам кереклик чыкъарды. Хан оланларны кене истемей. Халкъы чыкъып, очакъ кемесинен истемегенлерини алдылар. Чунки халкъ оны севмий эди. Башы-сонъы олмаса, бу халкъны неге бакъармыз? Бу сорулар халкъ арасында ачыкъ тартышыла эди.
-
-            Глава 7
-            
-            - Szanowny Panie! Мен сизге кемек этмек истеймен. Сиз бир зор адамсыз. Лякин о вакъта кадар эв иши бирге битирмек керек. Эгер сиз разысыз, биз бу иши бирликте япабилириз, - деди.
-
-            - Таммам! Бирге иш япармыз! - деди.
-
-            Арадан вакъыт кечкен сонъ ашхане азырландыгъыны коргенде Хаджи мемнун олды. Озь елинде не вар экенсе, омерге де арекет эткен эди. Дост синифындан олгъаны ичюн эв сайиби де онъа ярдым этип башлады.
-
-            Глава 8
-            
-            1434 сенеси, март айынынъ 13-и. Джуда соукъ эди. Хандан къачмакъ учюн къарары алдылар. Халкъ арасында: - Хан бизден къачып кетти! - деп садалар йайылды.
-
-            Улькенин шималинде отъмек кемлиги башлады. Хан озь элини тешвиш этирмек истемеди. Лякин халкъ буны анълады ве хан алейине исян чыкъарды.
-
-            - Биз артыкъ сенинъ хаккъында сукют этмейджекмиз! - деп садалар коклерде учты.
-
-            Глава 9
-            
-            О заманлар джаннинъ тюрбеси тикильген заман эди. Онынъ тюрбеси этрафында бир шеэр къурулды. Османлы падишах сарайында да бу хабер дуйнды. Султан озь фараншызларыны йоллап, хабер алмакъ истеди.
-
-            - Бу не хабер? Хан неге къачып кетти? - деп сорды.
-
-            - Хан озь халкъындан къорхып, тешвиш этти. Лякин биз онъа эринч ярдым этмек керекмиз, - деди везир.
-
-            Глава 10
-            
-            1443 сенеси язда бир куню. Хаджи Герай Эски Къырымда тахтнын сахиби олды. Лякин бу башлангыч эди. Онынъ акъибети даа да зияде чешитли ве мувафакъиетли оладжакъты. Халкъ онъа савлыкъ эди ве онынъ намына довалар этип, йылларджа хизмет этти.
-
-            - Хан башы сагъ олсун! Алла онъа узун омюр берсин! - деп алкъышлар юксельди.
-
-            Энди халкъ рахатлыкъ иле яшай биледжек эди. Хаджи Герай - биринджи Хан. Бирликте, бекъликте ве къуветте бу халкъ энди озь девлетине малик олды. Тарих сахифелери юзеринде бу исим алтын арфлар иле языльп калды.
-            `;
-            
-            let pages = [];
-            let currentPageIndex = 0;
-            let controlsVisible = false;
-            let controlsTimeout;
-            
-            function showLoading(message) {
-                const loading = document.getElementById('loading');
-                const status = document.getElementById('loading-status');
-                if (status) status.textContent = message;
-                if (loading) loading.classList.remove('hidden');
-            }
-            
-            function hideLoading() {
-                const loading = document.getElementById('loading');
-                if (loading) loading.classList.add('hidden');
-            }
-            
-            function showControls() {
-                controlsVisible = true;
-                const controls = document.getElementById('controls');
-                if (controls) controls.classList.add('visible');
-                
-                clearTimeout(controlsTimeout);
-                controlsTimeout = setTimeout(() => {
-                    hideControls();
-                }, 3000);
-            }
-            
-            function hideControls() {
-                controlsVisible = false;
-                const controls = document.getElementById('controls');
-                if (controls) controls.classList.remove('visible');
-            }
-            
-            function createPages() {
-                showLoading('Создание страниц...');
-                
-                // Очистка и разбивка текста
-                const cleanText = BOOK_TEXT
-                    .replace(/\n\s*\n/g, '\n\n') // Убираем лишние переносы
-                    .trim();
-                
-                const paragraphs = cleanText
-                    .split('\n')
-                    .map(p => p.trim())
-                    .filter(p => p.length > 0);
-                
-                pages = [];
-                let currentPageContent = '';
-                let wordsOnPage = 0;
-                const maxWordsPerPage = window.innerWidth <= 768 ? 150 : 250; // Меньше слов на мобильных
-                
-                paragraphs.forEach(paragraph => {
-                    const words = paragraph.split(' ').length;
-                    
-                    if (wordsOnPage + words > maxWordsPerPage && currentPageContent.trim()) {
-                        // Сохраняем текущую страницу
-                        pages.push(formatPageContent(currentPageContent));
-                        currentPageContent = paragraph;
-                        wordsOnPage = words;
-                    } else {
-                        currentPageContent += (currentPageContent ? '\n\n' : '') + paragraph;
-                        wordsOnPage += words;
-                    }
-                });
-                
-                // Добавляем последнюю страницу
-                if (currentPageContent.trim()) {
-                    pages.push(formatPageContent(currentPageContent));
-                }
-                
-                console.log(`Создано ${pages.length} страниц`);
-            }
-            
-            function formatPageContent(content) {
-                // Форматируем контент для HTML
-                const lines = content.split('\n');
-                let html = '';
-                
-                lines.forEach(line => {
-                    const trimmed = line.trim();
-                    if (!trimmed) return;
-                    
-                    // Заголовки глав
-                    if (trimmed.startsWith('Глава ') || trimmed === 'Хаджи-Гирай') {
-                        html += `<h1>${trimmed}</h1>`;
-                    }
-                    // Имя автора
-                    else if (trimmed === 'Алим Къуртсеит') {
-                        html += `<p style="text-align: center; font-style: italic; margin-bottom: 30px;">${trimmed}</p>`;
-                    }
-                    // Обычные абзацы
-                    else {
-                        html += `<p>${trimmed}</p>`;
-                    }
-                });
-                
-                return html;
-            }
-            
-            function renderCurrentPage() {
-                const pageEl = document.getElementById('current-page');
-                const currentPageNum = document.getElementById('current-page-num');
-                const totalPagesEl = document.getElementById('total-pages');
-                const prevBtn = document.getElementById('prev-btn');
-                const nextBtn = document.getElementById('next-btn');
-                
-                if (pageEl && pages[currentPageIndex]) {
-                    pageEl.innerHTML = pages[currentPageIndex];
-                }
-                
-                if (currentPageNum) currentPageNum.textContent = currentPageIndex + 1;
-                if (totalPagesEl) totalPagesEl.textContent = pages.length;
-                
-                if (prevBtn) prevBtn.disabled = currentPageIndex === 0;
-                if (nextBtn) nextBtn.disabled = currentPageIndex === pages.length - 1;
-                
-                // Сохраняем прогресс
-                localStorage.setItem('reader_progress', currentPageIndex.toString());
-            }
-            
-            function nextPage() {
-                if (currentPageIndex < pages.length - 1) {
-                    currentPageIndex++;
-                    renderCurrentPage();
-                }
-            }
-            
-            function prevPage() {
-                if (currentPageIndex > 0) {
-                    currentPageIndex--;
-                    renderCurrentPage();
-                }
-            }
-            
-            function init() {
-                showLoading('Инициализация ридера...');
-                
-                // Создаем страницы
-                createPages();
-                
-                // Загружаем сохраненный прогресс
-                const savedProgress = localStorage.getItem('reader_progress');
-                if (savedProgress) {
-                    currentPageIndex = Math.max(0, Math.min(parseInt(savedProgress), pages.length - 1));
-                }
-                
-                // Отображаем первую страницу
-                renderCurrentPage();
-                
-                // Привязываем события
-                document.getElementById('prev-btn').addEventListener('click', prevPage);
-                document.getElementById('next-btn').addEventListener('click', nextPage);
-                
-                document.getElementById('prev-zone').addEventListener('click', prevPage);
-                document.getElementById('next-zone').addEventListener('click', nextPage);
-                document.getElementById('menu-zone').addEventListener('click', () => {
-                    if (controlsVisible) {
-                        hideControls();
-                    } else {
-                        showControls();
-                    }
-                });
-                
-                // Клавиатурные сочетания
-                document.addEventListener('keydown', (e) => {
-                    switch (e.key) {
-                        case 'ArrowLeft':
-                        case 'PageUp':
-                            e.preventDefault();
-                            prevPage();
-                            break;
-                        case 'ArrowRight':
-                        case 'PageDown':
-                        case ' ':
-                            e.preventDefault();
-                            nextPage();
-                            break;
-                        case 'Escape':
-                            hideControls();
-                            break;
-                    }
-                });
-                
-                hideLoading();
-                
-                // Показываем контролы на несколько секунд
-                setTimeout(() => {
-                    showControls();
-                }, 500);
-            }
-            
-            // Запускаем инициализацию
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
-            }
-        })();
-    </script>
+    <script src="reader.js"></script>
 </body>
 </html>
