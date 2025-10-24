@@ -25,18 +25,16 @@
 
     // Application state
     const state = {
-        chapters: [],
-        pages: [], // Реальные страницы с измеренным контентом
+        bookText: '',
+        pages: [],
         currentPageIndex: 0,
         totalPages: 0,
         uiVisible: false,
         
         settings: {
             theme: 'dark',
-            font: 'crimson',
             fontSize: 18,
-            lineHeight: 1.6,
-            textWidth: 'medium'
+            lineHeight: 1.6
         }
     };
 
@@ -57,17 +55,9 @@
         
         apply() {
             document.body.setAttribute('data-theme', state.settings.theme);
-            document.body.setAttribute('data-width', state.settings.textWidth);
             
             document.documentElement.style.setProperty('--font-size-reading', `${state.settings.fontSize}px`);
             document.documentElement.style.setProperty('--line-height-reading', state.settings.lineHeight);
-            
-            const fontMap = {
-                crimson: '"Crimson Text", Georgia, serif',
-                inter: 'Inter, -apple-system, sans-serif',
-                georgia: 'Georgia, serif'
-            };
-            document.documentElement.style.setProperty('--font-reading', fontMap[state.settings.font]);
             
             this.save();
         },
@@ -85,18 +75,12 @@
         },
         
         updateUI() {
+            // Update theme buttons
             $$('.option-btn[data-theme]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.theme === state.settings.theme);
             });
             
-            $$('.option-btn[data-font]').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.font === state.settings.font);
-            });
-            
-            $$('.option-btn[data-width]').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.width === state.settings.textWidth);
-            });
-            
+            // Update sliders
             const fontSizeSlider = $('#font-size-slider');
             const fontSizeValue = $('#font-size-value');
             if (fontSizeSlider && fontSizeValue) {
@@ -181,22 +165,6 @@
             if (footer) footer.classList.toggle('visible', state.uiVisible);
         },
         
-        showSidebar() {
-            const sidebar = $('#sidebar');
-            const overlay = $('#overlay');
-            
-            if (sidebar) sidebar.classList.add('visible');
-            if (overlay) overlay.classList.add('visible');
-        },
-        
-        hideSidebar() {
-            const sidebar = $('#sidebar');
-            const overlay = $('#overlay');
-            
-            if (sidebar) sidebar.classList.remove('visible');
-            if (overlay) overlay.classList.remove('visible');
-        },
-        
         showSettings() {
             const modal = $('#settings-modal');
             if (modal) modal.classList.add('visible');
@@ -205,50 +173,6 @@
         hideSettings() {
             const modal = $('#settings-modal');
             if (modal) modal.classList.remove('visible');
-        },
-        
-        renderTOC() {
-            const tocList = $('#toc-list');
-            if (!tocList) return;
-            
-            tocList.innerHTML = '';
-            
-            // Find first page of each chapter
-            const chapterStartPages = new Map();
-            state.pages.forEach((page, index) => {
-                if (page.isChapterStart && !chapterStartPages.has(page.chapterIndex)) {
-                    chapterStartPages.set(page.chapterIndex, index + 1);
-                }
-            });
-            
-            state.chapters.forEach((chapter, index) => {
-                const item = document.createElement('div');
-                item.className = 'toc-item';
-                
-                // Check if current page is in this chapter
-                const currentPageData = state.pages[state.currentPageIndex];
-                if (currentPageData && currentPageData.chapterIndex === index) {
-                    item.classList.add('active');
-                }
-                
-                const startPage = chapterStartPages.get(index) || 1;
-                
-                item.innerHTML = `
-                    <div class="toc-title">${chapter.title || `Глава ${index + 1}`}</div>
-                    <div class="toc-page">Страница ${startPage}</div>
-                `;
-                
-                on(item, 'click', () => {
-                    const pageIndex = state.pages.findIndex(p => p.chapterIndex === index && p.isChapterStart);
-                    if (pageIndex >= 0) {
-                        state.currentPageIndex = pageIndex;
-                        reader.render();
-                        ui.hideSidebar();
-                    }
-                });
-                
-                tocList.appendChild(item);
-            });
         }
     };
 
@@ -256,14 +180,13 @@
     const reader = {
         async init() {
             try {
-                ui.showLoading('Инициализация ридера...');
+                ui.showLoading('Загрузка книги...');
                 
                 settings.load();
                 await this.loadBook();
-                await this.createPages();
+                this.createPages();
                 
                 progress.load();
-                ui.renderTOC();
                 this.bindEvents();
                 this.render();
                 
@@ -277,40 +200,25 @@
                 
             } catch (error) {
                 console.error('Failed to initialize reader:', error);
-                ui.showLoading('Ошибка загрузки. Проверьте файлы chapters.json и главы.');
+                ui.showLoading('Ошибка загрузки. Проверьте файл Khadzhi-Girai.txt');
             }
         },
         
         async loadBook() {
             try {
-                ui.showLoading('Загрузка книги...');
+                ui.showLoading('Загрузка текста книги...');
                 
-                // Try to load chapters.json
-                try {
-                    const response = await fetch('chapters.json');
-                    if (response.ok) {
-                        state.chapters = await response.json();
-                    } else {
-                        throw new Error('chapters.json not found');
-                    }
-                } catch {
-                    // Fallback to predefined chapters
-                    state.chapters = [
-                        { title: "Муэллиф Бириндже СОЗ", href: "ch0.html" },
-                        { title: "Глава 1", href: "ch1.html" },
-                        { title: "Глава 2", href: "ch2.html" },
-                        { title: "Глава 3", href: "ch3.html" },
-                        { title: "Глава 4", href: "ch4.html" },
-                        { title: "Глава 5", href: "ch5.html" },
-                        { title: "Глава 6", href: "ch6.html" },
-                        { title: "Глава 7", href: "ch7.html" },
-                        { title: "Глава 8", href: "ch8.html" },
-                        { title: "Глава 9", href: "ch9.html" },
-                        { title: "Глава 10", href: "ch10.html" }
-                    ];
+                const response = await fetch('Khadzhi-Girai.txt');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: Khadzhi-Girai.txt not found`);
                 }
                 
-                console.log('Loaded chapters:', state.chapters);
+                state.bookText = await response.text();
+                console.log('Book loaded, length:', state.bookText.length);
+                
+                if (!state.bookText.trim()) {
+                    throw new Error('Book file is empty');
+                }
                 
             } catch (error) {
                 console.error('Failed to load book:', error);
@@ -318,129 +226,126 @@
             }
         },
         
-        async createPages() {
-            ui.showLoading('Создание страниц с правильной пагинацией...');
+        createPages() {
+            ui.showLoading('Создание идеальных страниц...');
             
             state.pages = [];
             
-            // Create a measuring container
+            // Create measuring container
             const measuringContainer = document.createElement('div');
             measuringContainer.style.cssText = `
                 position: absolute;
                 visibility: hidden;
-                top: 0;
+                top: -9999px;
                 left: 0;
                 width: 100%;
                 max-width: 680px;
                 margin: 0 auto;
                 padding: 20px;
-                font-family: var(--font-reading);
-                font-size: var(--font-size-reading);
-                line-height: var(--line-height-reading);
+                font-family: "Crimson Text", Georgia, serif;
+                font-size: ${state.settings.fontSize}px;
+                line-height: ${state.settings.lineHeight};
                 color: var(--text-primary);
                 overflow: hidden;
                 box-sizing: border-box;
-                pointer-events: none;
-                z-index: -1000;
+                white-space: pre-wrap;
             `;
             
-            // Get the exact height available for content
+            // Calculate available height
             const header = $('#header');
             const footer = $('#footer');
-            const headerHeight = header ? header.offsetHeight : 56;
-            const footerHeight = footer ? footer.offsetHeight : 80;
-            
+            const headerHeight = 56;
+            const footerHeight = 80;
             const availableHeight = window.innerHeight - headerHeight - footerHeight - 40; // 40px padding
-            measuringContainer.style.height = `${availableHeight}px`;
             
+            measuringContainer.style.height = `${availableHeight}px`;
             document.body.appendChild(measuringContainer);
             
-            // Load and paginate all chapters
-            for (let chapterIndex = 0; chapterIndex < state.chapters.length; chapterIndex++) {
-                const chapter = state.chapters[chapterIndex];
+            // Clean and split text into paragraphs
+            const cleanText = state.bookText
+                .replace(/\r\n/g, '\n')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+            
+            const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
+            
+            let currentPageContent = '';
+            
+            for (const paragraph of paragraphs) {
+                const trimmedParagraph = paragraph.trim();
+                if (!trimmedParagraph) continue;
                 
-                ui.showLoading(`Пагинация главы ${chapterIndex + 1} из ${state.chapters.length}...`);
+                // Test if adding this paragraph exceeds page height
+                const testContent = currentPageContent + (currentPageContent ? '\n\n' : '') + trimmedParagraph;
                 
-                try {
-                    // Load chapter content
-                    const response = await fetch(chapter.href);
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    
-                    const chapterContent = await response.text();
-                    
-                    // Parse HTML content into paragraphs
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = chapterContent;
-                    
-                    const elements = Array.from(tempDiv.children);
-                    
-                    let currentPageContent = '';
-                    let isFirstPageOfChapter = true;
-                    
-                    for (const element of elements) {
-                        // Test if adding this element exceeds page height
-                        let testContent = currentPageContent;
-                        
-                        // Add chapter title to first page
-                        if (isFirstPageOfChapter && element.tagName !== 'H1') {
-                            testContent += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
-                        }
-                        
-                        testContent += element.outerHTML;
-                        
-                        measuringContainer.innerHTML = testContent;
-                        
-                        const contentFits = measuringContainer.scrollHeight <= availableHeight;
-                        
-                        if (contentFits) {
-                            // Content fits, add to current page
-                            currentPageContent = testContent;
-                        } else {
-                            // Content doesn't fit, save current page and start new one
-                            if (currentPageContent.trim()) {
-                                state.pages.push({
-                                    content: currentPageContent,
-                                    chapterIndex: chapterIndex,
-                                    chapterTitle: chapter.title || `Глава ${chapterIndex + 1}`,
-                                    isChapterStart: isFirstPageOfChapter
-                                });
-                                
-                                isFirstPageOfChapter = false;
-                            }
-                            
-                            // Start new page with current element
-                            currentPageContent = element.outerHTML;
-                        }
-                    }
-                    
-                    // Add the last page of the chapter
+                measuringContainer.textContent = testContent;
+                
+                const contentFits = measuringContainer.scrollHeight <= availableHeight;
+                
+                if (contentFits) {
+                    // Content fits, add to current page
+                    currentPageContent = testContent;
+                } else {
+                    // Content doesn't fit
                     if (currentPageContent.trim()) {
-                        // Add chapter title if it's the first page
-                        if (isFirstPageOfChapter) {
-                            currentPageContent = `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>` + currentPageContent;
+                        // Save current page
+                        state.pages.push(this.formatPageContent(currentPageContent));
+                        currentPageContent = trimmedParagraph;
+                    } else {
+                        // Even single paragraph doesn't fit, need to split by sentences
+                        const sentences = trimmedParagraph.split(/(?<=[.!?])\s+/);
+                        let sentenceBuffer = '';
+                        
+                        for (const sentence of sentences) {
+                            const testSentence = sentenceBuffer + (sentenceBuffer ? ' ' : '') + sentence;
+                            measuringContainer.textContent = testSentence;
+                            
+                            if (measuringContainer.scrollHeight <= availableHeight) {
+                                sentenceBuffer = testSentence;
+                            } else {
+                                if (sentenceBuffer.trim()) {
+                                    state.pages.push(this.formatPageContent(sentenceBuffer));
+                                    sentenceBuffer = sentence;
+                                } else {
+                                    // Even single sentence is too long, split by words
+                                    const words = sentence.split(' ');
+                                    let wordBuffer = '';
+                                    
+                                    for (const word of words) {
+                                        const testWord = wordBuffer + (wordBuffer ? ' ' : '') + word;
+                                        measuringContainer.textContent = testWord;
+                                        
+                                        if (measuringContainer.scrollHeight <= availableHeight) {
+                                            wordBuffer = testWord;
+                                        } else {
+                                            if (wordBuffer.trim()) {
+                                                state.pages.push(this.formatPageContent(wordBuffer));
+                                                wordBuffer = word;
+                                            } else {
+                                                // Single word is too long, just add it
+                                                state.pages.push(this.formatPageContent(word));
+                                                wordBuffer = '';
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (wordBuffer.trim()) {
+                                        sentenceBuffer = wordBuffer;
+                                    }
+                                }
+                            }
                         }
                         
-                        state.pages.push({
-                            content: currentPageContent,
-                            chapterIndex: chapterIndex,
-                            chapterTitle: chapter.title || `Глава ${chapterIndex + 1}`,
-                            isChapterStart: isFirstPageOfChapter
-                        });
+                        if (sentenceBuffer.trim()) {
+                            currentPageContent = sentenceBuffer;
+                        }
                     }
-                    
-                } catch (error) {
-                    console.warn(`Failed to load chapter ${chapterIndex}:`, error);
-                    
-                    // Add error page
-                    state.pages.push({
-                        content: `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1><p>Ошибка загрузки главы: ${error.message}</p>`,
-                        chapterIndex: chapterIndex,
-                        chapterTitle: chapter.title || `Глава ${chapterIndex + 1}`,
-                        isChapterStart: true
-                    });
                 }
+            }
+            
+            // Add last page
+            if (currentPageContent.trim()) {
+                state.pages.push(this.formatPageContent(currentPageContent));
             }
             
             // Remove measuring container
@@ -451,15 +356,33 @@
             console.log(`Created ${state.totalPages} perfectly fitted pages`);
         },
         
+        formatPageContent(text) {
+            // Format text as HTML paragraphs
+            return text
+                .split('\n\n')
+                .map(paragraph => {
+                    const trimmed = paragraph.trim();
+                    if (!trimmed) return '';
+                    
+                    // Check if it looks like a title (short line, possibly all caps)
+                    if (trimmed.length < 50 && (trimmed === trimmed.toUpperCase() || /^[А-ЯЁ\s\-]+$/.test(trimmed))) {
+                        return `<h2>${trimmed}</h2>`;
+                    } else {
+                        return `<p>${trimmed}</p>`;
+                    }
+                })
+                .filter(p => p)
+                .join('');
+        },
+        
         render() {
             const pageContent = $('#page-content');
             if (!pageContent || !state.pages[state.currentPageIndex]) return;
             
             const currentPage = state.pages[state.currentPageIndex];
-            pageContent.innerHTML = currentPage.content;
+            pageContent.innerHTML = currentPage;
             
             progress.update();
-            ui.renderTOC();
         },
         
         nextPage() {
@@ -496,7 +419,6 @@
             
             // Header buttons
             on($('#back-btn'), 'click', () => history.back());
-            on($('#toc-btn'), 'click', () => ui.showSidebar());
             on($('#settings-btn'), 'click', () => ui.showSettings());
             
             // Page input
@@ -510,10 +432,6 @@
                 this.goToPage(page);
             });
             
-            // Sidebar
-            on($('#close-sidebar'), 'click', () => ui.hideSidebar());
-            on($('#overlay'), 'click', () => ui.hideSidebar());
-            
             // Settings modal
             on($('#close-settings'), 'click', () => ui.hideSettings());
             on($('#settings-modal .modal-backdrop'), 'click', () => ui.hideSettings());
@@ -521,14 +439,6 @@
             // Settings buttons
             $$('.option-btn[data-theme]').forEach(btn => {
                 on(btn, 'click', () => settings.update('theme', btn.dataset.theme));
-            });
-            
-            $$('.option-btn[data-font]').forEach(btn => {
-                on(btn, 'click', () => settings.update('font', btn.dataset.font));
-            });
-            
-            $$('.option-btn[data-width]').forEach(btn => {
-                on(btn, 'click', () => settings.update('textWidth', btn.dataset.width));
             });
             
             // Range sliders
@@ -552,7 +462,7 @@
                 });
             }
             
-            // Window resize - re-paginate
+            // Window resize
             window.addEventListener('resize', () => {
                 setTimeout(() => {
                     this.createPages();
@@ -587,8 +497,6 @@
                     case 'Escape':
                         if ($('#settings-modal')?.classList.contains('visible')) {
                             ui.hideSettings();
-                        } else if ($('#sidebar')?.classList.contains('visible')) {
-                            ui.hideSidebar();
                         } else if (state.uiVisible) {
                             ui.toggleUI();
                         }
