@@ -7,7 +7,8 @@
         allContent: '',
         currentPage: 1,
         totalPages: 0,
-        uiVisible: false
+        uiVisible: false,
+        bookInitialized: false
     };
 
     // Storage utilities
@@ -67,8 +68,8 @@
             }
             
             if (progressFill && state.totalPages > 0) {
-                const progress = ((state.currentPage - 1) / (state.totalPages - 1)) * 100;
-                progressFill.style.width = `${Math.max(0, progress)}%`;
+                const progress = ((state.currentPage - 1) / Math.max(state.totalPages - 1, 1)) * 100;
+                progressFill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
             }
             
             // Save progress
@@ -85,6 +86,11 @@
             try {
                 ui.showLoading('Инициализация Turn.js ридера...');
                 
+                // Wait for jQuery to load
+                if (typeof jQuery === 'undefined') {
+                    throw new Error('jQuery not loaded');
+                }
+                
                 await this.loadBook();
                 this.createPages();
                 this.initializeTurnJS();
@@ -92,8 +98,10 @@
                 
                 // Load saved progress
                 const saved = storage.get('turnjs_reader_progress');
-                if (saved && saved.page <= state.totalPages) {
-                    $('#book').turn('page', saved.page);
+                if (saved && saved.page <= state.totalPages && state.bookInitialized) {
+                    setTimeout(() => {
+                        jQuery('#book').turn('page', saved.page);
+                    }, 100);
                 }
                 
                 ui.hideLoading();
@@ -106,7 +114,7 @@
                 
             } catch (error) {
                 console.error('Failed to initialize reader:', error);
-                ui.showLoading('Ошибка загрузки. Проверьте подключение.');
+                ui.showLoading(`Ошибка загрузки: ${error.message}. Проверьте подключение.`);
             }
         },
         
@@ -116,9 +124,12 @@
                 
                 // Load chapters metadata
                 const response = await fetch('book/chapters.json');
-                if (!response.ok) throw new Error('Failed to load chapters.json');
+                if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to load chapters.json`);
                 
                 state.chapters = await response.json();
+                if (!Array.isArray(state.chapters) || state.chapters.length === 0) {
+                    throw new Error('Invalid chapters data');
+                }
                 
                 // Load all chapters
                 let combinedContent = '';
@@ -128,23 +139,32 @@
                     
                     try {
                         const chapterResponse = await fetch(state.chapters[i].href);
-                        const chapterContent = await chapterResponse.text();
-                        
-                        combinedContent += `
-                            <h1>${state.chapters[i].title || `Глава ${i + 1}`}</h1>
-                            ${chapterContent}
-                        `;
+                        if (chapterResponse.ok) {
+                            const chapterContent = await chapterResponse.text();
+                            
+                            combinedContent += `
+                                <h1>${state.chapters[i].title || `Глава ${i + 1}`}</h1>
+                                ${chapterContent}
+                            `;
+                        } else {
+                            throw new Error(`HTTP ${chapterResponse.status}`);
+                        }
                         
                     } catch (error) {
                         console.warn(`Failed to load chapter ${i}:`, error);
                         combinedContent += `
                             <h1>${state.chapters[i].title || `Глава ${i + 1}`}</h1>
-                            <p>Ошибка загрузки главы. Попробуйте обновить страницу.</p>
+                            <p>Ошибка загрузки главы ${i + 1}. Попробуйте обновить страницу.</p>
                         `;
                     }
                 }
                 
+                if (!combinedContent.trim()) {
+                    throw new Error('No content loaded');
+                }
+                
                 state.allContent = combinedContent;
+                console.log('Book loaded successfully, content length:', combinedContent.length);
                 
             } catch (error) {
                 console.error('Failed to load book:', error);
@@ -155,133 +175,206 @@
         createPages() {
             ui.showLoading('Создание страниц...');
             
-            // Create a temporary container to measure content
-            const tempContainer = document.createElement('div');
-            tempContainer.style.cssText = `
-                position: absolute;
-                visibility: hidden;
-                top: -9999px;
-                left: 0;
-                width: 800px;
-                height: 600px;
-                padding: 2rem;
-                font-family: 'Crimson Text', Georgia, serif;
-                font-size: 1.1rem;
-                line-height: 1.6;
-                color: var(--text-primary);
-                text-align: justify;
-                overflow: hidden;
-                box-sizing: border-box;
-            `;
-            document.body.appendChild(tempContainer);
-            
-            // Split content into paragraphs
-            const paragraphs = state.allContent.split(/(?=<h1|<p)/g).filter(p => p.trim());
-            
-            const pages = [];
-            let currentPageContent = '';
-            
-            paragraphs.forEach(paragraph => {
-                const testContent = currentPageContent + paragraph;
-                tempContainer.innerHTML = testContent;
+            try {
+                // Create a temporary container to measure content
+                const tempContainer = document.createElement('div');
+                tempContainer.style.cssText = `
+                    position: absolute;
+                    visibility: hidden;
+                    top: -9999px;
+                    left: 0;
+                    width: 700px;
+                    height: 500px;
+                    padding: 2rem;
+                    font-family: 'Crimson Text', Georgia, serif;
+                    font-size: 1.1rem;
+                    line-height: 1.6;
+                    color: #ffffff;
+                    text-align: justify;
+                    overflow: hidden;
+                    box-sizing: border-box;
+                    background: #1c1c1e;
+                `;
+                document.body.appendChild(tempContainer);
                 
-                if (tempContainer.scrollHeight > tempContainer.clientHeight && currentPageContent) {
-                    // Save current page
-                    pages.push(currentPageContent);
-                    currentPageContent = paragraph;
-                } else {
-                    currentPageContent = testContent;
+                // Clean content and split into manageable chunks
+                const cleanContent = state.allContent
+                    .replace(/<h1>/g, '\n<h1>')
+                    .replace(/<p>/g, '\n<p>')
+                    .replace(/\n+/g, '\n')
+                    .trim();
+                
+                const chunks = cleanContent.split('\n').filter(chunk => chunk.trim());
+                
+                const pages = [];
+                let currentPageContent = '';
+                
+                chunks.forEach((chunk, index) => {
+                    const testContent = currentPageContent + chunk;
+                    tempContainer.innerHTML = testContent;
+                    
+                    const fits = tempContainer.scrollHeight <= tempContainer.clientHeight;
+                    
+                    if (!fits && currentPageContent.trim()) {
+                        // Save current page
+                        pages.push(currentPageContent.trim());
+                        currentPageContent = chunk;
+                    } else {
+                        currentPageContent = testContent;
+                    }
+                });
+                
+                // Add last page
+                if (currentPageContent.trim()) {
+                    pages.push(currentPageContent.trim());
                 }
-            });
-            
-            // Add last page
-            if (currentPageContent.trim()) {
-                pages.push(currentPageContent);
+                
+                // Remove temp container
+                document.body.removeChild(tempContainer);
+                
+                // Ensure we have at least one page
+                if (pages.length === 0) {
+                    pages.push('<h1>Ошибка</h1><p>Не удалось создать страницы. Попробуйте обновить страницу.</p>');
+                }
+                
+                // Create Turn.js pages
+                const book = document.getElementById('book');
+                if (!book) throw new Error('Book container not found');
+                
+                book.innerHTML = '';
+                
+                pages.forEach((pageContent, index) => {
+                    const pageDiv = document.createElement('div');
+                    pageDiv.className = 'page';
+                    pageDiv.innerHTML = pageContent;
+                    book.appendChild(pageDiv);
+                });
+                
+                state.totalPages = pages.length;
+                console.log(`Created ${state.totalPages} Turn.js pages`);
+                
+            } catch (error) {
+                console.error('Failed to create pages:', error);
+                // Fallback: create single page with error
+                const book = document.getElementById('book');
+                if (book) {
+                    book.innerHTML = `
+                        <div class="page">
+                            <h1>Ошибка создания страниц</h1>
+                            <p>Произошла ошибка при создании страниц: ${error.message}</p>
+                            <p>Попробуйте обновить страницу.</p>
+                        </div>
+                    `;
+                    state.totalPages = 1;
+                }
             }
-            
-            // Remove temp container
-            document.body.removeChild(tempContainer);
-            
-            // Create Turn.js pages
-            const book = document.getElementById('book');
-            book.innerHTML = '';
-            
-            pages.forEach((pageContent, index) => {
-                const pageDiv = document.createElement('div');
-                pageDiv.className = 'page';
-                pageDiv.innerHTML = pageContent;
-                book.appendChild(pageDiv);
-            });
-            
-            state.totalPages = pages.length;
-            console.log(`Created ${state.totalPages} Turn.js pages`);
         },
         
         initializeTurnJS() {
             ui.showLoading('Инициализация Turn.js...');
             
-            const $book = $('#book');
-            
-            $book.turn({
-                width: 800,
-                height: 600,
-                autoCenter: true,
-                elevation: 50,
-                gradients: true,
-                when: {
-                    turned: (event, page, view) => {
-                        state.currentPage = page;
-                        ui.updateProgress();
-                    }
+            try {
+                const $book = jQuery('#book');
+                
+                if ($book.length === 0) {
+                    throw new Error('Book element not found');
                 }
-            });
-            
-            // Set initial state
-            state.currentPage = 1;
-            ui.updateProgress();
+                
+                // Initialize Turn.js
+                $book.turn({
+                    width: 800,
+                    height: 600,
+                    autoCenter: true,
+                    elevation: 50,
+                    gradients: true,
+                    when: {
+                        turned: function(event, page, view) {
+                            state.currentPage = page;
+                            state.bookInitialized = true;
+                            ui.updateProgress();
+                        },
+                        first: function(event, page, view) {
+                            state.currentPage = 1;
+                            state.bookInitialized = true;
+                            ui.updateProgress();
+                        }
+                    }
+                });
+                
+                // Set initial state
+                state.currentPage = 1;
+                state.bookInitialized = true;
+                ui.updateProgress();
+                
+                console.log('Turn.js initialized successfully');
+                
+            } catch (error) {
+                console.error('Failed to initialize Turn.js:', error);
+                ui.showLoading(`Ошибка инициализации Turn.js: ${error.message}`);
+            }
         },
         
         nextPage() {
-            $('#book').turn('next');
+            if (state.bookInitialized) {
+                jQuery('#book').turn('next');
+            }
         },
         
         prevPage() {
-            $('#book').turn('previous');
+            if (state.bookInitialized) {
+                jQuery('#book').turn('previous');
+            }
+        },
+        
+        goToPage(page) {
+            if (state.bookInitialized && page >= 1 && page <= state.totalPages) {
+                jQuery('#book').turn('page', page);
+            }
         },
         
         bindEvents() {
             // Navigation buttons
-            document.getElementById('prev-btn')?.addEventListener('click', () => this.prevPage());
-            document.getElementById('next-btn')?.addEventListener('click', () => this.nextPage());
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            
+            if (prevBtn) prevBtn.addEventListener('click', () => this.prevPage());
+            if (nextBtn) nextBtn.addEventListener('click', () => this.nextPage());
             
             // Header buttons
-            document.getElementById('back-btn')?.addEventListener('click', () => history.back());
+            const backBtn = document.getElementById('back-btn');
+            if (backBtn) backBtn.addEventListener('click', () => history.back());
             
             // Click to toggle UI
-            document.getElementById('book')?.addEventListener('click', (e) => {
-                // Only toggle UI if clicking empty space, not on text
-                const rect = e.currentTarget.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const clickZone = Math.abs(e.clientX - centerX) / (rect.width / 2);
-                
-                if (clickZone > 0.6) {
-                    if (e.clientX < centerX) {
-                        this.prevPage();
+            const book = document.getElementById('book');
+            if (book) {
+                book.addEventListener('click', (e) => {
+                    // Only toggle UI if clicking empty space, not on text
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const clickZone = Math.abs(e.clientX - centerX) / (rect.width / 2);
+                    
+                    if (clickZone > 0.6) {
+                        if (e.clientX < centerX) {
+                            this.prevPage();
+                        } else {
+                            this.nextPage();
+                        }
                     } else {
-                        this.nextPage();
+                        ui.toggleUI();
                     }
-                } else {
-                    ui.toggleUI();
-                }
-            });
+                });
+            }
             
             // Progress bar
-            document.getElementById('progress-bar')?.addEventListener('click', (e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const ratio = (e.clientX - rect.left) / rect.width;
-                const page = Math.ceil(ratio * state.totalPages);
-                $('#book').turn('page', page);
-            });
+            const progressBar = document.getElementById('progress-bar');
+            if (progressBar) {
+                progressBar.addEventListener('click', (e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const ratio = (e.clientX - rect.left) / rect.width;
+                    const page = Math.ceil(ratio * state.totalPages);
+                    this.goToPage(page);
+                });
+            }
             
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
@@ -299,11 +392,11 @@
                         break;
                     case 'Home':
                         e.preventDefault();
-                        $('#book').turn('page', 1);
+                        this.goToPage(1);
                         break;
                     case 'End':
                         e.preventDefault();
-                        $('#book').turn('page', state.totalPages);
+                        this.goToPage(state.totalPages);
                         break;
                     case 'Escape':
                         if (state.uiVisible) {
@@ -315,15 +408,28 @@
             
             // Resize handler
             window.addEventListener('resize', () => {
-                setTimeout(() => {
-                    $('#book').turn('resize');
-                }, 300);
+                if (state.bookInitialized) {
+                    setTimeout(() => {
+                        jQuery('#book').turn('resize');
+                    }, 300);
+                }
             });
         }
     };
 
     // Initialize when DOM and jQuery are ready
-    $(document).ready(() => {
-        reader.init();
-    });
+    function initWhenReady() {
+        if (typeof jQuery !== 'undefined' && document.readyState === 'complete') {
+            reader.init();
+        } else {
+            setTimeout(initWhenReady, 100);
+        }
+    }
+
+    // Start initialization
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initWhenReady);
+    } else {
+        initWhenReady();
+    }
 })();
