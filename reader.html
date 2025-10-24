@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     
     <style>
-        /* ИДЕАЛЬНЫЙ СКРОЛЛ-РИДЕР БЕЗ ВИДИМОГО СКРОЛЛБАРА */
+        /* ИДЕАЛЬНЫЙ СКРОЛЛ-РИДЕР БЕЗ ПОЛОСЫ СКРОЛЛА */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         :root {
@@ -42,9 +42,15 @@
             --border-color: #d3c7b8;
         }
         
-        html, body {
-            height: 100%;
-            overflow: hidden; /* СКРЫВАЕМ СИСТЕМНЫЙ СКРОЛЛ */
+        html {
+            /* СКРЫТЬ ПОЛОСУ СКРОЛЛА */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        html::-webkit-scrollbar {
+            /* СКРЫТЬ ПОЛОСУ СКРОЛЛА в Chrome/Safari */
+            display: none;
         }
         
         body {
@@ -54,16 +60,7 @@
             font-size: var(--font-size-reading);
             line-height: var(--line-height-reading);
             -webkit-font-smoothing: antialiased;
-        }
-        
-        /* КАСТОМНЫЙ СКРОЛЛБАР - ПОЛНОСТЬЮ СКРЫТЫЙ */
-        body::-webkit-scrollbar {
-            display: none;
-        }
-        
-        body {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+            overflow-x: hidden; /* Скрыть горизонтальный скролл */
         }
         
         /* Loading */
@@ -116,19 +113,22 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 56px;
+            height: 60px;
             display: flex;
             align-items: center;
-            padding: 0 16px;
-            background: rgba(28, 28, 30, 0.95);
+            padding: 0 20px;
+            background: rgba(28, 28, 30, 0.9);
             border-bottom: 1px solid var(--border-color);
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             transform: translateY(-100%);
-            transition: transform 0.3s;
+            transition: transform 0.3s ease;
             z-index: 100;
         }
         
-        .header.visible { transform: translateY(0); }
+        .header.visible {
+            transform: translateY(0);
+        }
         
         .header-btn {
             display: flex;
@@ -141,7 +141,7 @@
             background: transparent;
             color: var(--text-secondary);
             cursor: pointer;
-            transition: all 0.15s;
+            transition: all 0.2s ease;
         }
         
         .header-btn:hover {
@@ -149,15 +149,19 @@
             color: var(--text-primary);
         }
         
+        .header-btn:active {
+            transform: scale(0.95);
+        }
+        
         .header-title {
             flex: 1;
-            margin: 0 16px;
+            margin: 0 20px;
             min-width: 0;
         }
         
         .header-title h1 {
             margin: 0;
-            font-size: 17px;
+            font-size: 18px;
             font-weight: 600;
             color: var(--text-primary);
             white-space: nowrap;
@@ -166,56 +170,43 @@
         }
         
         .header-title span {
-            font-size: 13px;
+            font-size: 14px;
             color: var(--text-secondary);
         }
         
         .header-actions {
             display: flex;
-            gap: 4px;
-        }
-        
-        /* Content Container */
-        .content-container {
-            height: 100vh;
-            overflow-y: auto;
-            overflow-x: hidden;
-            /* СКРЫВАЕМ СКРОЛЛБАР НО ОСТАВЛЯЕМ ФУНКЦИОНАЛЬНОСТЬ */
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-        
-        .content-container::-webkit-scrollbar {
-            display: none;
+            gap: 8px;
         }
         
         /* Content */
         .content {
             max-width: 680px;
             margin: 0 auto;
-            padding: 80px 20px 40px 20px; /* ОТСТУП СВЕРХУ ДЛЯ HEADER */
-            min-height: calc(100vh - 120px);
+            padding: 30px 20px 60px 20px;
+            min-height: 100vh;
         }
         
         .content h1 {
-            font-size: 32px;
-            line-height: 1.25;
-            margin: 0 0 30px 0;
+            font-size: 36px;
+            line-height: 1.2;
+            margin: 40px 0 20px 0;
             font-weight: 700;
             color: var(--text-primary);
             text-align: center;
         }
         
         .content h2 {
-            font-size: 24px;
+            font-size: 28px;
             line-height: 1.3;
-            margin: 40px 0 20px 0;
+            margin: 50px 0 25px 0;
             font-weight: 600;
             color: var(--text-primary);
+            text-align: center;
         }
         
         .content p {
-            margin: 0 0 18px 0;
+            margin: 0 0 20px 0;
             text-align: justify;
             text-justify: inter-word;
             hyphens: auto;
@@ -223,52 +214,16 @@
         }
         
         .content p:last-child {
-            margin-bottom: 40px;
+            margin-bottom: 60px;
         }
         
-        /* Navigation Controls */
-        .nav-controls {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 20px;
-            background: rgba(28, 28, 30, 0.95);
-            padding: 12px 24px;
-            border-radius: 25px;
-            backdrop-filter: blur(20px);
-            opacity: 0;
-            transition: opacity 0.3s;
-            z-index: 100;
-        }
-        
-        .nav-controls.visible { opacity: 1; }
-        
-        .nav-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 44px;
-            height: 44px;
-            border: none;
-            border-radius: 12px;
-            background: var(--accent);
-            color: white;
-            cursor: pointer;
-            transition: all 0.15s;
-            font-weight: 600;
-        }
-        
-        .nav-btn:hover {
-            background: #0066cc;
-            transform: scale(1.05);
-        }
-        
-        .nav-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
+        /* Author name styling */
+        .author {
+            text-align: center;
+            font-style: italic;
+            color: var(--text-secondary);
+            margin: 20px 0 50px 0;
+            font-size: 20px;
         }
         
         /* Progress indicator */
@@ -286,7 +241,7 @@
             height: 100%;
             background: var(--accent);
             width: 0%;
-            transition: width 0.2s;
+            transition: width 0.1s ease;
         }
         
         /* Settings Modal */
@@ -296,40 +251,47 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s;
+            transition: opacity 0.3s ease;
             z-index: 300;
         }
         
-        .modal.visible { opacity: 1; pointer-events: auto; }
+        .modal.visible { 
+            opacity: 1; 
+            pointer-events: auto; 
+        }
         
         .modal-content {
-            width: min(400px, 90vw);
+            width: min(420px, 90vw);
             max-height: 80vh;
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
+            border-radius: 20px;
             overflow: hidden;
             transform: scale(0.9);
-            transition: transform 0.3s;
+            transition: transform 0.3s ease;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
         
-        .modal.visible .modal-content { transform: scale(1); }
+        .modal.visible .modal-content { 
+            transform: scale(1); 
+        }
         
         .modal-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 20px;
+            padding: 24px;
             border-bottom: 1px solid var(--border-color);
         }
         
         .modal-header h3 {
             margin: 0;
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
             color: var(--text-primary);
         }
@@ -338,57 +300,60 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             background: transparent;
             color: var(--text-secondary);
             cursor: pointer;
-            transition: all 0.15s;
+            transition: all 0.2s ease;
         }
         
         .close-btn:hover {
-            background: var(--bg-primary);
+            background: rgba(255, 255, 255, 0.1);
             color: var(--text-primary);
         }
         
         .modal-body {
-            padding: 20px;
+            padding: 24px;
             overflow-y: auto;
             max-height: 60vh;
         }
         
         .setting-group {
-            margin-bottom: 24px;
+            margin-bottom: 28px;
         }
         
-        .setting-group:last-child { margin-bottom: 0; }
+        .setting-group:last-child { 
+            margin-bottom: 0; 
+        }
         
         .setting-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             font-weight: 600;
             color: var(--text-primary);
-            font-size: 14px;
+            font-size: 16px;
         }
         
         .option-buttons {
             display: flex;
-            gap: 8px;
+            gap: 10px;
             flex-wrap: wrap;
         }
         
         .option-btn {
-            padding: 8px 16px;
+            padding: 12px 20px;
             border: 2px solid var(--border-color);
-            border-radius: 8px;
+            border-radius: 12px;
             background: var(--bg-primary);
             color: var(--text-secondary);
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
+            min-width: 80px;
         }
         
         .option-btn:hover {
@@ -404,8 +369,8 @@
         
         .range-slider {
             width: 100%;
-            height: 6px;
-            border-radius: 3px;
+            height: 8px;
+            border-radius: 4px;
             background: var(--border-color);
             outline: none;
             -webkit-appearance: none;
@@ -414,41 +379,63 @@
         
         .range-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             background: var(--accent);
             cursor: pointer;
-            border: 2px solid var(--bg-primary);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border: 3px solid var(--bg-primary);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .range-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: 3px solid var(--bg-primary);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
         }
         
         /* Mobile adjustments */
         @media (max-width: 768px) {
+            .header {
+                height: 56px;
+                padding: 0 16px;
+            }
+            
+            .header-title {
+                margin: 0 16px;
+            }
+            
+            .header-title h1 {
+                font-size: 17px;
+            }
+            
             .content {
-                padding: 70px 16px 30px 16px;
+                padding: 20px 16px 40px 16px;
             }
             
             .content h1 {
-                font-size: 28px;
-                margin: 0 0 20px 0;
+                font-size: 32px;
+                margin: 30px 0 15px 0;
             }
             
             .content h2 {
-                font-size: 22px;
-                margin: 30px 0 16px 0;
+                font-size: 24px;
+                margin: 40px 0 20px 0;
             }
             
-            .nav-controls {
-                bottom: 15px;
-                padding: 10px 20px;
-                gap: 15px;
+            .author {
+                font-size: 18px;
+                margin: 15px 0 40px 0;
             }
-            
-            .nav-btn {
-                width: 40px;
-                height: 40px;
-            }
+        }
+        
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
         }
     </style>
 </head>
@@ -482,34 +469,18 @@
         
         <div class="header-actions">
             <button class="header-btn" id="settings-btn">
-                <!-- ИСПРАВЛЕННАЯ ИКОНКА НАСТРОЕК -->
+                <!-- ПРАВИЛЬНАЯ ИКОНКА НАСТРОЕК -->
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                    <circle cx="12" cy="12" r="3"/>
+                    ircle cx="12" cy="12"2" r="3"/>
                 </svg>
             </button>
         </div>
     </header>
 
-    <!-- Content Container -->
-    <div class="content-container" id="content-container">
-        <div class="content" id="content">
-            <!-- Весь текст книги будет здесь -->
-        </div>
-    </div>
-
-    <!-- Navigation Controls -->
-    <div id="nav-controls" class="nav-controls">
-        <button class="nav-btn" id="up-btn" title="Вверх">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="m18 15-6-6-6 6"/>
-            </svg>
-        </button>
-        <button class="nav-btn" id="down-btn" title="Вниз">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="m6 9 6 6 6-6"/>
-            </svg>
-        </button>
+    <!-- Content -->
+    <div class="content" id="content">
+        <!-- Весь текст книги будет здесь -->
     </div>
 
     <!-- Settings Modal -->
