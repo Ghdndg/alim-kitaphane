@@ -26,7 +26,7 @@
     // Application state
     const state = {
         chapters: [],
-        pages: [],
+        pages: [], // Реальные страницы с измеренным контентом
         currentPageIndex: 0,
         totalPages: 0,
         uiVisible: false,
@@ -76,25 +76,27 @@
             state.settings[key] = value;
             this.apply();
             this.updateUI();
+            
+            // Re-paginate when settings change
+            setTimeout(() => {
+                reader.createPages();
+                reader.render();
+            }, 100);
         },
         
         updateUI() {
-            // Update theme buttons
             $$('.option-btn[data-theme]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.theme === state.settings.theme);
             });
             
-            // Update font buttons
             $$('.option-btn[data-font]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.font === state.settings.font);
             });
             
-            // Update width buttons
             $$('.option-btn[data-width]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.width === state.settings.textWidth);
             });
             
-            // Update sliders
             const fontSizeSlider = $('#font-size-slider');
             const fontSizeValue = $('#font-size-value');
             if (fontSizeSlider && fontSizeValue) {
@@ -211,23 +213,38 @@
             
             tocList.innerHTML = '';
             
+            // Find first page of each chapter
+            const chapterStartPages = new Map();
+            state.pages.forEach((page, index) => {
+                if (page.isChapterStart && !chapterStartPages.has(page.chapterIndex)) {
+                    chapterStartPages.set(page.chapterIndex, index + 1);
+                }
+            });
+            
             state.chapters.forEach((chapter, index) => {
                 const item = document.createElement('div');
                 item.className = 'toc-item';
                 
-                if (index === state.currentPageIndex) {
+                // Check if current page is in this chapter
+                const currentPageData = state.pages[state.currentPageIndex];
+                if (currentPageData && currentPageData.chapterIndex === index) {
                     item.classList.add('active');
                 }
                 
+                const startPage = chapterStartPages.get(index) || 1;
+                
                 item.innerHTML = `
                     <div class="toc-title">${chapter.title || `Глава ${index + 1}`}</div>
-                    <div class="toc-page">Страница ${index + 1}</div>
+                    <div class="toc-page">Страница ${startPage}</div>
                 `;
                 
                 on(item, 'click', () => {
-                    state.currentPageIndex = index;
-                    reader.render();
-                    ui.hideSidebar();
+                    const pageIndex = state.pages.findIndex(p => p.chapterIndex === index && p.isChapterStart);
+                    if (pageIndex >= 0) {
+                        state.currentPageIndex = pageIndex;
+                        reader.render();
+                        ui.hideSidebar();
+                    }
                 });
                 
                 tocList.appendChild(item);
@@ -243,7 +260,7 @@
                 
                 settings.load();
                 await this.loadBook();
-                this.createPages();
+                await this.createPages();
                 
                 progress.load();
                 ui.renderTOC();
@@ -268,101 +285,181 @@
             try {
                 ui.showLoading('Загрузка книги...');
                 
-                // ИСПРАВЛЕННЫЙ ПУТЬ: chapters.json находится в корне
-                const response = await fetch('chapters.json');
-                if (!response.ok) {
-                    throw new Error(`Failed to load chapters.json: HTTP ${response.status}`);
+                // Try to load chapters.json
+                try {
+                    const response = await fetch('chapters.json');
+                    if (response.ok) {
+                        state.chapters = await response.json();
+                    } else {
+                        throw new Error('chapters.json not found');
+                    }
+                } catch {
+                    // Fallback to predefined chapters
+                    state.chapters = [
+                        { title: "Муэллиф Бириндже СОЗ", href: "ch0.html" },
+                        { title: "Глава 1", href: "ch1.html" },
+                        { title: "Глава 2", href: "ch2.html" },
+                        { title: "Глава 3", href: "ch3.html" },
+                        { title: "Глава 4", href: "ch4.html" },
+                        { title: "Глава 5", href: "ch5.html" },
+                        { title: "Глава 6", href: "ch6.html" },
+                        { title: "Глава 7", href: "ch7.html" },
+                        { title: "Глава 8", href: "ch8.html" },
+                        { title: "Глава 9", href: "ch9.html" },
+                        { title: "Глава 10", href: "ch10.html" }
+                    ];
                 }
                 
-                state.chapters = await response.json();
                 console.log('Loaded chapters:', state.chapters);
-                
-                if (!Array.isArray(state.chapters) || state.chapters.length === 0) {
-                    throw new Error('chapters.json is empty or invalid');
-                }
                 
             } catch (error) {
                 console.error('Failed to load book:', error);
-                
-                // FALLBACK: создаем главы на основе имеющихся файлов
-                state.chapters = [
-                    { title: "Муэллиф Бириндже СОЗ", href: "ch0.html" },
-                    { title: "Глава 1", href: "ch1.html" },
-                    { title: "Глава 2", href: "ch2.html" },
-                    { title: "Глава 3", href: "ch3.html" },
-                    { title: "Глава 4", href: "ch4.html" },
-                    { title: "Глава 5", href: "ch5.html" },
-                    { title: "Глава 6", href: "ch6.html" },
-                    { title: "Глава 7", href: "ch7.html" },
-                    { title: "Глава 8", href: "ch8.html" },
-                    { title: "Глава 9", href: "ch9.html" },
-                    { title: "Глава 10", href: "ch10.html" }
-                ];
-                
-                console.log('Using fallback chapters:', state.chapters);
+                throw error;
             }
         },
         
-        createPages() {
-            ui.showLoading('Создание страниц из HTML файлов...');
+        async createPages() {
+            ui.showLoading('Создание страниц с правильной пагинацией...');
             
             state.pages = [];
             
-            // Каждая глава = одна страница
-            state.chapters.forEach((chapter, chapterIndex) => {
-                state.pages.push({
-                    chapterIndex: chapterIndex,
-                    chapterFile: chapter.href,
-                    title: chapter.title || `Глава ${chapterIndex + 1}`,
-                    isChapterStart: true
-                });
-            });
+            // Create a measuring container
+            const measuringContainer = document.createElement('div');
+            measuringContainer.style.cssText = `
+                position: absolute;
+                visibility: hidden;
+                top: 0;
+                left: 0;
+                width: 100%;
+                max-width: 680px;
+                margin: 0 auto;
+                padding: 20px;
+                font-family: var(--font-reading);
+                font-size: var(--font-size-reading);
+                line-height: var(--line-height-reading);
+                color: var(--text-primary);
+                overflow: hidden;
+                box-sizing: border-box;
+                pointer-events: none;
+                z-index: -1000;
+            `;
+            
+            // Get the exact height available for content
+            const header = $('#header');
+            const footer = $('#footer');
+            const headerHeight = header ? header.offsetHeight : 56;
+            const footerHeight = footer ? footer.offsetHeight : 80;
+            
+            const availableHeight = window.innerHeight - headerHeight - footerHeight - 40; // 40px padding
+            measuringContainer.style.height = `${availableHeight}px`;
+            
+            document.body.appendChild(measuringContainer);
+            
+            // Load and paginate all chapters
+            for (let chapterIndex = 0; chapterIndex < state.chapters.length; chapterIndex++) {
+                const chapter = state.chapters[chapterIndex];
+                
+                ui.showLoading(`Пагинация главы ${chapterIndex + 1} из ${state.chapters.length}...`);
+                
+                try {
+                    // Load chapter content
+                    const response = await fetch(chapter.href);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const chapterContent = await response.text();
+                    
+                    // Parse HTML content into paragraphs
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = chapterContent;
+                    
+                    const elements = Array.from(tempDiv.children);
+                    
+                    let currentPageContent = '';
+                    let isFirstPageOfChapter = true;
+                    
+                    for (const element of elements) {
+                        // Test if adding this element exceeds page height
+                        let testContent = currentPageContent;
+                        
+                        // Add chapter title to first page
+                        if (isFirstPageOfChapter && element.tagName !== 'H1') {
+                            testContent += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+                        }
+                        
+                        testContent += element.outerHTML;
+                        
+                        measuringContainer.innerHTML = testContent;
+                        
+                        const contentFits = measuringContainer.scrollHeight <= availableHeight;
+                        
+                        if (contentFits) {
+                            // Content fits, add to current page
+                            currentPageContent = testContent;
+                        } else {
+                            // Content doesn't fit, save current page and start new one
+                            if (currentPageContent.trim()) {
+                                state.pages.push({
+                                    content: currentPageContent,
+                                    chapterIndex: chapterIndex,
+                                    chapterTitle: chapter.title || `Глава ${chapterIndex + 1}`,
+                                    isChapterStart: isFirstPageOfChapter
+                                });
+                                
+                                isFirstPageOfChapter = false;
+                            }
+                            
+                            // Start new page with current element
+                            currentPageContent = element.outerHTML;
+                        }
+                    }
+                    
+                    // Add the last page of the chapter
+                    if (currentPageContent.trim()) {
+                        // Add chapter title if it's the first page
+                        if (isFirstPageOfChapter) {
+                            currentPageContent = `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>` + currentPageContent;
+                        }
+                        
+                        state.pages.push({
+                            content: currentPageContent,
+                            chapterIndex: chapterIndex,
+                            chapterTitle: chapter.title || `Глава ${chapterIndex + 1}`,
+                            isChapterStart: isFirstPageOfChapter
+                        });
+                    }
+                    
+                } catch (error) {
+                    console.warn(`Failed to load chapter ${chapterIndex}:`, error);
+                    
+                    // Add error page
+                    state.pages.push({
+                        content: `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1><p>Ошибка загрузки главы: ${error.message}</p>`,
+                        chapterIndex: chapterIndex,
+                        chapterTitle: chapter.title || `Глава ${chapterIndex + 1}`,
+                        isChapterStart: true
+                    });
+                }
+            }
+            
+            // Remove measuring container
+            document.body.removeChild(measuringContainer);
             
             state.totalPages = state.pages.length;
             
-            console.log(`Created ${state.totalPages} pages from ${state.chapters.length} chapters`);
+            console.log(`Created ${state.totalPages} perfectly fitted pages`);
         },
         
-        async render() {
+        render() {
             const pageContent = $('#page-content');
-            if (!pageContent) return;
+            if (!pageContent || !state.pages[state.currentPageIndex]) return;
             
             const currentPage = state.pages[state.currentPageIndex];
-            if (!currentPage) {
-                pageContent.innerHTML = '<h1>Ошибка</h1><p>Страница не найдена.</p>';
-                return;
-            }
+            pageContent.innerHTML = currentPage.content;
             
-            try {
-                // Load chapter content if not cached
-                if (!currentPage.content) {
-                    ui.showLoading('Загрузка главы...');
-                    
-                    // ИСПРАВЛЕННЫЙ ПУТЬ: файлы глав находятся в корне
-                    const response = await fetch(currentPage.chapterFile);
-                    if (response.ok) {
-                        currentPage.content = await response.text();
-                    } else {
-                        throw new Error(`HTTP ${response.status}: ${currentPage.chapterFile}`);
-                    }
-                    
-                    ui.hideLoading();
-                }
-                
-                // Render content
-                pageContent.innerHTML = currentPage.content;
-                
-                progress.update();
-                ui.renderTOC();
-                
-            } catch (error) {
-                console.error('Failed to render page:', error);
-                pageContent.innerHTML = `
-                    <h1>${currentPage.title}</h1>
-                    <p>Ошибка загрузки главы: ${error.message}</p>
-                    <p>Проверьте что файл <strong>${currentPage.chapterFile}</strong> существует.</p>
-                `;
-            }
+            progress.update();
+            ui.renderTOC();
         },
         
         nextPage() {
@@ -454,6 +551,14 @@
                     settings.update('lineHeight', height);
                 });
             }
+            
+            // Window resize - re-paginate
+            window.addEventListener('resize', () => {
+                setTimeout(() => {
+                    this.createPages();
+                    this.render();
+                }, 300);
+            });
             
             // Keyboard shortcuts
             on(document, 'keydown', (e) => {
