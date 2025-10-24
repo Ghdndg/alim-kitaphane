@@ -91,9 +91,12 @@
     // Progress management
     const progress = {
         save() {
-            const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+            const container = $('#content-container');
+            if (!container) return;
+            
+            const scrollPercent = (container.scrollTop / (container.scrollHeight - container.clientHeight)) * 100;
             storage.set('scroll_reader_progress', {
-                scrollPercent: Math.max(0, Math.min(100, scrollPercent)),
+                scrollPercent: Math.max(0, Math.min(100, scrollPercent || 0)),
                 timestamp: Date.now()
             });
         },
@@ -102,17 +105,22 @@
             const saved = storage.get('scroll_reader_progress');
             if (saved && saved.scrollPercent > 0) {
                 setTimeout(() => {
-                    const targetScroll = (saved.scrollPercent / 100) * (document.documentElement.scrollHeight - window.innerHeight);
-                    window.scrollTo(0, targetScroll);
-                }, 100);
+                    const container = $('#content-container');
+                    if (container) {
+                        const targetScroll = (saved.scrollPercent / 100) * (container.scrollHeight - container.clientHeight);
+                        container.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                    }
+                }, 500);
             }
         },
         
         update() {
+            const container = $('#content-container');
             const progressFill = $('#progress-fill');
-            if (progressFill) {
-                const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
-                progressFill.style.width = `${Math.max(0, Math.min(100, scrollPercent))}%`;
+            
+            if (container && progressFill) {
+                const scrollPercent = (container.scrollTop / (container.scrollHeight - container.clientHeight)) * 100;
+                progressFill.style.width = `${Math.max(0, Math.min(100, scrollPercent || 0))}%`;
             }
             
             this.save();
@@ -136,7 +144,10 @@
         toggleUI() {
             state.uiVisible = !state.uiVisible;
             const header = $('#header');
+            const navControls = $('#nav-controls');
+            
             if (header) header.classList.toggle('visible', state.uiVisible);
+            if (navControls) navControls.classList.toggle('visible', state.uiVisible);
         },
         
         showSettings() {
@@ -147,6 +158,43 @@
         hideSettings() {
             const modal = $('#settings-modal');
             if (modal) modal.classList.remove('visible');
+        }
+    };
+
+    // Navigation controls
+    const navigation = {
+        scrollUp() {
+            const container = $('#content-container');
+            if (container) {
+                container.scrollBy({ 
+                    top: -window.innerHeight * 0.8, 
+                    behavior: 'smooth' 
+                });
+            }
+        },
+        
+        scrollDown() {
+            const container = $('#content-container');
+            if (container) {
+                container.scrollBy({ 
+                    top: window.innerHeight * 0.8, 
+                    behavior: 'smooth' 
+                });
+            }
+        },
+        
+        scrollToTop() {
+            const container = $('#content-container');
+            if (container) {
+                container.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        },
+        
+        scrollToBottom() {
+            const container = $('#content-container');
+            if (container) {
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            }
         }
     };
 
@@ -168,10 +216,10 @@
                 // Show UI briefly
                 setTimeout(() => {
                     ui.toggleUI();
-                    setTimeout(() => ui.toggleUI(), 3000);
-                }, 500);
+                    setTimeout(() => ui.toggleUI(), 4000);
+                }, 1000);
                 
-                console.log('📖 Scroll reader initialized successfully!');
+                console.log('📖 Button-controlled reader initialized successfully!');
                 
             } catch (error) {
                 console.error('Failed to initialize reader:', error);
@@ -251,6 +299,10 @@
             on($('#settings-btn'), 'click', () => ui.showSettings());
             on($('#close-settings'), 'click', () => ui.hideSettings());
             
+            // Navigation buttons
+            on($('#up-btn'), 'click', () => navigation.scrollUp());
+            on($('#down-btn'), 'click', () => navigation.scrollDown());
+            
             // Click outside modal to close
             on($('#settings-modal'), 'click', (e) => {
                 if (e.target.id === 'settings-modal') {
@@ -285,16 +337,19 @@
                 });
             }
             
-            // Scroll progress
-            let scrollTimeout;
-            window.addEventListener('scroll', () => {
-                progress.update();
-                
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(() => {
-                    progress.save();
-                }, 150);
-            });
+            // Scroll progress tracking
+            const container = $('#content-container');
+            if (container) {
+                let scrollTimeout;
+                container.addEventListener('scroll', () => {
+                    progress.update();
+                    
+                    clearTimeout(scrollTimeout);
+                    scrollTimeout = setTimeout(() => {
+                        progress.save();
+                    }, 150);
+                });
+            }
             
             // Tap to toggle UI
             let tapTimeout;
@@ -313,19 +368,22 @@
                 switch (e.key) {
                     case 'ArrowUp':
                     case 'PageUp':
-                        window.scrollBy(0, -window.innerHeight * 0.8);
+                        e.preventDefault();
+                        navigation.scrollUp();
                         break;
                     case 'ArrowDown':
                     case 'PageDown':
                     case ' ':
                         e.preventDefault();
-                        window.scrollBy(0, window.innerHeight * 0.8);
+                        navigation.scrollDown();
                         break;
                     case 'Home':
-                        window.scrollTo(0, 0);
+                        e.preventDefault();
+                        navigation.scrollToTop();
                         break;
                     case 'End':
-                        window.scrollTo(0, document.documentElement.scrollHeight);
+                        e.preventDefault();
+                        navigation.scrollToBottom();
                         break;
                     case 'Escape':
                         if ($('#settings-modal')?.classList.contains('visible')) {
