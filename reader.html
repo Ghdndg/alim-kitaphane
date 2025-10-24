@@ -1,182 +1,240 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#1c1c1e">
-  <title>Хаджи Гирай</title>
-  
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-  
-  <link rel="stylesheet" href="reader.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Хаджи Гирай</title>
+    <link rel="stylesheet" href="reader.css">
+    
+    <!-- Readium CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/readium-css@2.0.0/css/ReadiumCSS-before.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/readium-css@2.0.0/css/ReadiumCSS-default.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/readium-css@2.0.0/css/ReadiumCSS-after.css">
 </head>
 <body data-theme="dark">
-  <div class="app">
-    
-    <!-- Loading State -->
-    <div id="loading" class="loading">
-      <div class="loading-content">
-        <div class="spinner"></div>
-        <h2>Хаджи Гирай</h2>
-        <p id="loading-status">Инициализация...</p>
-      </div>
+    <div class="app">
+        <!-- Loading -->
+        <div id="loading" class="loading">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <h2>Хаджи Гирай</h2>
+                <p id="loading-status">Инициализация...</p>
+            </div>
+        </div>
+
+        <!-- Reader Header -->
+        <header id="header" class="reader-header">
+            <button class="btn btn-icon" id="back-btn" title="Назад">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m15 18-6-6 6-6"/>
+                </svg>
+            </button>
+            
+            <div class="header-info">
+                <h1 class="book-title">Хаджи Гирай</h1>
+                <span class="book-author">Алим Мидат</span>
+            </div>
+            
+            <div class="header-actions">
+                <button class="btn btn-icon" id="toc-btn" title="Содержание">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6"/>
+                        <line x1="8" y1="12" x2="21" y2="12"/>
+                        <line x1="8" y1="18" x2="21" y2="18"/>
+                        <line x1="3" y1="6" x2="3.01" y2="6"/>
+                        <line x1="3" y1="12" x2="3.01" y2="12"/>
+                        <line x1="3" y1="18" x2="3.01" y2="18"/>
+                    </svg>
+                </button>
+                <button class="btn btn-icon" id="settings-btn" title="Настройки">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        ircle cx="12" cy="12"2" r="3"/>
+                        <path d="m12 1 1.57 4.13L17 4l2 2-1.13 3.43L22 11v2l-4.13 1.57L19 18l-2 2-3.43-1.13L11 23H9l-1.57-4.13L4 20l-2-2 1.13-3.43L1 13v-2l4.13-1.57L4 6l2-2 3.43 1.13L11 1h2z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Reader -->
+        <main class="reader-main">
+            <!-- Readium Reader Container -->
+            <div id="readium-reader" class="readium-container">
+                <!-- Content will be loaded here by Readium -->
+            </div>
+            
+            <!-- Navigation Overlay -->
+            <div class="nav-overlay">
+                <button class="nav-area nav-prev" id="nav-prev" title="Предыдущая страница"></button>
+                <button class="nav-area nav-center" id="nav-center" title="Показать/скрыть меню"></button>
+                <button class="nav-area nav-next" id="nav-next" title="Следующая страница"></button>
+            </div>
+        </main>
+
+        <!-- Reader Footer -->
+        <footer id="footer" class="reader-footer">
+            <div class="progress-container">
+                <div class="progress-info">
+                    <span id="current-position">Глава 1</span>
+                    <span class="separator">•</span>
+                    <span id="progress-percent">0%</span>
+                    <span class="separator">•</span>
+                    <span id="reading-time">~45 мин</span>
+                </div>
+                
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar" id="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                        <div class="progress-handle" id="progress-handle"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-control" id="prev-chapter" title="Предыдущая глава">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                </button>
+                
+                <div class="page-info">
+                    <span id="current-page">1</span> / <span id="total-pages">100</span>
+                </div>
+                
+                <button class="btn btn-control" id="next-chapter" title="Следующая глава">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </footer>
+
+        <!-- Table of Contents Sidebar -->
+        <aside id="toc-sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h3>Содержание</h3>
+                <button class="btn btn-icon" id="close-toc">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="sidebar-content">
+                <nav id="toc-list" class="toc-navigation">
+                    <!-- TOC items will be generated here -->
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Настройки чтения</h3>
+                    <button class="btn btn-icon" id="close-settings">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="setting-section">
+                        <h4>Внешний вид</h4>
+                        <div class="setting-group">
+                            <label>Тема</label>
+                            <div class="theme-selector">
+                                <button class="theme-option" data-theme="light">
+                                    <div class="theme-preview theme-light"></div>
+                                    <span>Светлая</span>
+                                </button>
+                                <button class="theme-option active" data-theme="dark">
+                                    <div class="theme-preview theme-dark"></div>
+                                    <span>Тёмная</span>
+                                </button>
+                                <button class="theme-option" data-theme="sepia">
+                                    <div class="theme-preview theme-sepia"></div>
+                                    <span>Сепия</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-section">
+                        <h4>Типографика</h4>
+                        <div class="setting-group">
+                            <label>Шрифт</label>
+                            <select id="font-family" class="select-control">
+                                <option value="serif">Serif (Crimson Text)</option>
+                                <option value="sans">Sans-serif (Inter)</option>
+                                <option value="mono">Monospace (JetBrains Mono)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label>Размер шрифта: <span id="font-size-display">100%</span></label>
+                            <input type="range" id="font-size" class="range-control" 
+                                   min="75" max="150" value="100" step="5">
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label>Межстрочный интервал</label>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="line-height" value="1.4">
+                                    <span>Узкий</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="line-height" value="1.6" checked>
+                                    <span>Обычный</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="line-height" value="1.8">
+                                    <span>Широкий</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-section">
+                        <h4>Макет</h4>
+                        <div class="setting-group">
+                            <label>Ширина колонки</label>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="column-width" value="narrow">
+                                    <span>Узкая</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="column-width" value="medium" checked>
+                                    <span>Средняя</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="column-width" value="wide">
+                                    <span>Широкая</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="justify-text" checked>
+                                <span>Выравнивание по ширине</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overlay -->
+        <div id="overlay" class="overlay"></div>
     </div>
 
-    <!-- Header -->
-    <header id="header" class="header">
-      <button class="header-btn" id="back-btn" aria-label="Назад">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="m15 18-6-6 6-6"/>
-        </svg>
-      </button>
-      
-      <div class="header-title">
-        <h1>Хаджи Гирай</h1>
-        <span>Алим Мидат</span>
-      </div>
-      
-      <div class="header-actions">
-        <button class="header-btn" id="toc-btn" aria-label="Содержание">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="8" y1="6" x2="21" y2="6"/>
-            <line x1="8" y1="12" x2="21" y2="12"/>
-            <line x1="8" y1="18" x2="21" y2="18"/>
-            <line x1="3" y1="6" x2="3.01" y2="6"/>
-            <line x1="3" y1="12" x2="3.01" y2="12"/>
-            <line x1="3" y1="18" x2="3.01" y2="18"/>
-          </svg>
-        </button>
-        <button class="header-btn" id="settings-btn" aria-label="Настройки">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="m12 1 1.57 4.13L17 4l2 2-1.13 3.43L22 11v2l-4.13 1.57L19 18l-2 2-3.43-1.13L11 23H9l-1.57-4.13L4 20l-2-2 1.13-3.43L1 13v-2l4.13-1.57L4 6l2-2 3.43 1.13L11 1h2z"/>
-          </svg>
-        </button>
-      </div>
-    </header>
-
-    <!-- Main Reading Area -->
-    <main class="reader">
-      <div id="page-content" class="page-content">
-        <!-- Контент страницы -->
-      </div>
-      
-      <!-- Touch zones -->
-      <div class="touch-zones">
-        <button class="touch-zone" id="prev-zone" aria-label="Предыдущая страница"></button>
-        <button class="touch-zone" id="menu-zone" aria-label="Показать/скрыть меню"></button>
-        <button class="touch-zone" id="next-zone" aria-label="Следующая страница"></button>
-      </div>
-    </main>
-
-    <!-- Footer -->
-    <footer id="footer" class="footer">
-      <div class="progress-section">
-        <div class="progress-info">
-          <span id="current-page">1</span> из <span id="total-pages">100</span>
-          <span class="separator">•</span>
-          <span id="reading-time">~5 мин</span>
-        </div>
-        <div class="progress-bar-container">
-          <div class="progress-bar" id="progress-bar">
-            <div class="progress-fill" id="progress-fill"></div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="nav-controls">
-        <button class="nav-btn" id="prev-btn" aria-label="Назад">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
-        </button>
-        <input type="number" id="page-input" class="page-input" min="1" value="1">
-        <button class="nav-btn" id="next-btn" aria-label="Вперед">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
-        </button>
-      </div>
-    </footer>
-
-    <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar">
-      <div class="sidebar-header">
-        <h3>Содержание</h3>
-        <button class="close-btn" id="close-sidebar" aria-label="Закрыть">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m18 6-12 12"/>
-            <path d="m6 6 12 12"/>
-          </svg>
-        </button>
-      </div>
-      
-      <div class="sidebar-content">
-        <nav id="toc-list" class="toc-list"></nav>
-      </div>
-    </aside>
-
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal">
-      <div class="modal-backdrop"></div>
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>Настройки чтения</h3>
-          <button class="close-btn" id="close-settings">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="m18 6-12 12"/>
-              <path d="m6 6 12 12"/>
-            </svg>
-          </button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="setting-group">
-            <label>Тема оформления</label>
-            <div class="option-buttons">
-              <button class="option-btn" data-theme="light">Светлая</button>
-              <button class="option-btn active" data-theme="dark">Тёмная</button>
-              <button class="option-btn" data-theme="sepia">Сепия</button>
-            </div>
-          </div>
-          
-          <div class="setting-group">
-            <label>Шрифт</label>
-            <div class="option-buttons">
-              <button class="option-btn active" data-font="crimson">Crimson Text</button>
-              <button class="option-btn" data-font="inter">Inter</button>
-              <button class="option-btn" data-font="georgia">Georgia</button>
-            </div>
-          </div>
-          
-          <div class="setting-group">
-            <label>Размер шрифта: <span id="font-size-value">18px</span></label>
-            <input type="range" id="font-size-slider" min="14" max="24" value="18" step="1" class="range-slider">
-          </div>
-          
-          <div class="setting-group">
-            <label>Междустрочный интервал: <span id="line-height-value">1.6</span></label>
-            <input type="range" id="line-height-slider" min="1.2" max="2.0" value="1.6" step="0.1" class="range-slider">
-          </div>
-          
-          <div class="setting-group">
-            <label>Ширина текста</label>
-            <div class="option-buttons">
-              <button class="option-btn" data-width="narrow">Узкая</button>
-              <button class="option-btn active" data-width="medium">Средняя</button>
-              <button class="option-btn" data-width="wide">Широкая</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Overlay -->
-    <div id="overlay" class="overlay"></div>
-  </div>
-
-  <script src="reader.js"></script>
+    <!-- Readium Web Publication Toolkit -->
+    <script src="https://cdn.jsdelivr.net/npm/r2-navigator-js@1.0.0/dist/index.js"></script>
+    <script src="reader.js"></script>
 </body>
 </html>
