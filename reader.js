@@ -26,7 +26,8 @@
     // Application state
     const state = {
         bookText: '',
-        pages: [],
+        allWords: [], // ВСЕ СЛОВА ПО ПОРЯДКУ
+        pages: [], // СТРАНИЦЫ С ТОЧНЫМИ СЛОВАМИ
         currentPageIndex: 0,
         totalPages: 0,
         uiVisible: false,
@@ -75,12 +76,10 @@
         },
         
         updateUI() {
-            // Update theme buttons
             $$('.option-btn[data-theme]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.theme === state.settings.theme);
             });
             
-            // Update sliders
             const fontSizeSlider = $('#font-size-slider');
             const fontSizeValue = $('#font-size-value');
             if (fontSizeSlider && fontSizeValue) {
@@ -184,6 +183,7 @@
                 
                 settings.load();
                 await this.loadBook();
+                this.prepareWords();
                 this.createPages();
                 
                 progress.load();
@@ -214,7 +214,7 @@
                 }
                 
                 state.bookText = await response.text();
-                console.log('Book loaded, length:', state.bookText.length, 'characters');
+                console.log('📖 Book loaded, length:', state.bookText.length, 'characters');
                 
                 if (!state.bookText.trim()) {
                     throw new Error('Book file is empty');
@@ -226,110 +226,214 @@
             }
         },
         
-        createPages() {
-            ui.showLoading('Создание страниц без потерь...');
+        prepareWords() {
+            ui.showLoading('Разбиение на слова...');
             
-            state.pages = [];
-            
-            // Clean text
+            // Очистка текста
             const cleanText = state.bookText
                 .replace(/\r\n/g, '\n')
                 .replace(/\n{3,}/g, '\n\n')
                 .trim();
             
-            // ПРОСТОЕ РАЗБИЕНИЕ: по фиксированному количеству символов
-            // Это гарантирует что весь текст будет показан
-            const isMobile = window.innerWidth <= 768;
-            const charsPerPage = isMobile ? 1200 : 1800; // Консервативные значения
+            // Разбиение на слова с сохранением структуры
+            state.allWords = [];
             
-            let startIndex = 0;
-            let pageNumber = 1;
+            const paragraphs = cleanText.split('\n\n');
             
-            while (startIndex < cleanText.length) {
-                let endIndex = Math.min(startIndex + charsPerPage, cleanText.length);
+            paragraphs.forEach((paragraph, paragraphIndex) => {
+                const trimmedParagraph = paragraph.trim().replace(/\n/g, ' ');
+                if (!trimmedParagraph) return;
                 
-                // Если это не последняя страница, найдем ближайший конец предложения или абзаца
-                if (endIndex < cleanText.length) {
-                    // Ищем ближайший конец абзаца
-                    let paragraphEnd = cleanText.lastIndexOf('\n\n', endIndex);
-                    if (paragraphEnd > startIndex) {
-                        endIndex = paragraphEnd + 2;
+                // Определяем тип параграфа (заголовок или обычный текст)
+                const isTitle = trimmedParagraph.length < 100 && (
+                    trimmedParagraph === trimmedParagraph.toUpperCase() || 
+                    /^[А-ЯЁ\s\-]+$/.test(trimmedParagraph) ||
+                    trimmedParagraph.startsWith('Глава') ||
+                    trimmedParagraph.startsWith('ГЛАВА')
+                );
+                
+                // Маркер начала параграфа
+                state.allWords.push({
+                    type: 'paragraph_start',
+                    isTitle: isTitle,
+                    paragraphIndex: paragraphIndex
+                });
+                
+                // Разбиваем на слова
+                const words = trimmedParagraph.split(/\s+/).filter(w => w.trim());
+                
+                words.forEach(word => {
+                    state.allWords.push({
+                        type: 'word',
+                        text: word.trim(),
+                        paragraphIndex: paragraphIndex,
+                        isTitle: isTitle
+                    });
+                });
+                
+                // Маркер конца параграфа
+                state.allWords.push({
+                    type: 'paragraph_end',
+                    paragraphIndex: paragraphIndex
+                });
+            });
+            
+            console.log('📝 Prepared', state.allWords.filter(w => w.type === 'word').length, 'words in', paragraphs.length, 'paragraphs');
+        },
+        
+        createPages() {
+            ui.showLoading('Создание страниц СТРОГО по словам...');
+            
+            state.pages = [];
+            
+            // Создаем контейнер для измерений
+            const measuringContainer = document.createElement('div');
+            measuringContainer.style.cssText = `
+                position: absolute;
+                visibility: hidden;
+                top: -9999px;
+                left: 0;
+                width: 100%;
+                max-width: 680px;
+                margin: 0 auto;
+                padding: 20px;
+                font-family: "Crimson Text", Georgia, serif;
+                font-size: ${state.settings.fontSize}px;
+                line-height: ${state.settings.lineHeight};
+                color: var(--text-primary);
+                overflow: hidden;
+                box-sizing: border-box;
+            `;
+            
+            // Высота доступного места для текста
+            const availableHeight = window.innerHeight - 56 - 80 - 40; // header - footer - padding
+            measuringContainer.style.height = `${availableHeight}px`;
+            document.body.appendChild(measuringContainer);
+            
+            let currentPageWords = []; // Слова текущей страницы
+            let currentPageHTML = ''; // HTML текущей страницы
+            let wordIndex = 0; // Индекс обрабатываемого слова
+            
+            console.log('📊 Processing', state.allWords.length, 'items...');
+            
+            // ОБРАБАТЫВАЕМ КАЖДОЕ СЛОВО ПО ПОРЯДКУ
+            while (wordIndex < state.allWords.length) {
+                const item = state.allWords[wordIndex];
+                
+                if (item.type === 'word') {
+                    // Тестируем добавление этого слова
+                    const testWords = [...currentPageWords, item];
+                    const testHTML = this.wordsToHTML(testWords);
+                    
+                    measuringContainer.innerHTML = testHTML;
+                    
+                    const fits = measuringContainer.scrollHeight <= availableHeight;
+                    
+                    if (fits) {
+                        // СЛОВО ПОМЕЩАЕТСЯ - добавляем
+                        currentPageWords.push(item);
+                        currentPageHTML = testHTML;
+                        wordIndex++;
                     } else {
-                        // Ищем ближайший конец предложения
-                        let sentenceEnd = cleanText.lastIndexOf('.', endIndex);
-                        if (sentenceEnd > startIndex) {
-                            endIndex = sentenceEnd + 1;
+                        // СЛОВО НЕ ПОМЕЩАЕТСЯ
+                        if (currentPageWords.length > 0) {
+                            // Сохраняем текущую страницу и начинаем новую
+                            state.pages.push(currentPageHTML);
+                            console.log(`📄 Page ${state.pages.length}: ${currentPageWords.filter(w => w.type === 'word').length} words`);
+                            
+                            // Начинаем новую страницу с этого слова
+                            currentPageWords = [item];
+                            currentPageHTML = this.wordsToHTML([item]);
+                            wordIndex++;
                         } else {
-                            // Ищем ближайший пробел
-                            let spaceEnd = cleanText.lastIndexOf(' ', endIndex);
-                            if (spaceEnd > startIndex) {
-                                endIndex = spaceEnd + 1;
-                            }
+                            // Даже одно слово не помещается - принудительно добавляем
+                            currentPageWords = [item];
+                            currentPageHTML = this.wordsToHTML([item]);
+                            state.pages.push(currentPageHTML);
+                            console.log(`📄 Page ${state.pages.length}: 1 word (forced)`);
+                            
+                            currentPageWords = [];
+                            currentPageHTML = '';
+                            wordIndex++;
                         }
                     }
+                } else {
+                    // Маркеры параграфов - просто добавляем
+                    currentPageWords.push(item);
+                    wordIndex++;
                 }
-                
-                const pageText = cleanText.slice(startIndex, endIndex).trim();
-                
-                if (pageText) {
-                    const pageHTML = this.formatTextAsHTML(pageText);
-                    state.pages.push(pageHTML);
-                    
-                    console.log(`Page ${pageNumber}: ${startIndex}-${endIndex} (${pageText.length} chars)`);
-                    pageNumber++;
-                }
-                
-                startIndex = endIndex;
             }
+            
+            // Добавляем последнюю страницу
+            if (currentPageWords.length > 0) {
+                const finalHTML = this.wordsToHTML(currentPageWords);
+                state.pages.push(finalHTML);
+                console.log(`📄 Page ${state.pages.length}: ${currentPageWords.filter(w => w.type === 'word').length} words (final)`);
+            }
+            
+            // Убираем контейнер для измерений
+            document.body.removeChild(measuringContainer);
             
             state.totalPages = state.pages.length;
             
-            console.log(`Created ${state.totalPages} pages`);
-            console.log(`Total characters: ${cleanText.length}`);
+            // ПРОВЕРКА НА ПОТЕРИ
+            const totalOriginalWords = state.allWords.filter(w => w.type === 'word').length;
+            let totalWordsInPages = 0;
             
-            // Verification: count characters in all pages
-            let totalCharsInPages = 0;
-            state.pages.forEach((page, index) => {
+            state.pages.forEach(pageHTML => {
                 const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = page;
-                const pageText = tempDiv.textContent || tempDiv.innerText || '';
-                totalCharsInPages += pageText.length;
-                
-                // Log first few pages for debugging
-                if (index < 5) {
-                    console.log(`Page ${index + 1} length: ${pageText.length} chars`);
-                }
+                tempDiv.innerHTML = pageHTML;
+                const text = tempDiv.textContent || tempDiv.innerText || '';
+                const wordsInPage = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+                totalWordsInPages += wordsInPage;
             });
             
-            console.log(`Characters in pages: ${totalCharsInPages} (should be close to ${cleanText.length})`);
+            console.log('✅ СОЗДАНО', state.totalPages, 'страниц');
+            console.log('📊 СЛОВ В ОРИГИНАЛЕ:', totalOriginalWords);
+            console.log('📊 СЛОВ НА СТРАНИЦАХ:', totalWordsInPages);
             
-            if (Math.abs(totalCharsInPages - cleanText.length) > 100) {
-                console.warn('CHARACTER MISMATCH! Some text may be missing.');
+            if (totalOriginalWords === totalWordsInPages) {
+                console.log('🎉 ВСЕ СЛОВА СОХРАНЕНЫ! ПОТЕРЬ НЕТ!');
             } else {
-                console.log('✅ Character count matches - no text lost!');
+                console.error('❌ ПОТЕРЯ СЛОВ!', totalOriginalWords - totalWordsInPages, 'слов потеряно');
             }
         },
         
-        formatTextAsHTML(text) {
-            // Split by double newlines for paragraphs
-            const paragraphs = text.split('\n\n').filter(p => p.trim());
+        wordsToHTML(wordItems) {
+            let html = '';
+            let currentParagraphWords = [];
+            let currentIsTitle = false;
             
-            return paragraphs.map(paragraph => {
-                const trimmed = paragraph.trim().replace(/\n/g, ' ');
-                if (!trimmed) return '';
-                
-                // Check if it looks like a title (short, uppercase, etc)
-                if (trimmed.length < 100 && (
-                    trimmed === trimmed.toUpperCase() || 
-                    /^[А-ЯЁ\s\-]+$/.test(trimmed) ||
-                    trimmed.startsWith('Глава') ||
-                    trimmed.startsWith('ГЛАВА')
-                )) {
-                    return `<h2>${trimmed}</h2>`;
-                } else {
-                    return `<p>${trimmed}</p>`;
+            wordItems.forEach(item => {
+                if (item.type === 'paragraph_start') {
+                    currentIsTitle = item.isTitle;
+                    currentParagraphWords = [];
+                } else if (item.type === 'word') {
+                    currentParagraphWords.push(item.text);
+                } else if (item.type === 'paragraph_end') {
+                    if (currentParagraphWords.length > 0) {
+                        const paragraphText = currentParagraphWords.join(' ');
+                        if (currentIsTitle) {
+                            html += `<h2>${paragraphText}</h2>`;
+                        } else {
+                            html += `<p>${paragraphText}</p>`;
+                        }
+                    }
+                    currentParagraphWords = [];
                 }
-            }).filter(p => p).join('');
+            });
+            
+            // Добавляем незакрытый параграф
+            if (currentParagraphWords.length > 0) {
+                const paragraphText = currentParagraphWords.join(' ');
+                if (currentIsTitle) {
+                    html += `<h2>${paragraphText}</h2>`;
+                } else {
+                    html += `<p>${paragraphText}</p>`;
+                }
+            }
+            
+            return html;
         },
         
         render() {
@@ -341,8 +445,7 @@
             
             progress.update();
             
-            // Log current page info for debugging
-            console.log(`Rendering page ${state.currentPageIndex + 1}/${state.totalPages}`);
+            console.log(`📖 Показана страница ${state.currentPageIndex + 1}/${state.totalPages}`);
         },
         
         nextPage() {
