@@ -26,7 +26,8 @@
     // Application state
     const state = {
         bookText: '',
-        pages: [],
+        textChunks: [], // Все куски текста по порядку
+        pages: [], // Страницы с правильной пагинацией
         currentPageIndex: 0,
         totalPages: 0,
         uiVisible: false,
@@ -176,7 +177,7 @@
         }
     };
 
-    // Main reader functionality
+    // Main reader functionality  
     const reader = {
         async init() {
             try {
@@ -184,6 +185,7 @@
                 
                 settings.load();
                 await this.loadBook();
+                this.prepareText();
                 this.createPages();
                 
                 progress.load();
@@ -226,8 +228,43 @@
             }
         },
         
+        prepareText() {
+            ui.showLoading('Подготовка текста...');
+            
+            // Clean and split text into small manageable chunks
+            const cleanText = state.bookText
+                .replace(/\r\n/g, '\n')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+            
+            // Split by paragraphs first
+            const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
+            
+            state.textChunks = [];
+            
+            // Further split large paragraphs into smaller chunks
+            paragraphs.forEach(paragraph => {
+                const trimmedParagraph = paragraph.trim();
+                if (!trimmedParagraph) return;
+                
+                // If paragraph is very long, split by sentences
+                if (trimmedParagraph.length > 800) {
+                    const sentences = trimmedParagraph.split(/(?<=[.!?])\s+/);
+                    sentences.forEach(sentence => {
+                        if (sentence.trim()) {
+                            state.textChunks.push(sentence.trim());
+                        }
+                    });
+                } else {
+                    state.textChunks.push(trimmedParagraph);
+                }
+            });
+            
+            console.log(`Prepared ${state.textChunks.length} text chunks`);
+        },
+        
         createPages() {
-            ui.showLoading('Создание идеальных страниц...');
+            ui.showLoading('Создание страниц без потерь...');
             
             state.pages = [];
             
@@ -248,104 +285,82 @@
                 color: var(--text-primary);
                 overflow: hidden;
                 box-sizing: border-box;
-                white-space: pre-wrap;
             `;
             
             // Calculate available height
-            const header = $('#header');
-            const footer = $('#footer');
-            const headerHeight = 56;
-            const footerHeight = 80;
-            const availableHeight = window.innerHeight - headerHeight - footerHeight - 40; // 40px padding
-            
+            const availableHeight = window.innerHeight - 56 - 80 - 40; // header - footer - padding
             measuringContainer.style.height = `${availableHeight}px`;
             document.body.appendChild(measuringContainer);
             
-            // Clean and split text into paragraphs
-            const cleanText = state.bookText
-                .replace(/\r\n/g, '\n')
-                .replace(/\n{3,}/g, '\n\n')
-                .trim();
+            let currentPageContent = [];
+            let chunkIndex = 0;
             
-            const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
-            
-            let currentPageContent = '';
-            
-            for (const paragraph of paragraphs) {
-                const trimmedParagraph = paragraph.trim();
-                if (!trimmedParagraph) continue;
+            // Process ALL chunks sequentially - NO CHUNK IS LOST
+            while (chunkIndex < state.textChunks.length) {
+                const chunk = state.textChunks[chunkIndex];
                 
-                // Test if adding this paragraph exceeds page height
-                const testContent = currentPageContent + (currentPageContent ? '\n\n' : '') + trimmedParagraph;
+                // Test adding this chunk to current page
+                const testChunks = [...currentPageContent, chunk];
+                const testHTML = this.formatChunksAsHTML(testChunks);
                 
-                measuringContainer.textContent = testContent;
+                measuringContainer.innerHTML = testHTML;
                 
                 const contentFits = measuringContainer.scrollHeight <= availableHeight;
                 
                 if (contentFits) {
-                    // Content fits, add to current page
-                    currentPageContent = testContent;
+                    // Chunk fits, add to current page
+                    currentPageContent.push(chunk);
+                    chunkIndex++;
                 } else {
-                    // Content doesn't fit
-                    if (currentPageContent.trim()) {
-                        // Save current page
-                        state.pages.push(this.formatPageContent(currentPageContent));
-                        currentPageContent = trimmedParagraph;
+                    // Chunk doesn't fit
+                    if (currentPageContent.length > 0) {
+                        // Save current page and start new page with this chunk
+                        const pageHTML = this.formatChunksAsHTML(currentPageContent);
+                        state.pages.push(pageHTML);
+                        currentPageContent = [chunk];
+                        chunkIndex++;
                     } else {
-                        // Even single paragraph doesn't fit, need to split by sentences
-                        const sentences = trimmedParagraph.split(/(?<=[.!?])\s+/);
-                        let sentenceBuffer = '';
+                        // Even single chunk doesn't fit, need to split it
+                        const words = chunk.split(' ');
+                        let wordBuffer = [];
                         
-                        for (const sentence of sentences) {
-                            const testSentence = sentenceBuffer + (sentenceBuffer ? ' ' : '') + sentence;
-                            measuringContainer.textContent = testSentence;
+                        for (const word of words) {
+                            const testWords = [...wordBuffer, word];
+                            const testHTML = this.formatChunksAsHTML([testWords.join(' ')]);
+                            
+                            measuringContainer.innerHTML = testHTML;
                             
                             if (measuringContainer.scrollHeight <= availableHeight) {
-                                sentenceBuffer = testSentence;
+                                wordBuffer.push(word);
                             } else {
-                                if (sentenceBuffer.trim()) {
-                                    state.pages.push(this.formatPageContent(sentenceBuffer));
-                                    sentenceBuffer = sentence;
+                                if (wordBuffer.length > 0) {
+                                    // Save current words as page
+                                    const pageHTML = this.formatChunksAsHTML([wordBuffer.join(' ')]);
+                                    state.pages.push(pageHTML);
+                                    wordBuffer = [word];
                                 } else {
-                                    // Even single sentence is too long, split by words
-                                    const words = sentence.split(' ');
-                                    let wordBuffer = '';
-                                    
-                                    for (const word of words) {
-                                        const testWord = wordBuffer + (wordBuffer ? ' ' : '') + word;
-                                        measuringContainer.textContent = testWord;
-                                        
-                                        if (measuringContainer.scrollHeight <= availableHeight) {
-                                            wordBuffer = testWord;
-                                        } else {
-                                            if (wordBuffer.trim()) {
-                                                state.pages.push(this.formatPageContent(wordBuffer));
-                                                wordBuffer = word;
-                                            } else {
-                                                // Single word is too long, just add it
-                                                state.pages.push(this.formatPageContent(word));
-                                                wordBuffer = '';
-                                            }
-                                        }
-                                    }
-                                    
-                                    if (wordBuffer.trim()) {
-                                        sentenceBuffer = wordBuffer;
-                                    }
+                                    // Even single word doesn't fit, just add it
+                                    const pageHTML = this.formatChunksAsHTML([word]);
+                                    state.pages.push(pageHTML);
+                                    wordBuffer = [];
                                 }
                             }
                         }
                         
-                        if (sentenceBuffer.trim()) {
-                            currentPageContent = sentenceBuffer;
+                        // Add remaining words to current page
+                        if (wordBuffer.length > 0) {
+                            currentPageContent = [wordBuffer.join(' ')];
                         }
+                        
+                        chunkIndex++;
                     }
                 }
             }
             
-            // Add last page
-            if (currentPageContent.trim()) {
-                state.pages.push(this.formatPageContent(currentPageContent));
+            // Add last page if there's content
+            if (currentPageContent.length > 0) {
+                const pageHTML = this.formatChunksAsHTML(currentPageContent);
+                state.pages.push(pageHTML);
             }
             
             // Remove measuring container
@@ -353,26 +368,33 @@
             
             state.totalPages = state.pages.length;
             
-            console.log(`Created ${state.totalPages} perfectly fitted pages`);
+            console.log(`Created ${state.totalPages} pages with NO TEXT LOSS`);
+            console.log(`Total text chunks: ${state.textChunks.length}`);
+            
+            // Verification: count chunks in pages
+            let totalChunksInPages = 0;
+            state.pages.forEach(page => {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = page;
+                const paragraphs = tempDiv.querySelectorAll('p, h2');
+                totalChunksInPages += paragraphs.length;
+            });
+            
+            console.log(`Chunks in pages: ${totalChunksInPages} (should equal ${state.textChunks.length})`);
         },
         
-        formatPageContent(text) {
-            // Format text as HTML paragraphs
-            return text
-                .split('\n\n')
-                .map(paragraph => {
-                    const trimmed = paragraph.trim();
-                    if (!trimmed) return '';
-                    
-                    // Check if it looks like a title (short line, possibly all caps)
-                    if (trimmed.length < 50 && (trimmed === trimmed.toUpperCase() || /^[А-ЯЁ\s\-]+$/.test(trimmed))) {
-                        return `<h2>${trimmed}</h2>`;
-                    } else {
-                        return `<p>${trimmed}</p>`;
-                    }
-                })
-                .filter(p => p)
-                .join('');
+        formatChunksAsHTML(chunks) {
+            return chunks.map(chunk => {
+                const trimmed = chunk.trim();
+                if (!trimmed) return '';
+                
+                // Check if it looks like a title
+                if (trimmed.length < 50 && (trimmed === trimmed.toUpperCase() || /^[А-ЯЁ\s\-]+$/.test(trimmed))) {
+                    return `<h2>${trimmed}</h2>`;
+                } else {
+                    return `<p>${trimmed}</p>`;
+                }
+            }).filter(p => p).join('');
         },
         
         render() {
