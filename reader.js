@@ -23,12 +23,13 @@
     }
   };
 
-  // State
+  // Application state
   const state = {
     chapters: [],
     content: [],
-    currentChapterIndex: 0,
-    totalChapters: 0,
+    pages: [],
+    currentPageIndex: 0,
+    totalPages: 0,
     uiVisible: false,
     
     settings: {
@@ -48,6 +49,7 @@
         Object.assign(state.settings, saved);
       }
       this.apply();
+      this.updateUI();
     },
     
     save() {
@@ -63,17 +65,10 @@
       
       const fontMap = {
         crimson: '"Crimson Text", Georgia, serif',
-        inter: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+        inter: 'Inter, -apple-system, sans-serif',
         georgia: 'Georgia, serif'
       };
       document.documentElement.style.setProperty('--font-reading', fontMap[state.settings.font]);
-      
-      const widthMap = {
-        narrow: '520px',
-        medium: '680px',
-        wide: '800px'
-      };
-      document.documentElement.style.setProperty('--text-width', widthMap[state.settings.textWidth]);
       
       this.save();
     },
@@ -81,90 +76,60 @@
     update(key, value) {
       state.settings[key] = value;
       this.apply();
+      // Repaginate after settings change
+      setTimeout(() => {
+        reader.paginate();
+        reader.render();
+      }, 100);
+    },
+    
+    updateUI() {
+      // Update theme buttons
+      $$('.option-btn[data-theme]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === state.settings.theme);
+      });
+      
+      // Update font buttons
+      $$('.option-btn[data-font]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.font === state.settings.font);
+      });
+      
+      // Update width buttons
+      $$('.option-btn[data-width]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.width === state.settings.textWidth);
+      });
+      
+      // Update sliders
+      const fontSizeSlider = $('#font-size-slider');
+      const fontSizeValue = $('#font-size-value');
+      if (fontSizeSlider && fontSizeValue) {
+        fontSizeSlider.value = state.settings.fontSize;
+        fontSizeValue.textContent = `${state.settings.fontSize}px`;
+      }
+      
+      const lineHeightSlider = $('#line-height-slider');
+      const lineHeightValue = $('#line-height-value');
+      if (lineHeightSlider && lineHeightValue) {
+        lineHeightSlider.value = state.settings.lineHeight;
+        lineHeightValue.textContent = state.settings.lineHeight.toFixed(1);
+      }
     }
   };
 
-  // Progress tracking
+  // Progress management
   const progress = {
     save() {
-      const container = $('#scroll-container');
-      if (container) {
-        storage.set('crimchitalka_progress', {
-          scrollTop: container.scrollTop,
-          timestamp: Date.now()
-        });
-      }
+      storage.set('crimchitalka_progress', {
+        pageIndex: state.currentPageIndex,
+        timestamp: Date.now()
+      });
     },
     
     load() {
       const saved = storage.get('crimchitalka_progress');
       if (saved) {
-        setTimeout(() => {
-          const container = $('#scroll-container');
-          if (container) {
-            container.scrollTop = saved.scrollTop || 0;
-          }
-        }, 100);
+        state.currentPageIndex = Math.max(0, Math.min(saved.pageIndex || 0, state.totalPages - 1));
       }
-    },
-    
-    update() {
-      const container = $('#scroll-container');
-      if (!container) return;
-      
-      const scrollTop = container.scrollTop;
-      const scrollHeight = container.scrollHeight - container.clientHeight;
-      const progressPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
-      
-      // Update progress bar
-      const progressFill = $('#progress-fill');
-      const progressHandle = $('#progress-handle');
-      if (progressFill) progressFill.style.width = `${progressPercent}%`;
-      if (progressHandle) progressHandle.style.left = `${progressPercent}%`;
-      
-      // Update progress text
-      const progressPercentEl = $('#progress-percent');
-      if (progressPercentEl) progressPercentEl.textContent = `${Math.round(progressPercent)}%`;
-      
-      // Update reading time
-      const readingTime = $('#reading-time');
-      if (readingTime) {
-        const remainingPercent = 100 - progressPercent;
-        const totalMinutes = Math.ceil(state.totalWords / 200); // 200 words per minute
-        const remainingMinutes = Math.ceil((totalMinutes * remainingPercent) / 100);
-        readingTime.textContent = `~${remainingMinutes} мин`;
-      }
-      
-      // Update current chapter
-      this.updateCurrentChapter();
-      this.save();
-    },
-    
-    updateCurrentChapter() {
-      const container = $('#scroll-container');
-      const currentChapterEl = $('#current-chapter');
-      if (!container || !currentChapterEl) return;
-      
-      const chapters = $$('.chapter');
-      const scrollTop = container.scrollTop + 100; // Offset for header
-      
-      let activeChapter = 0;
-      chapters.forEach((chapter, index) => {
-        if (chapter.offsetTop <= scrollTop) {
-          activeChapter = index;
-        }
-      });
-      
-      state.currentChapterIndex = activeChapter;
-      const chapterData = state.chapters[activeChapter];
-      if (chapterData) {
-        currentChapterEl.textContent = chapterData.title || `Глава ${activeChapter + 1}`;
-      }
-      
-      // Update TOC
-      $$('.toc-item').forEach((item, index) => {
-        item.classList.toggle('active', index === activeChapter);
-      });
     }
   };
 
@@ -217,22 +182,63 @@
       if (modal) modal.classList.remove('visible');
     },
     
+    updateProgress() {
+      const currentPage = $('#current-page');
+      const totalPages = $('#total-pages');
+      const readingTime = $('#reading-time');
+      const progressFill = $('#progress-fill');
+      const pageInput = $('#page-input');
+      
+      const current = state.currentPageIndex + 1;
+      
+      if (currentPage) currentPage.textContent = current;
+      if (totalPages) totalPages.textContent = state.totalPages;
+      if (pageInput) {
+        pageInput.value = current;
+        pageInput.max = state.totalPages;
+      }
+      
+      if (readingTime && state.pages[state.currentPageIndex]) {
+        const remainingPages = state.totalPages - current;
+        const minutes = Math.ceil(remainingPages * 1.5); // Assume 1.5 min per page
+        readingTime.textContent = `~${minutes} мин`;
+      }
+      
+      const progressPercent = state.totalPages > 1 ? (state.currentPageIndex / (state.totalPages - 1)) * 100 : 0;
+      if (progressFill) progressFill.style.width = `${progressPercent}%`;
+    },
+    
     renderTOC() {
       const tocList = $('#toc-list');
       if (!tocList) return;
       
       tocList.innerHTML = '';
       
+      const chapterPages = new Map();
+      state.pages.forEach((page, index) => {
+        if (!chapterPages.has(page.chapterIndex)) {
+          chapterPages.set(page.chapterIndex, index + 1);
+        }
+      });
+      
       state.chapters.forEach((chapter, index) => {
         const item = document.createElement('div');
         item.className = 'toc-item';
         
-        item.innerHTML = `<div class="toc-title">${chapter.title || `Глава ${index + 1}`}</div>`;
+        const currentChapter = state.pages[state.currentPageIndex]?.chapterIndex;
+        if (index === currentChapter) item.classList.add('active');
+        
+        const startPage = chapterPages.get(index) || 1;
+        
+        item.innerHTML = `
+          <div class="toc-title">${chapter.title || `Глава ${index + 1}`}</div>
+          <div class="toc-page">Страница ${startPage}</div>
+        `;
         
         on(item, 'click', () => {
-          const chapterEl = $(`.chapter[data-chapter="${index}"]`);
-          if (chapterEl) {
-            chapterEl.scrollIntoView({ behavior: 'smooth' });
+          const pageIndex = state.pages.findIndex(p => p.chapterIndex === index);
+          if (pageIndex >= 0) {
+            reader.goToPage(pageIndex + 1);
             ui.hideSidebar();
           }
         });
@@ -250,10 +256,13 @@
         
         settings.load();
         await this.loadBook();
-        this.renderBook();
+        this.paginate();
         
         progress.load();
+        this.render();
+        
         ui.renderTOC();
+        ui.updateProgress();
         this.bindEvents();
         
         ui.hideLoading();
@@ -266,7 +275,7 @@
         
       } catch (error) {
         console.error('Failed to initialize reader:', error);
-        ui.showLoading('Ошибка загрузки. Проверьте подключение.');
+        ui.showLoading('Ошибка загрузки. Проверьте подключение к интернету.');
       }
     },
     
@@ -279,7 +288,6 @@
         
         state.chapters = await response.json();
         state.content = new Array(state.chapters.length);
-        state.totalChapters = state.chapters.length;
         
         for (let i = 0; i < state.chapters.length; i++) {
           ui.showLoading(`Загрузка главы ${i + 1} из ${state.chapters.length}...`);
@@ -294,119 +302,168 @@
           } catch (error) {
             console.warn(`Failed to load chapter ${i}:`, error);
             state.content[i] = `
-              <div class="chapter-content">
-                <p>Ошибка загрузки главы. Попробуйте обновить страницу.</p>
-              </div>
+              <h1>${state.chapters[i].title || `Глава ${i + 1}`}</h1>
+              <p>Ошибка загрузки главы. Попробуйте обновить страницу.</p>
             `;
           }
         }
         
       } catch (error) {
         console.error('Failed to load book:', error);
-        throw new Error('Не удалось загрузить книгу');
+        throw error;
       }
     },
     
-    renderBook() {
-      const bookContent = $('#book-content');
-      if (!bookContent) return;
+    paginate() {
+      ui.showLoading('Создание страниц...');
       
-      let totalWords = 0;
-      let html = '';
+      state.pages = [];
+      const isMobile = window.innerWidth <= 768;
       
-      state.chapters.forEach((chapter, index) => {
-        const chapterContent = state.content[index] || '';
+      // VERY SAFE character limits - never overflow
+      const charsPerPage = isMobile ? 400 : 700; // Very conservative
+      
+      console.log('SAFE chars per page:', charsPerPage, 'Mobile:', isMobile);
+
+      state.chapters.forEach((chapter, chapterIndex) => {
+        const chapterContent = state.content[chapterIndex] || '';
         
-        // Count words for reading time estimation
-        const words = chapterContent.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean);
-        totalWords += words.length;
+        // Extract plain text
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = chapterContent;
+        const textContent = tempDiv.textContent || '';
         
-        html += `
-          <div class="chapter" data-chapter="${index}">
-            <h1 class="chapter-title">${chapter.title || `Глава ${index + 1}`}</h1>
-            <div class="chapter-content">${chapterContent}</div>
-          </div>
-        `;
+        const words = textContent.split(/\s+/).filter(word => word.length > 0);
+        
+        let isFirstPageOfChapter = true;
+        let currentText = '';
+        
+        words.forEach(word => {
+          const testText = currentText + (currentText ? ' ' : '') + word;
+          
+          if (testText.length > charsPerPage && currentText.length > 0) {
+            // Create page
+            let pageHTML = '';
+            
+            if (isFirstPageOfChapter) {
+              pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+              isFirstPageOfChapter = false;
+            }
+            
+            // Split into small paragraphs
+            const pageWords = currentText.split(/\s+/);
+            const wordsPerParagraph = isMobile ? 12 : 18; // Very small paragraphs
+            
+            for (let i = 0; i < pageWords.length; i += wordsPerParagraph) {
+              const paragraphWords = pageWords.slice(i, i + wordsPerParagraph);
+              if (paragraphWords.length > 0) {
+                pageHTML += `<p>${paragraphWords.join(' ')}</p>`;
+              }
+            }
+            
+            state.pages.push({
+              content: pageHTML,
+              chapterIndex: chapterIndex
+            });
+            
+            currentText = word;
+          } else {
+            currentText = testText;
+          }
+        });
+        
+        // Last page of chapter
+        if (currentText.trim()) {
+          let pageHTML = '';
+          
+          if (isFirstPageOfChapter) {
+            pageHTML += `<h1>${chapter.title || `Глава ${chapterIndex + 1}`}</h1>`;
+          }
+          
+          const pageWords = currentText.split(/\s+/);
+          const wordsPerParagraph = isMobile ? 12 : 18;
+          
+          for (let i = 0; i < pageWords.length; i += wordsPerParagraph) {
+            const paragraphWords = pageWords.slice(i, i + wordsPerParagraph);
+            if (paragraphWords.length > 0) {
+              pageHTML += `<p>${paragraphWords.join(' ')}</p>`;
+            }
+          }
+          
+          state.pages.push({
+            content: pageHTML,
+            chapterIndex: chapterIndex
+          });
+        }
       });
+
+      state.totalPages = state.pages.length;
+      if (state.currentPageIndex >= state.totalPages) {
+        state.currentPageIndex = Math.max(0, state.totalPages - 1);
+      }
       
-      state.totalWords = totalWords;
-      bookContent.innerHTML = html;
+      console.log(`Created ${state.totalPages} ULTRA-SAFE pages`);
+    },
+    
+    render() {
+      const pageContent = $('#page-content');
+      if (!pageContent || !state.pages[state.currentPageIndex]) return;
       
-      // Initialize progress
-      setTimeout(() => progress.update(), 100);
+      const currentPage = state.pages[state.currentPageIndex];
+      pageContent.innerHTML = currentPage.content;
+      
+      ui.updateProgress();
+      ui.renderTOC();
+      progress.save();
     },
     
-    scrollToChapter(chapterIndex) {
-      const chapterEl = $(`.chapter[data-chapter="${chapterIndex}"]`);
-      if (chapterEl) {
-        chapterEl.scrollIntoView({ behavior: 'smooth' });
+    goToPage(pageNumber) {
+      const pageIndex = Math.max(0, Math.min(pageNumber - 1, state.totalPages - 1));
+      if (pageIndex !== state.currentPageIndex) {
+        state.currentPageIndex = pageIndex;
+        this.render();
       }
     },
     
-    scrollUp() {
-      const container = $('#scroll-container');
-      if (container) {
-        container.scrollBy({ top: -window.innerHeight * 0.8, behavior: 'smooth' });
+    nextPage() {
+      if (state.currentPageIndex < state.totalPages - 1) {
+        state.currentPageIndex++;
+        this.render();
       }
     },
     
-    scrollDown() {
-      const container = $('#scroll-container');
-      if (container) {
-        container.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' });
-      }
-    },
-    
-    scrollToTop() {
-      const container = $('#scroll-container');
-      if (container) {
-        container.scrollTo({ top: 0, behavior: 'smooth' });
+    prevPage() {
+      if (state.currentPageIndex > 0) {
+        state.currentPageIndex--;
+        this.render();
       }
     },
     
     bindEvents() {
       // Touch zones
-      on($('#scroll-up'), 'click', () => this.scrollUp());
-      on($('#scroll-down'), 'click', () => this.scrollDown());
+      on($('#prev-zone'), 'click', () => this.prevPage());
+      on($('#next-zone'), 'click', () => this.nextPage());
       on($('#menu-zone'), 'click', () => ui.toggleUI());
       
       // Navigation buttons
-      on($('#chapter-prev'), 'click', () => {
-        const prevIndex = Math.max(0, state.currentChapterIndex - 1);
-        this.scrollToChapter(prevIndex);
-      });
-      on($('#chapter-next'), 'click', () => {
-        const nextIndex = Math.min(state.totalChapters - 1, state.currentChapterIndex + 1);
-        this.scrollToChapter(nextIndex);
-      });
-      on($('#scroll-top'), 'click', () => this.scrollToTop());
+      on($('#prev-btn'), 'click', () => this.prevPage());
+      on($('#next-btn'), 'click', () => this.nextPage());
       
       // Header buttons
       on($('#back-btn'), 'click', () => history.back());
       on($('#toc-btn'), 'click', () => ui.showSidebar());
       on($('#settings-btn'), 'click', () => ui.showSettings());
       
+      // Page input
+      on($('#page-input'), 'change', (e) => this.goToPage(parseInt(e.target.value) || 1));
+      
       // Progress bar
       on($('#progress-bar'), 'click', (e) => {
-        const container = $('#scroll-container');
-        if (container) {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const ratio = (e.clientX - rect.left) / rect.width;
-          const scrollHeight = container.scrollHeight - container.clientHeight;
-          container.scrollTo({ top: scrollHeight * ratio, behavior: 'smooth' });
-        }
+        const rect = e.currentTarget.getBoundingClientRect();
+        const ratio = (e.clientX - rect.left) / rect.width;
+        const page = Math.ceil(ratio * state.totalPages);
+        this.goToPage(page);
       });
-      
-      // Scroll tracking
-      const container = $('#scroll-container');
-      if (container) {
-        let scrollTimeout;
-        on(container, 'scroll', () => {
-          progress.update();
-          clearTimeout(scrollTimeout);
-          scrollTimeout = setTimeout(() => progress.save(), 500);
-        });
-      }
       
       // Sidebar
       on($('#close-sidebar'), 'click', () => ui.hideSidebar());
@@ -416,38 +473,23 @@
       on($('#close-settings'), 'click', () => ui.hideSettings());
       on($('#settings-modal .modal-backdrop'), 'click', () => ui.hideSettings());
       
-      // Theme buttons
-      $$('.theme-btn').forEach(btn => {
-        on(btn, 'click', () => {
-          $$('.theme-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          settings.update('theme', btn.dataset.theme);
-        });
+      // Settings buttons
+      $$('.option-btn[data-theme]').forEach(btn => {
+        on(btn, 'click', () => settings.update('theme', btn.dataset.theme));
       });
       
-      // Font buttons
-      $$('.font-btn').forEach(btn => {
-        on(btn, 'click', () => {
-          $$('.font-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          settings.update('font', btn.dataset.font);
-        });
+      $$('.option-btn[data-font]').forEach(btn => {
+        on(btn, 'click', () => settings.update('font', btn.dataset.font));
       });
       
-      // Width buttons
-      $$('.width-btn').forEach(btn => {
-        on(btn, 'click', () => {
-          $$('.width-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          settings.update('textWidth', btn.dataset.width);
-        });
+      $$('.option-btn[data-width]').forEach(btn => {
+        on(btn, 'click', () => settings.update('textWidth', btn.dataset.width));
       });
       
       // Range sliders
       const fontSizeSlider = $('#font-size-slider');
       const fontSizeValue = $('#font-size-value');
       if (fontSizeSlider && fontSizeValue) {
-        fontSizeSlider.value = state.settings.fontSize;
         on(fontSizeSlider, 'input', (e) => {
           const size = parseInt(e.target.value);
           fontSizeValue.textContent = `${size}px`;
@@ -458,7 +500,6 @@
       const lineHeightSlider = $('#line-height-slider');
       const lineHeightValue = $('#line-height-value');
       if (lineHeightSlider && lineHeightValue) {
-        lineHeightSlider.value = state.settings.lineHeight;
         on(lineHeightSlider, 'input', (e) => {
           const height = parseFloat(e.target.value);
           lineHeightValue.textContent = height.toFixed(1);
@@ -466,32 +507,37 @@
         });
       }
       
+      // Resize handler
+      window.addEventListener('resize', () => {
+        setTimeout(() => {
+          this.paginate();
+          this.render();
+        }, 300);
+      });
+      
       // Keyboard shortcuts
       on(document, 'keydown', (e) => {
         if (e.target.tagName === 'INPUT') return;
         
         switch (e.key) {
-          case 'ArrowUp':
+          case 'ArrowLeft':
           case 'PageUp':
             e.preventDefault();
-            this.scrollUp();
+            this.prevPage();
             break;
-          case 'ArrowDown':
+          case 'ArrowRight':
           case 'PageDown':
           case ' ':
             e.preventDefault();
-            this.scrollDown();
+            this.nextPage();
             break;
           case 'Home':
             e.preventDefault();
-            this.scrollToTop();
+            this.goToPage(1);
             break;
           case 'End':
             e.preventDefault();
-            const container = $('#scroll-container');
-            if (container) {
-              container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-            }
+            this.goToPage(state.totalPages);
             break;
           case 'Escape':
             if ($('#settings-modal')?.classList.contains('visible')) {
@@ -500,18 +546,6 @@
               ui.hideSidebar();
             } else if (state.uiVisible) {
               ui.toggleUI();
-            }
-            break;
-          case 't':
-            if (e.ctrlKey) {
-              e.preventDefault();
-              ui.showSidebar();
-            }
-            break;
-          case 's':
-            if (e.ctrlKey) {
-              e.preventDefault();
-              ui.showSettings();
             }
             break;
         }
