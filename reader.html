@@ -38,12 +38,6 @@
       </div>
       
       <div class="header-actions">
-        <button class="header-btn" id="search-btn" aria-label="Поиск">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-          </svg>
-        </button>
         <button class="header-btn" id="toc-btn" aria-label="Содержание">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="8" y1="6" x2="21" y2="6"/>
@@ -56,7 +50,7 @@
         </button>
         <button class="header-btn" id="settings-btn" aria-label="Настройки">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"/>
+            ircle cx="12" cy="12"2" r="3"/>
             <path d="m12 1 1.57 4.13L17 4l2 2-1.13 3.43L22 11v2l-4.13 1.57L19 18l-2 2-3.43-1.13L11 23H9l-1.57-4.13L4 20l-2-2 1.13-3.43L1 13v-2l4.13-1.57L4 6l2-2 3.43 1.13L11 1h2z"/>
           </svg>
         </button>
@@ -65,17 +59,17 @@
 
     <!-- Main Reading Area -->
     <main id="reader" class="reader" role="main">
-      <div id="page-container" class="page-container">
-        <div id="current-page" class="page">
-          <article id="page-content" class="page-content"></article>
+      <div id="scroll-container" class="scroll-container">
+        <div id="book-content" class="book-content">
+          <!-- Весь контент книги загружается здесь -->
         </div>
       </div>
       
-      <!-- Touch zones for navigation -->
+      <!-- Touch zones for scroll navigation -->
       <div class="touch-zones">
-        <button class="touch-zone touch-zone--left" id="prev-zone" aria-label="Предыдущая страница"></button>
+        <button class="touch-zone touch-zone--left" id="scroll-up" aria-label="Прокрутить вверх"></button>
         <button class="touch-zone touch-zone--center" id="menu-zone" aria-label="Показать/скрыть меню"></button>
-        <button class="touch-zone touch-zone--right" id="next-zone" aria-label="Следующая страница"></button>
+        <button class="touch-zone touch-zone--right" id="scroll-down" aria-label="Прокрутить вниз"></button>
       </div>
     </main>
 
@@ -83,9 +77,11 @@
     <footer id="footer" class="footer" role="contentinfo">
       <div class="progress-section">
         <div class="progress-info">
-          <span id="current-pos">1</span> из <span id="total-pos">100</span>
+          <span id="progress-percent">0%</span>
           <span class="separator">•</span>
-          <span id="reading-time">~5 мин</span>
+          <span id="reading-time">~45 мин</span>
+          <span class="separator">•</span>
+          <span id="current-chapter">Глава 1</span>
         </div>
         <div class="progress-bar-container">
           <div class="progress-bar" id="progress-bar">
@@ -96,13 +92,17 @@
       </div>
       
       <div class="nav-controls">
-        <button class="nav-btn" id="prev-btn" aria-label="Назад">
+        <button class="nav-btn" id="chapter-prev" aria-label="Предыдущая глава">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="m15 18-6-6 6-6"/>
           </svg>
         </button>
-        <input type="number" id="page-input" class="page-input" min="1" value="1">
-        <button class="nav-btn" id="next-btn" aria-label="Вперед">
+        <button class="nav-btn" id="scroll-top" aria-label="В начало">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m18 15-6-6-6 6"/>
+          </svg>
+        </button>
+        <button class="nav-btn" id="chapter-next" aria-label="Следующая глава">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="m9 18 6-6-6-6"/>
           </svg>
@@ -115,7 +115,6 @@
       <div class="sidebar-header">
         <div class="sidebar-tabs">
           <button class="tab-btn active" data-tab="toc">Содержание</button>
-          <button class="tab-btn" data-tab="bookmarks">Закладки</button>
         </div>
         <button class="close-btn" id="close-sidebar" aria-label="Закрыть">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -127,16 +126,7 @@
       
       <div class="sidebar-content">
         <div class="tab-content active" id="toc-content">
-          <div class="search-box">
-            <input type="text" placeholder="Поиск по содержанию..." id="toc-search">
-          </div>
           <nav id="toc-list" class="toc-list"></nav>
-        </div>
-        
-        <div class="tab-content" id="bookmarks-content">
-          <div id="bookmarks-list" class="bookmarks-list">
-            <div class="empty-state">Закладок пока нет</div>
-          </div>
         </div>
       </div>
     </aside>
