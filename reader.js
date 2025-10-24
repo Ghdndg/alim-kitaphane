@@ -30,8 +30,6 @@
         currentPageIndex: 0,
         totalPages: 0,
         uiVisible: false,
-        pageWidth: 0,
-        pageHeight: 0,
         
         settings: {
             theme: 'dark',
@@ -186,7 +184,6 @@
                 
                 settings.load();
                 await this.loadBook();
-                this.calculatePageDimensions();
                 this.createPages();
                 
                 progress.load();
@@ -217,7 +214,7 @@
                 }
                 
                 state.bookText = await response.text();
-                console.log('Book loaded, length:', state.bookText.length);
+                console.log('Book loaded, length:', state.bookText.length, 'characters');
                 
                 if (!state.bookText.trim()) {
                     throw new Error('Book file is empty');
@@ -229,24 +226,8 @@
             }
         },
         
-        calculatePageDimensions() {
-            // Calculate exact page dimensions
-            const reader = $('.reader');
-            if (reader) {
-                const rect = reader.getBoundingClientRect();
-                state.pageWidth = Math.floor(rect.width - 40); // 40px padding
-                state.pageHeight = Math.floor(rect.height - 40); // 40px padding
-            } else {
-                // Fallback
-                state.pageWidth = Math.floor(window.innerWidth - 40);
-                state.pageHeight = Math.floor(window.innerHeight - 136 - 40); // header + footer + padding
-            }
-            
-            console.log(`Page dimensions: ${state.pageWidth} x ${state.pageHeight}`);
-        },
-        
         createPages() {
-            ui.showLoading('Создание идеальной пагинации...');
+            ui.showLoading('Создание страниц без потерь...');
             
             state.pages = [];
             
@@ -256,121 +237,99 @@
                 .replace(/\n{3,}/g, '\n\n')
                 .trim();
             
-            // Format text as HTML
-            const formattedHTML = this.formatTextAsHTML(cleanText);
+            // ПРОСТОЕ РАЗБИЕНИЕ: по фиксированному количеству символов
+            // Это гарантирует что весь текст будет показан
+            const isMobile = window.innerWidth <= 768;
+            const charsPerPage = isMobile ? 1200 : 1800; // Консервативные значения
             
-            // Create invisible container for CSS column pagination
-            const paginationContainer = document.createElement('div');
-            paginationContainer.style.cssText = `
-                position: absolute;
-                visibility: hidden;
-                top: -99999px;
-                left: 0;
-                width: ${state.pageWidth}px;
-                height: ${state.pageHeight}px;
-                padding: 20px;
-                margin: 0;
-                font-family: "Crimson Text", Georgia, serif;
-                font-size: ${state.settings.fontSize}px;
-                line-height: ${state.settings.lineHeight};
-                color: var(--text-primary);
-                column-width: ${state.pageWidth - 40}px;
-                column-gap: 0;
-                column-fill: auto;
-                overflow: hidden;
-                box-sizing: border-box;
-            `;
+            let startIndex = 0;
+            let pageNumber = 1;
             
-            paginationContainer.innerHTML = formattedHTML;
-            document.body.appendChild(paginationContainer);
-            
-            // Calculate how many columns (pages) are needed
-            const totalWidth = paginationContainer.scrollWidth;
-            const pageCount = Math.ceil(totalWidth / (state.pageWidth - 40));
-            
-            console.log(`Total width: ${totalWidth}, Pages needed: ${pageCount}`);
-            
-            // Create pages by extracting visible content at each column position
-            for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-                const pageContainer = document.createElement('div');
-                pageContainer.style.cssText = `
-                    position: absolute;
-                    visibility: hidden;
-                    top: -99999px;
-                    left: 0;
-                    width: ${state.pageWidth}px;
-                    height: ${state.pageHeight}px;
-                    padding: 20px;
-                    margin: 0;
-                    font-family: "Crimson Text", Georgia, serif;
-                    font-size: ${state.settings.fontSize}px;
-                    line-height: ${state.settings.lineHeight};
-                    color: var(--text-primary);
-                    column-width: ${state.pageWidth - 40}px;
-                    column-gap: 0;
-                    column-fill: auto;
-                    overflow: hidden;
-                    box-sizing: border-box;
-                    transform: translateX(-${pageIndex * (state.pageWidth - 40)}px);
-                `;
+            while (startIndex < cleanText.length) {
+                let endIndex = Math.min(startIndex + charsPerPage, cleanText.length);
                 
-                pageContainer.innerHTML = formattedHTML;
-                document.body.appendChild(pageContainer);
+                // Если это не последняя страница, найдем ближайший конец предложения или абзаца
+                if (endIndex < cleanText.length) {
+                    // Ищем ближайший конец абзаца
+                    let paragraphEnd = cleanText.lastIndexOf('\n\n', endIndex);
+                    if (paragraphEnd > startIndex) {
+                        endIndex = paragraphEnd + 2;
+                    } else {
+                        // Ищем ближайший конец предложения
+                        let sentenceEnd = cleanText.lastIndexOf('.', endIndex);
+                        if (sentenceEnd > startIndex) {
+                            endIndex = sentenceEnd + 1;
+                        } else {
+                            // Ищем ближайший пробел
+                            let spaceEnd = cleanText.lastIndexOf(' ', endIndex);
+                            if (spaceEnd > startIndex) {
+                                endIndex = spaceEnd + 1;
+                            }
+                        }
+                    }
+                }
                 
-                // Extract visible text from this page
-                const pageContent = this.extractVisibleContent(pageContainer);
-                state.pages.push(pageContent);
+                const pageText = cleanText.slice(startIndex, endIndex).trim();
                 
-                document.body.removeChild(pageContainer);
+                if (pageText) {
+                    const pageHTML = this.formatTextAsHTML(pageText);
+                    state.pages.push(pageHTML);
+                    
+                    console.log(`Page ${pageNumber}: ${startIndex}-${endIndex} (${pageText.length} chars)`);
+                    pageNumber++;
+                }
+                
+                startIndex = endIndex;
             }
-            
-            // Remove pagination container
-            document.body.removeChild(paginationContainer);
             
             state.totalPages = state.pages.length;
             
-            console.log(`Created ${state.totalPages} pages with CSS column pagination`);
-        },
-        
-        formatTextAsHTML(text) {
-            return text
-                .split('\n\n')
-                .map(paragraph => {
-                    const trimmed = paragraph.trim();
-                    if (!trimmed) return '';
-                    
-                    // Check if it looks like a title
-                    if (trimmed.length < 50 && (trimmed === trimmed.toUpperCase() || /^[А-ЯЁ\s\-]+$/.test(trimmed))) {
-                        return `<h2>${trimmed}</h2>`;
-                    } else {
-                        return `<p>${trimmed}</p>`;
-                    }
-                })
-                .filter(p => p)
-                .join('');
-        },
-        
-        extractVisibleContent(container) {
-            // Clone the container to get visible content
-            const cloned = container.cloneNode(true);
-            cloned.style.visibility = 'visible';
-            cloned.style.position = 'static';
-            cloned.style.top = 'auto';
-            cloned.style.left = 'auto';
-            cloned.style.transform = 'none';
+            console.log(`Created ${state.totalPages} pages`);
+            console.log(`Total characters: ${cleanText.length}`);
             
-            // Remove any content that might overflow
-            const elements = cloned.querySelectorAll('*');
-            elements.forEach(element => {
-                const rect = element.getBoundingClientRect();
-                const containerRect = cloned.getBoundingClientRect();
+            // Verification: count characters in all pages
+            let totalCharsInPages = 0;
+            state.pages.forEach((page, index) => {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = page;
+                const pageText = tempDiv.textContent || tempDiv.innerText || '';
+                totalCharsInPages += pageText.length;
                 
-                if (rect.bottom > containerRect.bottom + 5) { // 5px tolerance
-                    element.remove();
+                // Log first few pages for debugging
+                if (index < 5) {
+                    console.log(`Page ${index + 1} length: ${pageText.length} chars`);
                 }
             });
             
-            return cloned.innerHTML;
+            console.log(`Characters in pages: ${totalCharsInPages} (should be close to ${cleanText.length})`);
+            
+            if (Math.abs(totalCharsInPages - cleanText.length) > 100) {
+                console.warn('CHARACTER MISMATCH! Some text may be missing.');
+            } else {
+                console.log('✅ Character count matches - no text lost!');
+            }
+        },
+        
+        formatTextAsHTML(text) {
+            // Split by double newlines for paragraphs
+            const paragraphs = text.split('\n\n').filter(p => p.trim());
+            
+            return paragraphs.map(paragraph => {
+                const trimmed = paragraph.trim().replace(/\n/g, ' ');
+                if (!trimmed) return '';
+                
+                // Check if it looks like a title (short, uppercase, etc)
+                if (trimmed.length < 100 && (
+                    trimmed === trimmed.toUpperCase() || 
+                    /^[А-ЯЁ\s\-]+$/.test(trimmed) ||
+                    trimmed.startsWith('Глава') ||
+                    trimmed.startsWith('ГЛАВА')
+                )) {
+                    return `<h2>${trimmed}</h2>`;
+                } else {
+                    return `<p>${trimmed}</p>`;
+                }
+            }).filter(p => p).join('');
         },
         
         render() {
@@ -381,6 +340,9 @@
             pageContent.innerHTML = currentPage;
             
             progress.update();
+            
+            // Log current page info for debugging
+            console.log(`Rendering page ${state.currentPageIndex + 1}/${state.totalPages}`);
         },
         
         nextPage() {
@@ -463,7 +425,6 @@
             // Window resize
             window.addEventListener('resize', () => {
                 setTimeout(() => {
-                    this.calculatePageDimensions();
                     this.createPages();
                     this.render();
                 }, 300);
