@@ -1,675 +1,182 @@
-/* ИДЕАЛЬНЫЙ ПРОФЕССИОНАЛЬНЫЙ РИДЕР */
-:root {
-    /* Colors */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f2f2f7;
-    --text-primary: #000000;
-    --text-secondary: #3c3c43;
-    --text-tertiary: #8e8e93;
-    --border-primary: #c6c6c8;
-    --accent: #007aff;
-    --shadow: rgba(0, 0, 0, 0.1);
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1c1c1e">
+    <title>КрымЧиталка — Хаджи-Гирай</title>
     
-    /* Typography */
-    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
-    --font-reading: "Crimson Text", Georgia, serif;
-    --font-size-reading: 18px;
-    --line-height-reading: 1.6;
-    --text-width: 680px;
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     
-    --transition: 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
-}
-
-[data-theme="dark"] {
-    --bg-primary: #000000;
-    --bg-secondary: #1c1c1e;
-    --text-primary: #ffffff;
-    --text-secondary: #ebebf5;
-    --text-tertiary: #8e8e93;
-    --border-primary: #38383a;
-    --accent: #0a84ff;
-}
-
-[data-theme="sepia"] {
-    --bg-primary: #f7f0e6;
-    --bg-secondary: #f0e8d6;
-    --text-primary: #5d4e37;
-    --text-secondary: #8b7355;
-    --border-primary: #d4c4a0;
-    --accent: #8b6914;
-}
-
-/* Reset */
-*, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-html, body {
-    height: 100%;
-    overflow: hidden;
-}
-
-body {
-    font-family: var(--font-ui);
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    -webkit-font-smoothing: antialiased;
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-/* ТОЧНАЯ ВЫСОТА КОНТЕЙНЕРА */
-.app {
-    display: grid;
-    grid-template-rows: 56px 1fr 80px;
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-}
-
-/* Loading */
-.loading {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-primary);
-    z-index: 1000;
-    transition: opacity var(--transition);
-}
-
-.loading.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.loading-content {
-    text-align: center;
-    padding: 32px;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--border-primary);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 24px;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.loading-content h2 {
-    margin: 0 0 8px 0;
-    font-size: 24px;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.loading-content p {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 16px;
-}
-
-/* Header - ТОЧНО 56px */
-.header {
-    grid-row: 1;
-    display: flex;
-    align-items: center;
-    height: 56px;
-    padding: 0 16px;
-    background: var(--bg-primary);
-    border-bottom: 1px solid var(--border-primary);
-    transform: translateY(-100%);
-    transition: transform var(--transition);
-    z-index: 100;
-}
-
-.header.visible {
-    transform: translateY(0);
-}
-
-.header-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border: none;
-    border-radius: 12px;
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.header-btn:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-}
-
-.header-title {
-    flex: 1;
-    margin: 0 16px;
-    min-width: 0;
-}
-
-.header-title h1 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.header-title span {
-    font-size: 13px;
-    color: var(--text-secondary);
-}
-
-.header-actions {
-    display: flex;
-    gap: 4px;
-}
-
-/* Reader - ТОЧНО МЕЖДУ HEADER И FOOTER */
-.reader {
-    grid-row: 2;
-    position: relative;
-    overflow: hidden;
-    background: var(--bg-primary);
-}
-
-.page-content {
-    width: 100%;
-    height: 100%;
-    max-width: var(--text-width);
-    margin: 0 auto;
-    padding: 20px;
-    font-family: var(--font-reading);
-    font-size: var(--font-size-reading);  
-    line-height: var(--line-height-reading);
-    color: var(--text-primary);
-    overflow: hidden;
-    user-select: text;
-    -webkit-user-select: text;
-}
-
-/* Typography для вашего контента */
-.page-content h1 {
-    font-size: 28px;
-    line-height: 1.25;
-    margin: 0 0 24px 0;
-    font-weight: 700;
-    color: var(--text-primary);
-    text-align: center;
-}
-
-.page-content h2 {
-    font-size: 22px;
-    line-height: 1.3;
-    margin: 32px 0 16px 0;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.page-content p {
-    margin: 0 0 16px 0;
-    text-align: justify;
-    text-justify: inter-word;
-    hyphens: auto;
-    -webkit-hyphens: auto;
-    orphans: 2;
-    widows: 2;
-}
-
-.page-content p:last-child {
-    margin-bottom: 0;
-}
-
-.page-content blockquote {
-    margin: 20px 0;
-    padding: 16px 20px;
-    border-left: 4px solid var(--accent);
-    background: var(--bg-secondary);
-    border-radius: 0 8px 8px 0;
-    font-style: italic;
-}
-
-/* Touch zones - ТОЛЬКО внутри reader */
-.touch-zones {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    z-index: 10;
-}
-
-.touch-zone {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.touch-zone:active {
-    background: rgba(0, 0, 0, 0.03);
-}
-
-/* Footer - ТОЧНО 80px */
-.footer {
-    grid-row: 3;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 8px 16px;
-    height: 80px;
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border-primary);
-    transform: translateY(100%);
-    transition: transform var(--transition);
-}
-
-.footer.visible {
-    transform: translateY(0);
-}
-
-.progress-section {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.progress-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.separator {
-    color: var(--text-tertiary);
-}
-
-.progress-bar-container {
-    position: relative;
-}
-
-.progress-bar {
-    height: 4px;
-    background: var(--border-primary);
-    border-radius: 2px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 2px;
-    width: 0%;
-    transition: width 0.2s;
-}
-
-.nav-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-}
-
-.nav-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: 1px solid var(--border-primary);
-    border-radius: 8px;
-    background: var(--bg-primary);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.nav-btn:hover {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
-}
-
-.nav-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.page-input {
-    width: 60px;
-    height: 36px;
-    border: 1px solid var(--border-primary);
-    border-radius: 8px;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    text-align: center;
-    font-size: 14px;
-    font-weight: 500;
-    padding: 0;
-}
-
-.page-input:focus {
-    outline: none;
-    border-color: var(--accent);
-}
-
-/* Sidebar */
-.sidebar {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: min(360px, 85vw);
-    height: 100vh;
-    background: var(--bg-secondary);
-    border-left: 1px solid var(--border-primary);
-    transform: translateX(100%);
-    transition: transform var(--transition);
-    z-index: 200;
-    display: flex;
-    flex-direction: column;
-}
-
-.sidebar.visible {
-    transform: translateX(0);
-}
-
-.sidebar-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px;
-    border-bottom: 1px solid var(--border-primary);
-}
-
-.sidebar-header h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.close-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.close-btn:hover {
-    background: var(--bg-primary);
-    color: var(--text-primary);
-}
-
-.sidebar-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-}
-
-.toc-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.toc-item {
-    padding: 12px 16px;
-    border: 1px solid var(--border-primary);
-    border-radius: 10px;
-    background: var(--bg-primary);
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.toc-item:hover {
-    border-color: var(--accent);
-    transform: translateY(-1px);
-}
-
-.toc-item.active {
-    border-color: var(--accent);
-    background: rgba(0, 122, 255, 0.1);
-}
-
-.toc-title {
-    font-weight: 500;
-    color: var(--text-primary);
-    font-size: 15px;
-}
-
-.toc-page {
-    font-size: 13px;
-    color: var(--text-tertiary);
-    margin-top: 4px;
-}
-
-/* Modal */
-.modal {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition);
-    z-index: 300;
-}
-
-.modal.visible {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.modal-backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(8px);
-}
-
-.modal-content {
-    position: relative;
-    width: min(420px, 90vw);
-    max-height: 85vh;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-primary);
-    border-radius: 16px;
-    overflow: hidden;
-    transform: scale(0.95);
-    transition: transform var(--transition);
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-}
-
-.modal.visible .modal-content {
-    transform: scale(1);
-}
-
-.modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 24px;
-    border-bottom: 1px solid var(--border-primary);
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.modal-body {
-    padding: 24px;
-    overflow-y: auto;
-    max-height: 60vh;
-}
-
-.setting-group {
-    margin-bottom: 28px;
-}
-
-.setting-group:last-child {
-    margin-bottom: 0;
-}
-
-.setting-group label {
-    display: block;
-    margin-bottom: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 16px;
-}
-
-.option-buttons {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.option-btn {
-    padding: 10px 16px;
-    border: 2px solid var(--border-primary);
-    border-radius: 12px;
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    min-width: 80px;
-}
-
-.option-btn:hover {
-    border-color: var(--accent);
-    color: var(--text-primary);
-}
-
-.option-btn.active {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: white;
-}
-
-.range-slider {
-    width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--border-primary);
-    outline: none;
-    -webkit-appearance: none;
-    cursor: pointer;
-}
-
-.range-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--accent);
-    cursor: pointer;
-    border: 3px solid var(--bg-primary);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* Overlay */
-.overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.25);
-    backdrop-filter: blur(4px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition);
-    z-index: 150;
-}
-
-.overlay.visible {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-/* Text width variations */
-[data-width="narrow"] {
-    --text-width: 520px;
-}
-
-[data-width="wide"] {
-    --text-width: 800px;
-}
-
-/* Desktop adjustments */
-@media (min-width: 769px) {
-    .app {
-        grid-template-rows: 64px 1fr 88px;
-    }
-    
-    .header {
-        height: 64px;
-        padding: 0 24px;
-    }
-    
-    .header-title h1 {
-        font-size: 18px;
-    }
-    
-    .page-content {
-        padding: 32px;
-    }
-    
-    .footer {
-        height: 88px;
-        padding: 12px 24px;
-    }
-    
-    .nav-btn {
-        width: 40px;
-        height: 40px;
-    }
-    
-    .page-input {
-        width: 70px;
-        height: 40px;
-        font-size: 16px;
-    }
-}
-
-/* Mobile specific */
-@media (max-width: 480px) {
-    .page-content {
-        padding: 16px;
-    }
-    
-    .sidebar {
-        width: 100vw;
-    }
-}
+    <link rel="stylesheet" href="reader.css">
+</head>
+<body data-theme="dark">
+    <div class="app">
+        
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <h2>КрымЧиталка</h2>
+                <p id="loading-status">Загрузка...</p>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header id="header" class="header">
+            <button class="header-btn" id="back-btn" aria-label="Назад">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m15 18-6-6 6-6"/>
+                </svg>
+            </button>
+            
+            <div class="header-title">
+                <h1>Хаджи-Гирай</h1>
+                <span>Алим Къуртсеит</span>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" id="toc-btn" aria-label="Содержание">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6"/>
+                        <line x1="8" y1="12" x2="21" y2="12"/>
+                        <line x1="8" y1="18" x2="21" y2="18"/>
+                        <line x1="3" y1="6" x2="3.01" y2="6"/>
+                        <line x1="3" y1="12" x2="3.01" y2="12"/>
+                        <line x1="3" y1="18" x2="3.01" y2="18"/>
+                    </svg>
+                </button>
+                <button class="header-btn" id="settings-btn" aria-label="Настройки">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="m12 1 1.57 4.13L17 4l2 2-1.13 3.43L22 11v2l-4.13 1.57L19 18l-2 2-3.43-1.13L11 23H9l-1.57-4.13L4 20l-2-2 1.13-3.43L1 13v-2l4.13-1.57L4 6l2-2 3.43 1.13L11 1h2z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Reader -->
+        <main class="reader">
+            <div id="page-content" class="page-content">
+                <!-- Контент страницы будет здесь -->
+            </div>
+            
+            <!-- Touch zones -->
+            <div class="touch-zones">
+                <button class="touch-zone" id="prev-zone" aria-label="Предыдущая страница"></button>
+                <button class="touch-zone" id="menu-zone" aria-label="Показать/скрыть меню"></button>
+                <button class="touch-zone" id="next-zone" aria-label="Следующая страница"></button>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer id="footer" class="footer">
+            <div class="progress-section">
+                <div class="progress-info">
+                    <span id="current-page">1</span> / <span id="total-pages">100</span>
+                    <span class="separator">•</span>
+                    <span id="reading-time">~5 мин</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="nav-controls">
+                <button class="nav-btn" id="prev-btn" aria-label="Назад">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                </button>
+                <input type="number" id="page-input" class="page-input" min="1" value="1">
+                <button class="nav-btn" id="next-btn" aria-label="Вперед">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </footer>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h3>Содержание</h3>
+                <button class="close-btn" id="close-sidebar" aria-label="Закрыть">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m18 6-12 12"/>
+                        <path d="m6 6 12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="sidebar-content">
+                <nav id="toc-list" class="toc-list"></nav>
+            </div>
+        </aside>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Настройки чтения</h3>
+                    <button class="close-btn" id="close-settings">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m18 6-12 12"/>
+                            <path d="m6 6 12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="setting-group">
+                        <label>Тема оформления</label>
+                        <div class="option-buttons">
+                            <button class="option-btn" data-theme="light">Светлая</button>
+                            <button class="option-btn active" data-theme="dark">Тёмная</button>
+                            <button class="option-btn" data-theme="sepia">Сепия</button>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Шрифт</label>
+                        <div class="option-buttons">
+                            <button class="option-btn active" data-font="crimson">Crimson Text</button>
+                            <button class="option-btn" data-font="inter">Inter</button>
+                            <button class="option-btn" data-font="georgia">Georgia</button>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Размер шрифта: <span id="font-size-value">18px</span></label>
+                        <input type="range" id="font-size-slider" min="14" max="24" value="18" step="1" class="range-slider">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Междустрочный интервал: <span id="line-height-value">1.6</span></label>
+                        <input type="range" id="line-height-slider" min="1.2" max="2.0" value="1.6" step="0.1" class="range-slider">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Ширина текста</label>
+                        <div class="option-buttons">
+                            <button class="option-btn" data-width="narrow">Узкая</button>
+                            <button class="option-btn active" data-width="medium">Средняя</button>
+                            <button class="option-btn" data-width="wide">Широкая</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overlay -->
+        <div id="overlay" class="overlay"></div>
+    </div>
+
+    <script src="reader.js"></script>
+</body>
+</html>
