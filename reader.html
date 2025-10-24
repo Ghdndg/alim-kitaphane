@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     
     <style>
-        /* ПРОСТЫЕ СТИЛИ ДЛЯ СКРОЛЛ-РИДЕРА */
+        /* ИДЕАЛЬНЫЙ СКРОЛЛ-РИДЕР БЕЗ ВИДИМОГО СКРОЛЛБАРА */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         :root {
@@ -42,6 +42,11 @@
             --border-color: #d3c7b8;
         }
         
+        html, body {
+            height: 100%;
+            overflow: hidden; /* СКРЫВАЕМ СИСТЕМНЫЙ СКРОЛЛ */
+        }
+        
         body {
             font-family: var(--font-reading);
             background: var(--bg-primary);
@@ -49,6 +54,16 @@
             font-size: var(--font-size-reading);
             line-height: var(--line-height-reading);
             -webkit-font-smoothing: antialiased;
+        }
+        
+        /* КАСТОМНЫЙ СКРОЛЛБАР - ПОЛНОСТЬЮ СКРЫТЫЙ */
+        body::-webkit-scrollbar {
+            display: none;
+        }
+        
+        body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
         
         /* Loading */
@@ -105,9 +120,9 @@
             display: flex;
             align-items: center;
             padding: 0 16px;
-            background: var(--bg-secondary);
+            background: rgba(28, 28, 30, 0.95);
             border-bottom: 1px solid var(--border-color);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(20px);
             transform: translateY(-100%);
             transition: transform 0.3s;
             z-index: 100;
@@ -130,7 +145,7 @@
         }
         
         .header-btn:hover {
-            background: var(--bg-primary);
+            background: rgba(255, 255, 255, 0.1);
             color: var(--text-primary);
         }
         
@@ -160,18 +175,32 @@
             gap: 4px;
         }
         
+        /* Content Container */
+        .content-container {
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            /* СКРЫВАЕМ СКРОЛЛБАР НО ОСТАВЛЯЕМ ФУНКЦИОНАЛЬНОСТЬ */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .content-container::-webkit-scrollbar {
+            display: none;
+        }
+        
         /* Content */
         .content {
             max-width: 680px;
             margin: 0 auto;
-            padding: 20px;
-            min-height: 100vh;
+            padding: 80px 20px 40px 20px; /* ОТСТУП СВЕРХУ ДЛЯ HEADER */
+            min-height: calc(100vh - 120px);
         }
         
         .content h1 {
             font-size: 32px;
             line-height: 1.25;
-            margin: 40px 0 30px 0;
+            margin: 0 0 30px 0;
             font-weight: 700;
             color: var(--text-primary);
             text-align: center;
@@ -195,6 +224,51 @@
         
         .content p:last-child {
             margin-bottom: 40px;
+        }
+        
+        /* Navigation Controls */
+        .nav-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            background: rgba(28, 28, 30, 0.95);
+            padding: 12px 24px;
+            border-radius: 25px;
+            backdrop-filter: blur(20px);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+        
+        .nav-controls.visible { opacity: 1; }
+        
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 12px;
+            background: var(--accent);
+            color: white;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-weight: 600;
+        }
+        
+        .nav-btn:hover {
+            background: #0066cc;
+            transform: scale(1.05);
+        }
+        
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
         
         /* Progress indicator */
@@ -352,17 +426,28 @@
         /* Mobile adjustments */
         @media (max-width: 768px) {
             .content {
-                padding: 16px;
+                padding: 70px 16px 30px 16px;
             }
             
             .content h1 {
                 font-size: 28px;
-                margin: 20px 0 20px 0;
+                margin: 0 0 20px 0;
             }
             
             .content h2 {
                 font-size: 22px;
                 margin: 30px 0 16px 0;
+            }
+            
+            .nav-controls {
+                bottom: 15px;
+                padding: 10px 20px;
+                gap: 15px;
+            }
+            
+            .nav-btn {
+                width: 40px;
+                height: 40px;
             }
         }
     </style>
@@ -397,17 +482,34 @@
         
         <div class="header-actions">
             <button class="header-btn" id="settings-btn">
+                <!-- ИСПРАВЛЕННАЯ ИКОНКА НАСТРОЕК -->
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
                     <circle cx="12" cy="12" r="3"/>
-                    <path d="m12 1 1.57 4.13L17 4l2 2-1.13 3.43L22 11v2l-4.13 1.57L19 18l-2 2-3.43-1.13L11 23H9l-1.57-4.13L4 20l-2-2 1.13-3.43L1 13v-2l4.13-1.57L4 6l2-2 3.43 1.13L11 1h2z"/>
                 </svg>
             </button>
         </div>
     </header>
 
-    <!-- Content -->
-    <div class="content" id="content">
-        <!-- Весь текст книги будет здесь -->
+    <!-- Content Container -->
+    <div class="content-container" id="content-container">
+        <div class="content" id="content">
+            <!-- Весь текст книги будет здесь -->
+        </div>
+    </div>
+
+    <!-- Navigation Controls -->
+    <div id="nav-controls" class="nav-controls">
+        <button class="nav-btn" id="up-btn" title="Вверх">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m18 15-6-6-6 6"/>
+            </svg>
+        </button>
+        <button class="nav-btn" id="down-btn" title="Вниз">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m6 9 6 6 6-6"/>
+            </svg>
+        </button>
     </div>
 
     <!-- Settings Modal -->
