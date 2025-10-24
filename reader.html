@@ -20,7 +20,7 @@
             <div class="loading-content">
                 <div class="spinner"></div>
                 <h2>КрымЧиталка</h2>
-                <p id="loading-status">Загрузка...</p>
+                <p id="loading-status">Загрузка книги...</p>
             </div>
         </div>
 
@@ -38,16 +38,6 @@
             </div>
             
             <div class="header-actions">
-                <button class="header-btn" id="toc-btn" aria-label="Содержание">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="8" y1="6" x2="21" y2="6"/>
-                        <line x1="8" y1="12" x2="21" y2="12"/>
-                        <line x1="8" y1="18" x2="21" y2="18"/>
-                        <line x1="3" y1="6" x2="3.01" y2="6"/>
-                        <line x1="3" y1="12" x2="3.01" y2="12"/>
-                        <line x1="3" y1="18" x2="3.01" y2="18"/>
-                    </svg>
-                </button>
                 <button class="header-btn" id="settings-btn" aria-label="Настройки">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"/>
@@ -77,7 +67,7 @@
                 <div class="progress-info">
                     <span id="current-page">1</span> / <span id="total-pages">100</span>
                     <span class="separator">•</span>
-                    <span id="reading-time">~5 мин</span>
+                    <span id="reading-time">~45 мин</span>
                 </div>
                 <div class="progress-bar-container">
                     <div class="progress-bar" id="progress-bar">
@@ -100,23 +90,6 @@
                 </button>
             </div>
         </footer>
-
-        <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar">
-            <div class="sidebar-header">
-                <h3>Содержание</h3>
-                <button class="close-btn" id="close-sidebar" aria-label="Закрыть">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="m18 6-12 12"/>
-                        <path d="m6 6 12 12"/>
-                    </svg>
-                </button>
-            </div>
-            
-            <div class="sidebar-content">
-                <nav id="toc-list" class="toc-list"></nav>
-            </div>
-        </aside>
 
         <!-- Settings Modal -->
         <div id="settings-modal" class="modal">
@@ -143,15 +116,6 @@
                     </div>
                     
                     <div class="setting-group">
-                        <label>Шрифт</label>
-                        <div class="option-buttons">
-                            <button class="option-btn active" data-font="crimson">Crimson Text</button>
-                            <button class="option-btn" data-font="inter">Inter</button>
-                            <button class="option-btn" data-font="georgia">Georgia</button>
-                        </div>
-                    </div>
-                    
-                    <div class="setting-group">
                         <label>Размер шрифта: <span id="font-size-value">18px</span></label>
                         <input type="range" id="font-size-slider" min="14" max="24" value="18" step="1" class="range-slider">
                     </div>
@@ -159,15 +123,6 @@
                     <div class="setting-group">
                         <label>Междустрочный интервал: <span id="line-height-value">1.6</span></label>
                         <input type="range" id="line-height-slider" min="1.2" max="2.0" value="1.6" step="0.1" class="range-slider">
-                    </div>
-                    
-                    <div class="setting-group">
-                        <label>Ширина текста</label>
-                        <div class="option-buttons">
-                            <button class="option-btn" data-width="narrow">Узкая</button>
-                            <button class="option-btn active" data-width="medium">Средняя</button>
-                            <button class="option-btn" data-width="wide">Широкая</button>
-                        </div>
                     </div>
                 </div>
             </div>
