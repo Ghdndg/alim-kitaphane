@@ -26,7 +26,7 @@
     // Application state
     const state = {
         chapters: [],
-        pages: [], // Страницы с HTML контентом
+        pages: [],
         currentPageIndex: 0,
         totalPages: 0,
         uiVisible: false,
@@ -211,38 +211,23 @@
             
             tocList.innerHTML = '';
             
-            // Create TOC based on chapters
-            const chapterStartPages = new Map();
-            state.pages.forEach((page, index) => {
-                if (page.isChapterStart && !chapterStartPages.has(page.chapterIndex)) {
-                    chapterStartPages.set(page.chapterIndex, index + 1);
-                }
-            });
-            
             state.chapters.forEach((chapter, index) => {
                 const item = document.createElement('div');
                 item.className = 'toc-item';
                 
-                // Check if current page is in this chapter
-                const currentPageData = state.pages[state.currentPageIndex];
-                if (currentPageData && currentPageData.chapterIndex === index) {
+                if (index === state.currentPageIndex) {
                     item.classList.add('active');
                 }
                 
-                const startPage = chapterStartPages.get(index) || 1;
-                
                 item.innerHTML = `
                     <div class="toc-title">${chapter.title || `Глава ${index + 1}`}</div>
-                    <div class="toc-page">Страница ${startPage}</div>
+                    <div class="toc-page">Страница ${index + 1}</div>
                 `;
                 
                 on(item, 'click', () => {
-                    const pageIndex = state.pages.findIndex(p => p.chapterIndex === index && p.isChapterStart);
-                    if (pageIndex >= 0) {
-                        state.currentPageIndex = pageIndex;
-                        reader.render();
-                        ui.hideSidebar();
-                    }
+                    state.currentPageIndex = index;
+                    reader.render();
+                    ui.hideSidebar();
                 });
                 
                 tocList.appendChild(item);
@@ -275,7 +260,7 @@
                 
             } catch (error) {
                 console.error('Failed to initialize reader:', error);
-                ui.showLoading('Ошибка загрузки. Проверьте файлы book/chapters.json и главы.');
+                ui.showLoading('Ошибка загрузки. Проверьте файлы chapters.json и главы.');
             }
         },
         
@@ -283,16 +268,38 @@
             try {
                 ui.showLoading('Загрузка книги...');
                 
-                // Load chapters metadata
-                const response = await fetch('book/chapters.json');
-                if (!response.ok) throw new Error('Failed to load chapters.json');
+                // ИСПРАВЛЕННЫЙ ПУТЬ: chapters.json находится в корне
+                const response = await fetch('chapters.json');
+                if (!response.ok) {
+                    throw new Error(`Failed to load chapters.json: HTTP ${response.status}`);
+                }
                 
                 state.chapters = await response.json();
                 console.log('Loaded chapters:', state.chapters);
                 
+                if (!Array.isArray(state.chapters) || state.chapters.length === 0) {
+                    throw new Error('chapters.json is empty or invalid');
+                }
+                
             } catch (error) {
                 console.error('Failed to load book:', error);
-                throw error;
+                
+                // FALLBACK: создаем главы на основе имеющихся файлов
+                state.chapters = [
+                    { title: "Муэллиф Бириндже СОЗ", href: "ch0.html" },
+                    { title: "Глава 1", href: "ch1.html" },
+                    { title: "Глава 2", href: "ch2.html" },
+                    { title: "Глава 3", href: "ch3.html" },
+                    { title: "Глава 4", href: "ch4.html" },
+                    { title: "Глава 5", href: "ch5.html" },
+                    { title: "Глава 6", href: "ch6.html" },
+                    { title: "Глава 7", href: "ch7.html" },
+                    { title: "Глава 8", href: "ch8.html" },
+                    { title: "Глава 9", href: "ch9.html" },
+                    { title: "Глава 10", href: "ch10.html" }
+                ];
+                
+                console.log('Using fallback chapters:', state.chapters);
             }
         },
         
@@ -301,8 +308,7 @@
             
             state.pages = [];
             
-            // ПРОСТАЯ ЛОГИКА: каждая глава = одна страница
-            // Это гарантирует что текст никогда не обрежется
+            // Каждая глава = одна страница
             state.chapters.forEach((chapter, chapterIndex) => {
                 state.pages.push({
                     chapterIndex: chapterIndex,
@@ -319,20 +325,25 @@
         
         async render() {
             const pageContent = $('#page-content');
-            if (!pageContent || !state.pages[state.currentPageIndex]) return;
+            if (!pageContent) return;
             
             const currentPage = state.pages[state.currentPageIndex];
+            if (!currentPage) {
+                pageContent.innerHTML = '<h1>Ошибка</h1><p>Страница не найдена.</p>';
+                return;
+            }
             
             try {
                 // Load chapter content if not cached
                 if (!currentPage.content) {
                     ui.showLoading('Загрузка главы...');
                     
-                    const response = await fetch(`book/${currentPage.chapterFile}`);
+                    // ИСПРАВЛЕННЫЙ ПУТЬ: файлы глав находятся в корне
+                    const response = await fetch(currentPage.chapterFile);
                     if (response.ok) {
                         currentPage.content = await response.text();
                     } else {
-                        currentPage.content = `<h1>${currentPage.title}</h1><p>Ошибка загрузки главы.</p>`;
+                        throw new Error(`HTTP ${response.status}: ${currentPage.chapterFile}`);
                     }
                     
                     ui.hideLoading();
@@ -346,7 +357,11 @@
                 
             } catch (error) {
                 console.error('Failed to render page:', error);
-                pageContent.innerHTML = `<h1>Ошибка</h1><p>Не удалось загрузить страницу.</p>`;
+                pageContent.innerHTML = `
+                    <h1>${currentPage.title}</h1>
+                    <p>Ошибка загрузки главы: ${error.message}</p>
+                    <p>Проверьте что файл <strong>${currentPage.chapterFile}</strong> существует.</p>
+                `;
             }
         },
         
