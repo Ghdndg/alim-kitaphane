@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#1c1c1e">
-  <title>Хаджи Гирай</title>
+  <title>КрымЧиталка — Хаджи-Гирай</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,15 +12,14 @@
   
   <link rel="stylesheet" href="reader.css">
 </head>
-<body>
-  <!-- App Shell -->
+<body data-theme="dark">
   <div id="app" class="app">
     
     <!-- Loading State -->
     <div id="loading" class="loading">
       <div class="loading-content">
         <div class="spinner"></div>
-        <h2>Хаджи Гирай</h2>
+        <h2>КрымЧиталка</h2>
         <p id="loading-status">Инициализация...</p>
       </div>
     </div>
@@ -34,8 +33,8 @@
       </button>
       
       <div class="header-title">
-        <h1 id="book-title">Хаджи Гирай</h1>
-        <span id="book-author">Алим Мидат</span>
+        <h1 id="book-title">Хаджи-Гирай</h1>
+        <span id="book-author">Алим Къуртсеит</span>
       </div>
       
       <div class="header-actions">
@@ -53,11 +52,6 @@
             <line x1="3" y1="6" x2="3.01" y2="6"/>
             <line x1="3" y1="12" x2="3.01" y2="12"/>
             <line x1="3" y1="18" x2="3.01" y2="18"/>
-          </svg>
-        </button>
-        <button class="header-btn" id="bookmark-btn" aria-label="Закладка">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
           </svg>
         </button>
         <button class="header-btn" id="settings-btn" aria-label="Настройки">
@@ -122,7 +116,6 @@
         <div class="sidebar-tabs">
           <button class="tab-btn active" data-tab="toc">Содержание</button>
           <button class="tab-btn" data-tab="bookmarks">Закладки</button>
-          <button class="tab-btn" data-tab="notes">Заметки</button>
         </div>
         <button class="close-btn" id="close-sidebar" aria-label="Закрыть">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -143,12 +136,6 @@
         <div class="tab-content" id="bookmarks-content">
           <div id="bookmarks-list" class="bookmarks-list">
             <div class="empty-state">Закладок пока нет</div>
-          </div>
-        </div>
-        
-        <div class="tab-content" id="notes-content">
-          <div id="notes-list" class="notes-list">
-            <div class="empty-state">Заметок пока нет</div>
           </div>
         </div>
       </div>
@@ -172,8 +159,8 @@
           <div class="setting-group">
             <label>Тема оформления</label>
             <div class="theme-picker">
-              <button class="theme-btn active" data-theme="light">Светлая</button>
-              <button class="theme-btn" data-theme="dark">Тёмная</button>
+              <button class="theme-btn" data-theme="light">Светлая</button>
+              <button class="theme-btn active" data-theme="dark">Тёмная</button>
               <button class="theme-btn" data-theme="sepia">Сепия</button>
             </div>
           </div>
@@ -189,12 +176,12 @@
           
           <div class="setting-group">
             <label>Размер шрифта: <span id="font-size-value">18px</span></label>
-            <input type="range" id="font-size-slider" min="14" max="28" value="18" step="1">
+            <input type="range" id="font-size-slider" min="14" max="24" value="18" step="1">
           </div>
           
           <div class="setting-group">
             <label>Междустрочный интервал: <span id="line-height-value">1.6</span></label>
-            <input type="range" id="line-height-slider" min="1.2" max="2.4" value="1.6" step="0.1">
+            <input type="range" id="line-height-slider" min="1.2" max="2.0" value="1.6" step="0.1">
           </div>
           
           <div class="setting-group">
