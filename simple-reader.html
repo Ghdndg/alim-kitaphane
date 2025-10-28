@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Книга "Хаджи Гирай"</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .reader-wrapper {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .reader-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+
+        .reader-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .reader-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        #reader-content {
+            line-height: 1.8;
+            padding: 40px;
+            font-size: 18px;
+            text-align: justify;
+            min-height: 500px;
+            color: #333;
+        }
+
+        #reader-content.loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-style: italic;
+            color: #999;
+        }
+
+        .reader-controls {
+            background: #f5f5f5;
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 500;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #page-info {
+            font-size: 16px;
+            font-weight: 600;
+            color: #555;
+            padding: 0 10px;
+        }
+
+        .jump-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #page-jump {
+            width: 80px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        #page-jump:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            padding: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            #reader-content {
+                padding: 20px;
+                font-size: 16px;
+                min-height: 400px;
+            }
+
+            .reader-controls {
+                flex-direction: column;
+            }
+
+            .nav-buttons, .jump-controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            button {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="reader-wrapper">
+            <div class="reader-header">
+                <h1>Хаджи Гирай</h1>
+                <p>Крымскотатарская литература</p>
+            </div>
+
+            <div id="reader-content" class="loading">
+                Загрузка книги...
+            </div>
+
+            <div class="reader-controls">
+                <div class="nav-buttons">
+                    <button id="prev-btn" disabled>← Назад</button>
+                    <span id="page-info">- / -</span>
+                    <button id="next-btn" disabled>Вперед →</button>
+                </div>
+                <div class="jump-controls">
+                    <input type="number" id="page-jump" placeholder="№" min="1" disabled>
+                    <button id="go-btn" disabled>Перейти</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Глобальные переменные
+        let allWords = [];
+        let totalPages = 0;
+        let currentPage = 1;
+        const wordsPerPage = 280; // Количество слов на странице
+        const STORAGE_KEY = 'reader_last_page';
+
+        // Элементы DOM
+        const readerContent = document.getElementById('reader-content');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const pageInfo = document.getElementById('page-info');
+        const pageJump = document.getElementById('page-jump');
+        const goBtn = document.getElementById('go-btn');
+
+        // Загрузка текста из файла
+        async function loadBook() {
+            try {
+                const response = await fetch('Хаджи Гирай.txt');
+                
+                if (!response.ok) {
+                    throw new Error('Файл не найден');
+                }
+
+                const text = await response.text();
+                
+                // Разбиваем текст на слова (по пробелам и переносам строк)
+                allWords = text.split(/\s+/).filter(word => word.length > 0);
+                
+                // Вычисляем общее количество страниц
+                totalPages = Math.ceil(allWords.length / wordsPerPage);
+                
+                // Загружаем последнюю прочитанную страницу
+                const savedPage = localStorage.getItem(STORAGE_KEY);
+                if (savedPage) {
+                    currentPage = parseInt(savedPage);
+                    if (currentPage > totalPages) currentPage = 1;
+                }
+                
+                // Настраиваем элементы управления
+                pageJump.max = totalPages;
+                pageJump.disabled = false;
+                goBtn.disabled = false;
+                
+                // Показываем первую (или сохраненную) страницу
+                displayPage(currentPage);
+                
+            } catch (error) {
+                readerContent.className = '';
+                readerContent.innerHTML = `<div class="error-message">Ошибка загрузки: ${error.message}<br>Убедитесь, что файл "Хаджи Гирай.txt" находится в корне проекта.</div>`;
+            }
+        }
+
+        // Получение содержимого страницы
+        function getPageContent(pageNumber) {
+            const start = (pageNumber - 1) * wordsPerPage;
+            const end = start + wordsPerPage;
+            return allWords.slice(start, end).join(' ');
+        }
+
+        // Отображение страницы
+        function displayPage(pageNumber) {
+            // Получаем текст страницы
+            const pageText = getPageContent(pageNumber);
+            
+            // Отображаем текст
+            readerContent.className = '';
+            readerContent.textContent = pageText;
+            
+            // Обновляем информацию о странице
+            pageInfo.textContent = `${pageNumber} / ${totalPages}`;
+            
+            // Обновляем состояние кнопок
+            prevBtn.disabled = (pageNumber <= 1);
+            nextBtn.disabled = (pageNumber >= totalPages);
+            
+            // Сохраняем текущую страницу
+            currentPage = pageNumber;
+            localStorage.setItem(STORAGE_KEY, currentPage);
+            
+            // Прокручиваем наверх
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Обработчики событий
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                displayPage(currentPage - 1);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                displayPage(currentPage + 1);
+            }
+        });
+
+        goBtn.addEventListener('click', () => {
+            const targetPage = parseInt(pageJump.value);
+            if (targetPage >= 1 && targetPage <= totalPages) {
+                displayPage(targetPage);
+                pageJump.value = '';
+            } else {
+                alert(`Введите номер страницы от 1 до ${totalPages}`);
+            }
+        });
+
+        // Переход по Enter в поле ввода
+        pageJump.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                goBtn.click();
+            }
+        });
+
+        // Навигация стрелками клавиатуры
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            
+            if (e.key === 'ArrowLeft' && !prevBtn.disabled) {
+                prevBtn.click();
+            } else if (e.key === 'ArrowRight' && !nextBtn.disabled) {
+                nextBtn.click();
+            }
+        });
+
+        // Инициализация при загрузке страницы
+        loadBook();
+    </script>
+</body>
+</html>
