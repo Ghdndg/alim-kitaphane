@@ -638,15 +638,15 @@ createSettingsPanel() {
                     <section class="setting-group">
                         <label>Тема оформления</label>
                         <div class="theme-options">
-                            <button class="theme-option" data-theme="sepia">
+                            <button class="theme-option" data-theme="sepia" id="themeSepia">
                                 <div class="theme-preview sepia"></div>
                                 <span>Сепия</span>
                             </button>
-                            <button class="theme-option" data-theme="gray">
+                            <button class="theme-option" data-theme="gray" id="themeGray">
                                 <div class="theme-preview gray"></div>
                                 <span>Серый</span>
                             </button>
-                            <button class="theme-option active" data-theme="dark">
+                            <button class="theme-option active" data-theme="dark" id="themeDark">
                                 <div class="theme-preview dark"></div>
                                 <span>Черный</span>
                             </button>
@@ -659,6 +659,16 @@ createSettingsPanel() {
                         <div class="font-controls">
                             <button class="font-btn" id="decreaseFontSize">А-</button>
                             <button class="font-btn" id="increaseFontSize">А+</button>
+                        </div>
+                    </section>
+
+                    <!-- Межстрочный интервал -->
+                    <section class="setting-group">
+                        <label>Межстрочный интервал</label>
+                        <div class="spacing-controls">
+                            <button class="spacing-btn" id="spacingTight" data-spacing="1.4">Узкий</button>
+                            <button class="spacing-btn active" id="spacingNormal" data-spacing="1.6">Нормальный</button>
+                            <button class="spacing-btn" id="spacingLoose" data-spacing="2.0">Широкий</button>
                         </div>
                     </section>
                 </div>
@@ -721,6 +731,8 @@ createSettingsPanel() {
         
         .settings-content {
             padding: 24px;
+            max-height: 50vh;
+            overflow-y: auto;
         }
         
         .setting-group {
@@ -753,17 +765,13 @@ createSettingsPanel() {
             cursor: pointer;
         }
         
-        .theme-options {
+        .theme-options, .font-controls, .spacing-controls {
             display: flex;
             gap: 12px;
         }
         
-        .theme-option {
+        .theme-option, .font-btn, .spacing-btn {
             flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
             padding: 12px 8px;
             background: none;
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -771,10 +779,23 @@ createSettingsPanel() {
             cursor: pointer;
             transition: all 0.2s;
             color: #fff;
+            font-size: 14px;
         }
         
-        .theme-option.active {
+        .theme-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .theme-option.active, .font-btn:hover, .spacing-btn.active {
             border-color: #007aff;
+            background: rgba(0, 122, 255, 0.1);
+        }
+        
+        .font-btn:hover, .spacing-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
         
         .theme-preview {
@@ -786,21 +807,6 @@ createSettingsPanel() {
         .theme-preview.sepia { background: #f7f0e6; }
         .theme-preview.gray { background: #f5f5f5; }
         .theme-preview.dark { background: #000; }
-        
-        .font-controls {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-        }
-        
-        .font-btn {
-            padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            color: #fff;
-            cursor: pointer;
-        }
     `;
     
     // Добавляем CSS
@@ -815,13 +821,117 @@ createSettingsPanel() {
     this.elements.settingsDrawer = document.getElementById('settingsDrawer');
     this.elements.settingsBackdrop = document.getElementById('settingsBackdrop');
     this.elements.closeSettingsButton = document.getElementById('closeSettingsButton');
+    this.elements.brightnessSlider = document.getElementById('brightnessSlider');
+    this.elements.decreaseFontSize = document.getElementById('decreaseFontSize');
+    this.elements.increaseFontSize = document.getElementById('increaseFontSize');
     
-    // Привязываем события для закрытия
-    this.elements.closeSettingsButton?.addEventListener('click', () => this.closeSettings());
-    this.elements.settingsBackdrop?.addEventListener('click', () => this.closeSettings());
+    // ПРИВЯЗЫВАЕМ СОБЫТИЯ ДЛЯ ВСЕХ КНОПОК
+    this.bindDynamicSettingsEvents();
     
     console.log('✅ Settings panel created and shown');
 }
+
+/**
+ * НОВЫЙ МЕТОД: Привязывает события для динамически созданных кнопок
+ */
+bindDynamicSettingsEvents() {
+    console.log('🎮 Binding dynamic settings events...');
+    
+    // Закрытие панели
+    this.elements.closeSettingsButton?.addEventListener('click', () => {
+        console.log('🔄 Close settings clicked');
+        this.closeSettings();
+    });
+    
+    this.elements.settingsBackdrop?.addEventListener('click', () => {
+        console.log('🔄 Settings backdrop clicked');
+        this.closeSettings();
+    });
+    
+    // Яркость
+    this.elements.brightnessSlider?.addEventListener('input', (event) => {
+        console.log('🔄 Brightness changed:', event.target.value);
+        this.updateBrightness(parseInt(event.target.value));
+    });
+    
+    // Размер шрифта
+    this.elements.decreaseFontSize?.addEventListener('click', () => {
+        console.log('🔄 Decrease font size clicked');
+        this.adjustFontSize(-2);
+    });
+    
+    this.elements.increaseFontSize?.addEventListener('click', () => {
+        console.log('🔄 Increase font size clicked');
+        this.adjustFontSize(2);
+    });
+    
+    // Темы
+    document.querySelectorAll('.theme-option').forEach(button => {
+        button.addEventListener('click', () => {
+            console.log('🔄 Theme clicked:', button.dataset.theme);
+            this.changeTheme(button.dataset.theme);
+        });
+    });
+    
+    // Межстрочный интервал
+    document.querySelectorAll('.spacing-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            console.log('🔄 Spacing clicked:', button.dataset.spacing);
+            this.changeLineHeight(parseFloat(button.dataset.spacing));
+        });
+    });
+    
+    console.log('✅ Dynamic settings events bound');
+}
+
+/**
+ * НОВЫЕ МЕТОДЫ для работы с настройками
+ */
+updateBrightness(brightness) {
+    this.state.settings.brightness = brightness;
+    document.documentElement.style.filter = `brightness(${brightness}%)`;
+    this.saveSettings();
+    console.log(`🔆 Brightness set to: ${brightness}%`);
+}
+
+adjustFontSize(delta) {
+    const newSize = Math.max(14, Math.min(24, this.state.settings.fontSize + delta));
+    
+    if (newSize !== this.state.settings.fontSize) {
+        this.state.settings.fontSize = newSize;
+        this.applyTypographySettings();
+        this.saveSettings();
+        console.log(`📏 Font size changed to: ${newSize}px`);
+    }
+}
+
+changeTheme(themeName) {
+    this.state.settings.theme = themeName;
+    document.body.setAttribute('data-theme', themeName);
+    this.saveSettings();
+    
+    // Обновляем активную тему
+    document.querySelectorAll('.theme-option').forEach(option => {
+        option.classList.toggle('active', option.dataset.theme === themeName);
+    });
+    
+    console.log(`🎨 Theme changed to: ${themeName}`);
+}
+
+changeLineHeight(lineHeight) {
+    this.state.settings.lineHeight = lineHeight;
+    this.applyTypographySettings();
+    this.saveSettings();
+    
+    // Обновляем активную кнопку
+    document.querySelectorAll('.spacing-btn').forEach(btn => {
+        const spacing = parseFloat(btn.dataset.spacing);
+        btn.classList.toggle('active', Math.abs(spacing - lineHeight) < 0.1);
+    });
+    
+    console.log(`📐 Line height changed to: ${lineHeight}`);
+}
+
 
 /**
  * Закрытие настроек
