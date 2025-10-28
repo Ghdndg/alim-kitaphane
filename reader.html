@@ -3,436 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>КрымЧиталка — Хаджи-Гирай</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: "Georgia", serif;
-            background: #000;
-            color: #fff;
-            overflow: hidden;
-            height: 100vh;
-            position: fixed;
-            width: 100vw;
-        }
-        
-        .app {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            width: 100vw;
-        }
-        
-        /* HEADER - ФИКСИРОВАННАЯ ВЫСОТА */
-        .header {
-            height: 50px;
-            min-height: 50px;
-            max-height: 50px;
-            background: #111;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-            border-bottom: 1px solid #333;
-            flex-shrink: 0;
-            transform: translateY(-100%);
-            transition: transform 0.3s;
-        }
-        
-        .header.visible { transform: translateY(0); }
-        
-        .title {
-            font-size: 16px;
-            font-weight: 600;
-        }
-        
-        .settings {
-            background: none;
-            border: none;
-            color: #999;
-            cursor: pointer;
-            font-size: 18px;
-            padding: 5px;
-        }
-        
-        .settings:hover { color: #fff; }
-        
-        /* READER - ТОЧНО ВЫЧИСЛЕННАЯ ВЫСОТА */
-        .reader {
-            flex: 1;
-            position: relative;
-            overflow: hidden;
-            /* ТОЧНАЯ ВЫСОТА: 100vh - header(50px) - footer(70px) = calc(100vh - 120px) */
-            height: calc(100vh - 120px);
-            min-height: calc(100vh - 120px);
-            max-height: calc(100vh - 120px);
-        }
-        
-        .page {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            padding: 15px;
-            overflow: hidden;
-        }
-        
-        .content {
-            max-width: 600px;
-            margin: 0 auto;
-            height: 100%;
-            font-size: 17px;
-            line-height: 1.5;
-            overflow: hidden;
-            text-align: justify;
-        }
-        
-        .content h1 {
-            font-size: 24px;
-            text-align: center;
-            margin-bottom: 15px;
-            font-weight: 700;
-        }
-        
-        .content .author {
-            font-size: 18px;
-            font-style: italic;
-            color: #ccc;
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        
-        .content h2 {
-            font-size: 20px;
-            margin: 20px 0 10px 0;
-            font-weight: 600;
-        }
-        
-        .content p {
-            margin-bottom: 12px;
-            line-height: 1.5;
-        }
-        
-        /* ZONES */
-        .zones {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            z-index: 10;
-        }
-        
-        .zone {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-        }
-        
-        /* FOOTER - ФИКСИРОВАННАЯ ВЫСОТА */
-        .footer {
-            height: 70px;
-            min-height: 70px;
-            max-height: 70px;
-            background: #111;
-            border-top: 1px solid #333;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 8px;
-            padding: 0 15px;
-            flex-shrink: 0;
-            transform: translateY(100%);
-            transition: transform 0.3s;
-        }
-        
-        .footer.visible { transform: translateY(0); }
-        
-        .progress {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            font-size: 13px;
-            color: #999;
-        }
-        
-        .bar {
-            flex: 1;
-            height: 3px;
-            background: #333;
-            border-radius: 2px;
-            cursor: pointer;
-            position: relative;
-        }
-        
-        .fill {
-            height: 100%;
-            background: linear-gradient(90deg, #007aff, #5856d6);
-            border-radius: 2px;
-            width: 0%;
-            transition: width 0.2s;
-        }
-        
-        .nav {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        
-        .btn {
-            width: 36px;
-            height: 36px;
-            background: #333;
-            border: none;
-            border-radius: 6px;
-            color: #999;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-        }
-        
-        .btn:hover:not(:disabled) {
-            background: #007aff;
-            color: #fff;
-        }
-        
-        .btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        
-        .input {
-            width: 50px;
-            height: 36px;
-            background: #333;
-            border: none;
-            border-radius: 6px;
-            color: #fff;
-            text-align: center;
-            font-size: 13px;
-            outline: none;
-        }
-        
-        /* LOADING */
-        .loading {
-            position: fixed;
-            inset: 0;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            z-index: 1000;
-        }
-        
-        .loading.hidden { display: none; }
-        
-        .spin {
-            width: 32px;
-            height: 32px;
-            border: 3px solid #333;
-            border-top-color: #007aff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        /* SETTINGS */
-        .modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
-        }
-        
-        .modal.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        
-        .panel {
-            background: #111;
-            border-radius: 10px;
-            padding: 20px;
-            width: min(350px, 90vw);
-            border: 1px solid #333;
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .modal-title {
-            font-size: 18px;
-            font-weight: 600;
-        }
-        
-        .close {
-            background: none;
-            border: none;
-            color: #999;
-            cursor: pointer;
-            font-size: 18px;
-        }
-        
-        .group {
-            margin-bottom: 20px;
-        }
-        
-        .label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        
-        .options {
-            display: flex;
-            gap: 6px;
-        }
-        
-        .option {
-            padding: 6px 12px;
-            background: #333;
-            border: 2px solid #333;
-            border-radius: 5px;
-            color: #999;
-            cursor: pointer;
-            font-size: 13px;
-            min-width: 60px;
-            text-align: center;
-        }
-        
-        .option:hover {
-            border-color: #007aff;
-            color: #fff;
-        }
-        
-        .option.active {
-            background: #007aff;
-            border-color: #007aff;
-            color: #fff;
-        }
-        
-        .slider {
-            width: 100%;
-            height: 4px;
-            background: #333;
-            border-radius: 2px;
-            outline: none;
-            -webkit-appearance: none;
-        }
-        
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
-            background: #007aff;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-        
-        /* MOBILE */
-        @media (max-width: 768px) {
-            .content { font-size: 16px; }
-            .page { padding: 12px; }
-        }
-    </style>
+    <title>Хаджи-Гирай | Электронная книга</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="app">
-        <!-- Loading -->
-        <div class="loading" id="loading">
-            <div class="spin"></div>
-            <h2>КрымЧиталка</h2>
-            <p id="status">Загрузка...</p>
-        </div>
-        
-        <!-- Header -->
-        <div class="header" id="header">
-            <div class="title">Хаджи-Гирай • Алим Къуртсеит</div>
-            <button class="settings" id="settings-btn">⚙</button>
-        </div>
-        
-        <!-- Reader -->
-        <div class="reader">
-            <div class="page">
-                <div class="content" id="content"></div>
-            </div>
-            
-            <div class="zones">
-                <button class="zone" id="prev"></button>
-                <button class="zone" id="menu"></button>
-                <button class="zone" id="next"></button>
+    <div class="app-container">
+        <!-- Экран загрузки -->
+        <div class="loading-screen" id="loadingScreen">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <h2>Загрузка книги</h2>
+                <p id="loadingStatus">Подготовка к чтению...</p>
             </div>
         </div>
-        
-        <!-- Footer -->
-        <div class="footer" id="footer">
-            <div class="progress">
-                <span id="info">1 / 100</span>
-                <div class="bar" id="bar">
-                    <div class="fill" id="fill"></div>
+
+        <!-- Основной интерфейс -->
+        <div class="reader-interface" id="readerInterface" style="display: none;">
+            <!-- Заголовок -->
+            <header class="reader-header">
+                <div class="book-info">
+                    <h1 class="book-title">Хаджи-Гирай</h1>
+                    <p class="book-author">Алим Къуртсеит</p>
                 </div>
-                <span id="time">5 мин</span>
-            </div>
-            
-            <div class="nav">
-                <button class="btn" id="prev-btn">‹</button>
-                <input type="number" class="input" id="input" min="1" value="1">
-                <button class="btn" id="next-btn">›</button>
-            </div>
-        </div>
-        
-        <!-- Modal -->
-        <div class="modal" id="modal">
-            <div class="panel">
-                <div class="modal-header">
-                    <div class="modal-title">Настройки</div>
-                    <button class="close" id="close">✕</button>
-                </div>
-                
-                <div class="group">
-                    <div class="label">Тема</div>
-                    <div class="options">
-                        <button class="option" data-theme="light">Светлая</button>
-                        <button class="option active" data-theme="dark">Тёмная</button>
-                        <button class="option" data-theme="sepia">Сепия</button>
+                <button class="settings-btn" id="settingsBtn">⚙️</button>
+            </header>
+
+            <!-- Область чтения -->
+            <main class="reading-area">
+                <div class="page-container" id="pageContainer">
+                    <div class="page-content" id="pageContent">
+                        <!-- Контент страницы загружается здесь -->
                     </div>
                 </div>
-                
-                <div class="group">
-                    <div class="label">Размер: <span id="size-val">17px</span></div>
-                    <input type="range" class="slider" id="size" min="14" max="22" value="17">
+
+                <!-- Зоны касания для навигации -->
+                <div class="touch-zones">
+                    <div class="touch-zone touch-zone--prev" id="prevZone"></div>
+                    <div class="touch-zone touch-zone--menu" id="menuZone"></div>
+                    <div class="touch-zone touch-zone--next" id="nextZone"></div>
+                </div>
+            </main>
+
+            <!-- Панель навигации -->
+            <footer class="navigation-panel">
+                <div class="progress-section">
+                    <div class="page-info">
+                        <span id="currentPage">1</span> / <span id="totalPages">1</span>
+                    </div>
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="reading-time" id="readingTime">5 мин</div>
                 </div>
                 
-                <div class="group">
-                    <div class="label">Интервал: <span id="line-val">1.5</span></div>
-                    <input type="range" class="slider" id="line" min="1.2" max="2.0" value="1.5" step="0.1">
+                <div class="navigation-controls">
+                    <button class="nav-btn nav-btn--prev" id="prevBtn">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M15 18L9 12L15 6"/>
+                        </svg>
+                    </button>
+                    
+                    <input type="number" class="page-input" id="pageInput" min="1" value="1">
+                    
+                    <button class="nav-btn nav-btn--next" id="nextBtn">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M9 18L15 12L9 6"/>
+                        </svg>
+                    </button>
+                </div>
+            </footer>
+        </div>
+
+        <!-- Модальное окно настроек -->
+        <div class="settings-modal" id="settingsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Настройки чтения</h3>
+                    <button class="close-btn" id="closeBtn">✕</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="setting-group">
+                        <label>Тема оформления</label>
+                        <div class="theme-options">
+                            <button class="theme-btn" data-theme="light">Светлая</button>
+                            <button class="theme-btn active" data-theme="dark">Тёмная</button>
+                            <button class="theme-btn" data-theme="sepia">Сепия</button>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Размер шрифта: <span id="fontSizeValue">18px</span></label>
+                        <input type="range" id="fontSizeSlider" min="14" max="24" value="18" class="slider">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Междустрочный интервал: <span id="lineHeightValue">1.6</span></label>
+                        <input type="range" id="lineHeightSlider" min="1.2" max="2.0" value="1.6" step="0.1" class="slider">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label>Слов на страницу: <span id="wordsPerPageValue">300</span></label>
+                        <input type="range" id="wordsPerPageSlider" min="200" max="500" value="300" step="50" class="slider">
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <script src="reader.js"></script>
 </body>
 </html>
