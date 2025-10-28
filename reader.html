@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>КрымЧиталка — Perfect Pagination</title>
+    <title>КрымЧиталка — Хаджи-Гирай</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -13,96 +13,423 @@
             color: #fff;
             overflow: hidden;
             height: 100vh;
+            position: fixed;
+            width: 100vw;
         }
         
-        .container {
+        .app {
             display: flex;
             flex-direction: column;
             height: 100vh;
+            width: 100vw;
         }
         
+        /* HEADER - ФИКСИРОВАННАЯ ВЫСОТА */
         .header {
-            height: 60px;
+            height: 50px;
+            min-height: 50px;
+            max-height: 50px;
             background: #111;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            padding: 0 15px;
             border-bottom: 1px solid #333;
             flex-shrink: 0;
+            transform: translateY(-100%);
+            transition: transform 0.3s;
         }
         
-        .reader-area {
+        .header.visible { transform: translateY(0); }
+        
+        .title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .settings {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 5px;
+        }
+        
+        .settings:hover { color: #fff; }
+        
+        /* READER - ТОЧНО ВЫЧИСЛЕННАЯ ВЫСОТА */
+        .reader {
             flex: 1;
             position: relative;
-            padding: 20px;
+            overflow: hidden;
+            /* ТОЧНАЯ ВЫСОТА: 100vh - header(50px) - footer(70px) = calc(100vh - 120px) */
+            height: calc(100vh - 120px);
+            min-height: calc(100vh - 120px);
+            max-height: calc(100vh - 120px);
+        }
+        
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 15px;
             overflow: hidden;
         }
         
-        .page-content {
-            height: 100%;
+        .content {
             max-width: 600px;
             margin: 0 auto;
-            font-size: 18px;
-            line-height: 1.6;
+            height: 100%;
+            font-size: 17px;
+            line-height: 1.5;
             overflow: hidden;
+            text-align: justify;
         }
         
-        .footer {
-            height: 80px;
-            background: #111;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            border-top: 1px solid #333;
-            flex-shrink: 0;
+        .content h1 {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 700;
         }
         
-        .nav-btn {
-            padding: 8px 16px;
-            background: #333;
+        .content .author {
+            font-size: 18px;
+            font-style: italic;
+            color: #ccc;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .content h2 {
+            font-size: 20px;
+            margin: 20px 0 10px 0;
+            font-weight: 600;
+        }
+        
+        .content p {
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        
+        /* ZONES */
+        .zones {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            z-index: 10;
+        }
+        
+        .zone {
+            background: transparent;
             border: none;
-            color: #fff;
-            border-radius: 4px;
             cursor: pointer;
         }
         
-        .nav-btn:hover { background: #555; }
-        .nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        /* FOOTER - ФИКСИРОВАННАЯ ВЫСОТА */
+        .footer {
+            height: 70px;
+            min-height: 70px;
+            max-height: 70px;
+            background: #111;
+            border-top: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 15px;
+            flex-shrink: 0;
+            transform: translateY(100%);
+            transition: transform 0.3s;
+        }
         
-        .page-info { font-size: 14px; color: #ccc; }
+        .footer.visible { transform: translateY(0); }
         
+        .progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #999;
+        }
+        
+        .bar {
+            flex: 1;
+            height: 3px;
+            background: #333;
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007aff, #5856d6);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.2s;
+        }
+        
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        
+        .btn {
+            width: 36px;
+            height: 36px;
+            background: #333;
+            border: none;
+            border-radius: 6px;
+            color: #999;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        
+        .btn:hover:not(:disabled) {
+            background: #007aff;
+            color: #fff;
+        }
+        
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .input {
+            width: 50px;
+            height: 36px;
+            background: #333;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            text-align: center;
+            font-size: 13px;
+            outline: none;
+        }
+        
+        /* LOADING */
         .loading {
             position: fixed;
             inset: 0;
             background: #000;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 15px;
             z-index: 1000;
         }
         
         .loading.hidden { display: none; }
+        
+        .spin {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #333;
+            border-top-color: #007aff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* SETTINGS */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .modal.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .panel {
+            background: #111;
+            border-radius: 10px;
+            padding: 20px;
+            width: min(350px, 90vw);
+            border: 1px solid #333;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .close {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        .group {
+            margin-bottom: 20px;
+        }
+        
+        .label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .options {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .option {
+            padding: 6px 12px;
+            background: #333;
+            border: 2px solid #333;
+            border-radius: 5px;
+            color: #999;
+            cursor: pointer;
+            font-size: 13px;
+            min-width: 60px;
+            text-align: center;
+        }
+        
+        .option:hover {
+            border-color: #007aff;
+            color: #fff;
+        }
+        
+        .option.active {
+            background: #007aff;
+            border-color: #007aff;
+            color: #fff;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #007aff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        /* MOBILE */
+        @media (max-width: 768px) {
+            .content { font-size: 16px; }
+            .page { padding: 12px; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="app">
+        <!-- Loading -->
         <div class="loading" id="loading">
-            <div>Loading...</div>
+            <div class="spin"></div>
+            <h2>КрымЧиталка</h2>
+            <p id="status">Загрузка...</p>
         </div>
         
-        <div class="header">
-            <h1>Хаджи-Гирай</h1>
+        <!-- Header -->
+        <div class="header" id="header">
+            <div class="title">Хаджи-Гирай • Алим Къуртсеит</div>
+            <button class="settings" id="settings-btn">⚙</button>
         </div>
         
-        <div class="reader-area">
-            <div class="page-content" id="content"></div>
+        <!-- Reader -->
+        <div class="reader">
+            <div class="page">
+                <div class="content" id="content"></div>
+            </div>
+            
+            <div class="zones">
+                <button class="zone" id="prev"></button>
+                <button class="zone" id="menu"></button>
+                <button class="zone" id="next"></button>
+            </div>
         </div>
         
-        <div class="footer">
-            <button class="nav-btn" id="prev-btn">‹ Prev</button>
-            <span class="page-info" id="page-info">Page 1 of 1</span>
-            <button class="nav-btn" id="next-btn">Next ›</button>
+        <!-- Footer -->
+        <div class="footer" id="footer">
+            <div class="progress">
+                <span id="info">1 / 100</span>
+                <div class="bar" id="bar">
+                    <div class="fill" id="fill"></div>
+                </div>
+                <span id="time">5 мин</span>
+            </div>
+            
+            <div class="nav">
+                <button class="btn" id="prev-btn">‹</button>
+                <input type="number" class="input" id="input" min="1" value="1">
+                <button class="btn" id="next-btn">›</button>
+            </div>
+        </div>
+        
+        <!-- Modal -->
+        <div class="modal" id="modal">
+            <div class="panel">
+                <div class="modal-header">
+                    <div class="modal-title">Настройки</div>
+                    <button class="close" id="close">✕</button>
+                </div>
+                
+                <div class="group">
+                    <div class="label">Тема</div>
+                    <div class="options">
+                        <button class="option" data-theme="light">Светлая</button>
+                        <button class="option active" data-theme="dark">Тёмная</button>
+                        <button class="option" data-theme="sepia">Сепия</button>
+                    </div>
+                </div>
+                
+                <div class="group">
+                    <div class="label">Размер: <span id="size-val">17px</span></div>
+                    <input type="range" class="slider" id="size" min="14" max="22" value="17">
+                </div>
+                
+                <div class="group">
+                    <div class="label">Интервал: <span id="line-val">1.5</span></div>
+                    <input type="range" class="slider" id="line" min="1.2" max="2.0" value="1.5" step="0.1">
+                </div>
+            </div>
         </div>
     </div>
     
