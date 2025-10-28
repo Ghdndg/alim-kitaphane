@@ -534,27 +534,39 @@
         }
         
         /* RESPONSIVE */
+        /* МОБИЛЬНАЯ АДАПТАЦИЯ */
         @media (max-width: 768px) {
             :root {
                 --header-height: 56px;
-                --footer-height: 80px;
+                --footer-height: 90px;
                 --page-padding: 16px;
             }
             
             .header {
-                padding: 0 1rem;
+                padding: 0 16px;
             }
             
             .header-title h1 {
-                font-size: 1rem;
+                font-size: 16px;
             }
             
-            .header-title span {
-                font-size: 0.8125rem;
+            .nav-btn {
+                width: 40px;
+                height: 40px;
             }
             
-            .footer {
-                padding: 0.75rem 1rem;
+            .page-input {
+                width: 60px;
+                height: 40px;
+                font-size: 14px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            :root {
+                --header-height: 52px;
+                --footer-height: 84px;
+                --page-padding: 12px;
             }
             
             .nav-btn {
@@ -563,10 +575,12 @@
             }
             
             .page-input {
-                width: 56px;
+                width: 50px;
                 height: 36px;
+                font-size: 13px;
             }
         }
+
     </style>
 </head>
 <body data-theme="dark">
