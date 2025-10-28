@@ -5,12 +5,11 @@
     const $$ = (selector) => Array.from(document.querySelectorAll(selector));
     const on = (element, event, handler) => element?.addEventListener(event, handler);
 
-    // Storage utilities
+    // Хранилище настроек
     const storage = {
         get(key, fallback = null) {
             try {
-                const value = localStorage.getItem(key);
-                return value ? JSON.parse(value) : fallback;
+                return JSON.parse(localStorage.getItem(key)) || fallback;
             } catch {
                 return fallback;
             }
@@ -23,22 +22,21 @@
         }
     };
 
-    // Application state
+    // Состояние приложения
     const state = {
         bookText: '',
         uiVisible: false,
-        
         settings: {
             theme: 'dark',
             fontSize: 18,
-            lineHeight: 1.6
+            lineHeight: 1.7
         }
     };
 
-    // Settings management
+    // Управление настройками
     const settings = {
         load() {
-            const saved = storage.get('scroll_reader_settings');
+            const saved = storage.get('reader_settings');
             if (saved) {
                 Object.assign(state.settings, saved);
             }
@@ -47,15 +45,13 @@
         },
         
         save() {
-            storage.set('scroll_reader_settings', state.settings);
+            storage.set('reader_settings', state.settings);
         },
         
         apply() {
             document.body.setAttribute('data-theme', state.settings.theme);
-            
             document.documentElement.style.setProperty('--font-size-reading', `${state.settings.fontSize}px`);
             document.documentElement.style.setProperty('--line-height-reading', state.settings.lineHeight);
-            
             this.save();
         },
         
@@ -66,12 +62,12 @@
         },
         
         updateUI() {
-            // Update theme buttons
-            $$('.option-btn[data-theme]').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.theme === state.settings.theme);
+            // Обновляем кнопки тем
+            $$('.option-card[data-theme]').forEach(card => {
+                card.classList.toggle('active', card.dataset.theme === state.settings.theme);
             });
             
-            // Update sliders
+            // Обновляем слайдеры
             const fontSizeSlider = $('#font-size-slider');
             const fontSizeValue = $('#font-size-value');
             if (fontSizeSlider && fontSizeValue) {
@@ -88,37 +84,37 @@
         }
     };
 
-    // Progress management
+    // Управление прогрессом
     const progress = {
         save() {
             const scrollPercent = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
-            storage.set('scroll_reader_progress', {
+            storage.set('reading_progress', {
                 scrollPercent: Math.max(0, Math.min(100, scrollPercent)),
                 timestamp: Date.now()
             });
         },
         
         load() {
-            const saved = storage.get('scroll_reader_progress');
+            const saved = storage.get('reading_progress');
             if (saved && saved.scrollPercent > 0) {
                 setTimeout(() => {
                     const targetScroll = (saved.scrollPercent / 100) * (document.documentElement.scrollHeight - window.innerHeight);
                     window.scrollTo({ top: targetScroll, behavior: 'smooth' });
-                }, 500);
+                }, 800);
             }
         },
         
         update() {
-            const progressFill = $('#progress-fill');
-            if (progressFill) {
+            const progressBar = $('#progress-bar');
+            if (progressBar) {
                 const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
                 const scrollPercent = maxScroll > 0 ? (window.scrollY / maxScroll) * 100 : 0;
-                progressFill.style.width = `${Math.max(0, Math.min(100, scrollPercent))}%`;
+                progressBar.style.width = `${Math.max(0, Math.min(100, scrollPercent))}%`;
             }
         }
     };
 
-    // UI management
+    // Управление UI
     const ui = {
         showLoading(message = 'Загрузка...') {
             const loading = $('#loading');
@@ -132,10 +128,13 @@
             if (loading) loading.classList.add('hidden');
         },
         
-        toggleUI() {
+        toggleNavbar() {
             state.uiVisible = !state.uiVisible;
-            const header = $('#header');
-            if (header) header.classList.toggle('visible', state.uiVisible);
+            const navbar = $('#navbar');
+            const floatingBtn = $('#settings-btn');
+            
+            if (navbar) navbar.classList.toggle('visible', state.uiVisible);
+            if (floatingBtn) floatingBtn.classList.toggle('visible', state.uiVisible);
         },
         
         showSettings() {
@@ -149,7 +148,7 @@
         }
     };
 
-    // Main reader functionality
+    // Основная логика ридера
     const reader = {
         async init() {
             try {
@@ -158,49 +157,48 @@
                 settings.load();
                 await this.loadBook();
                 this.renderBook();
-                
                 this.bindEvents();
                 
                 ui.hideLoading();
                 
-                // Load progress after content is rendered
+                // Показываем UI на несколько секунд
+                setTimeout(() => {
+                    ui.toggleNavbar();
+                    setTimeout(() => ui.toggleNavbar(), 4000);
+                }, 1000);
+                
+                // Загружаем прогресс после рендера
                 setTimeout(() => {
                     progress.load();
                     progress.update();
-                }, 100);
+                }, 1200);
                 
-                // Show UI briefly
-                setTimeout(() => {
-                    ui.toggleUI();
-                    setTimeout(() => ui.toggleUI(), 3000);
-                }, 1000);
-                
-                console.log('📖 Scroll reader initialized successfully!');
+                console.log('📚 Новый ридер запущен успешно!');
                 
             } catch (error) {
-                console.error('Failed to initialize reader:', error);
+                console.error('Ошибка инициализации:', error);
                 ui.showLoading('Ошибка загрузки. Проверьте файл Khadzhi-Girai.txt');
             }
         },
         
         async loadBook() {
             try {
-                ui.showLoading('Загрузка текста книги...');
+                ui.showLoading('Загрузка текста...');
                 
                 const response = await fetch('Khadzhi-Girai.txt');
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: Khadzhi-Girai.txt not found`);
+                    throw new Error(`HTTP ${response.status}: файл не найден`);
                 }
                 
                 state.bookText = await response.text();
-                console.log('📖 Book loaded:', state.bookText.length, 'characters');
+                console.log('📖 Загружено символов:', state.bookText.length);
                 
                 if (!state.bookText.trim()) {
-                    throw new Error('Book file is empty');
+                    throw new Error('Файл книги пустой');
                 }
                 
             } catch (error) {
-                console.error('Failed to load book:', error);
+                console.error('Ошибка загрузки книги:', error);
                 throw error;
             }
         },
@@ -208,74 +206,77 @@
         renderBook() {
             ui.showLoading('Форматирование текста...');
             
-            const content = $('#content');
+            const content = $('#book-content');
             if (!content) return;
             
-            // Clean text
+            // Очистка текста
             const cleanText = state.bookText
                 .replace(/\r\n/g, '\n')
                 .replace(/\n{3,}/g, '\n\n')
                 .trim();
             
-            // Split into paragraphs
+            // Разбиение на абзацы
             const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
             
             let html = '';
             let foundTitle = false;
             let foundAuthor = false;
+            let firstParagraph = true;
             
-            paragraphs.forEach((paragraph, index) => {
+            paragraphs.forEach((paragraph) => {
                 const trimmed = paragraph.trim().replace(/\n/g, ' ');
                 if (!trimmed) return;
                 
-                // Main title
-                if (!foundTitle && (trimmed === 'Хаджи-Гирай' || trimmed.includes('Хаджи-Гирай'))) {
-                    html += `<h1>Хаджи-Гирай</h1>`;
+                // Заглавие книги
+                if (!foundTitle && trimmed.includes('Хаджи-Гирай')) {
+                    html += `<h1 class="book-title">Хаджи-Гирай</h1>`;
                     foundTitle = true;
                 } 
-                // Author name 
-                else if (!foundAuthor && (trimmed === 'Алим Къуртсеит' || trimmed.includes('Алим Къуртсеит'))) {
-                    html += `<div class="author">Алим Къуртсеит</div>`;
+                // Имя автора
+                else if (!foundAuthor && trimmed.includes('Алим Къуртсеит')) {
+                    html += `<div class="book-author">Алим Къуртсеит</div>`;
                     foundAuthor = true;
                 }
-                // Chapter headings
+                // Заголовки глав
                 else if (trimmed.length < 100 && (
                     trimmed.startsWith('Глава') ||
                     trimmed.startsWith('ГЛАВА') ||
-                    /^[А-ЯЁ\s\-]{3,50}$/.test(trimmed) ||
-                    trimmed === trimmed.toUpperCase()
+                    /^[А-ЯЁ\s\-]{4,60}$/.test(trimmed)
                 )) {
-                    html += `<h2>${trimmed}</h2>`;
+                    html += `<h2 class="chapter-title">${trimmed}</h2>`;
+                    firstParagraph = true; // После заголовка будет первый абзац
                 } 
-                // Regular paragraphs
+                // Обычные абзацы
                 else {
-                    html += `<p>${trimmed}</p>`;
+                    const className = firstParagraph && foundTitle && foundAuthor ? 'text-paragraph' : 'text-paragraph';
+                    html += `<p class="${className}">${trimmed}</p>`;
+                    firstParagraph = false;
                 }
             });
             
             content.innerHTML = html;
             
-            console.log('📝 Rendered', paragraphs.length, 'paragraphs');
+            console.log('📝 Отформатировано абзацев:', paragraphs.length);
         },
         
         bindEvents() {
-            // Settings
+            // Настройки
             on($('#settings-btn'), 'click', () => ui.showSettings());
             on($('#close-settings'), 'click', () => ui.hideSettings());
             
-            // Click outside modal to close
+            // Клик вне модального окна
             on($('#settings-modal'), 'click', (e) => {
                 if (e.target.id === 'settings-modal') {
                     ui.hideSettings();
                 }
             });
             
-            // Theme buttons
-            $$('.option-btn[data-theme]').forEach(btn => {
-                on(btn, 'click', () => settings.update('theme', btn.dataset.theme));
+            // Кнопки тем
+            $$('.option-card[data-theme]').forEach(card => {
+                on(card, 'click', () => settings.update('theme', card.dataset.theme));
             });
             
-            // Font size slider
+            // Слайдер размера шрифта
             const fontSizeSlider = $('#font-size-slider');
             const fontSizeValue = $('#font-size-value');
             if (fontSizeSlider && fontSizeValue) {
@@ -286,7 +287,7 @@
                 });
             }
             
-            // Line height slider
+            // Слайдер междустрочного интервала
             const lineHeightSlider = $('#line-height-slider');
             const lineHeightValue = $('#line-height-value');
             if (lineHeightSlider && lineHeightValue) {
@@ -297,7 +298,7 @@
                 });
             }
             
-            // Scroll progress
+            // Прогресс прокрутки
             let scrollTimeout;
             window.addEventListener('scroll', () => {
                 progress.update();
@@ -305,22 +306,22 @@
                 clearTimeout(scrollTimeout);
                 scrollTimeout = setTimeout(() => {
                     progress.save();
-                }, 200);
+                }, 250);
             });
             
-            // Tap to toggle UI
+            // Тап для переключения UI
             let tapTimeout;
             document.addEventListener('click', (e) => {
-                // Don't toggle UI if clicking on buttons or modal
-                if (e.target.closest('button') || e.target.closest('.modal')) return;
+                // Не переключать UI при клике на кнопки или модальные окна
+                if (e.target.closest('button') || e.target.closest('.settings-modal')) return;
                 
                 clearTimeout(tapTimeout);
                 tapTimeout = setTimeout(() => {
-                    ui.toggleUI();
+                    ui.toggleNavbar();
                 }, 100);
             });
             
-            // Keyboard shortcuts
+            // Горячие клавиши
             document.addEventListener('keydown', (e) => {
                 switch (e.key) {
                     case 'ArrowUp':
@@ -343,7 +344,7 @@
                         if ($('#settings-modal')?.classList.contains('visible')) {
                             ui.hideSettings();
                         } else if (state.uiVisible) {
-                            ui.toggleUI();
+                            ui.toggleNavbar();
                         }
                         break;
                 }
@@ -351,7 +352,7 @@
         }
     };
 
-    // Initialize when DOM is ready
+    // Запуск приложения
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => reader.init());
     } else {
