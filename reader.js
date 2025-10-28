@@ -163,40 +163,65 @@
         }
         
         async createPages() {
-            this.showLoading('Создание идеальной пагинации...');
+            this.showLoading('Создание ГАРАНТИРОВАННОЙ пагинации...');
             
             this.state.pages = [];
             
-            // Создание измерительного контейнера
-            const measurer = this.createMeasurer();
-            document.body.appendChild(measurer);
-            
-            // Получение доступной высоты
+            // Получаем точные размеры
             const availableHeight = this.getAvailableHeight();
-            measurer.style.height = `${availableHeight}px`;
+            const fontSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size-reading'));
+            const lineHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-height-reading'));
+            
+            // МАТЕМАТИЧЕСКИЙ РАСЧЕТ максимального количества строк
+            const lineHeightPx = fontSize * lineHeight;
+            const maxLines = Math.floor(availableHeight / lineHeightPx);
+            const safeMaxLines = Math.max(5, maxLines - 2); // Буфер безопасности
+            
+            console.log('🧮 Пагинация по строкам:', {
+                availableHeight,
+                fontSize,
+                lineHeight,
+                lineHeightPx,
+                maxLines,
+                safeMaxLines
+            });
+            
+            // Создаем измеритель строк
+            const lineCounter = document.createElement('div');
+            lineCounter.style.cssText = `
+                position: absolute;
+                top: -99999px;
+                left: 0;
+                width: ${Math.min(680, this.elements.pageContent.offsetWidth)}px;
+                font-family: var(--font-reading);
+                font-size: var(--font-size-reading);
+                line-height: var(--line-height-reading);
+                padding: 0;
+                margin: 0;
+                border: none;
+                visibility: hidden;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                hyphens: auto;
+            `;
+            document.body.appendChild(lineCounter);
             
             let currentPageSegments = [];
+            let currentLineCount = 0;
             let segmentIndex = 0;
             
-            console.log(`📏 Available height: ${availableHeight}px`);
-            console.log(`🔄 Processing ${this.state.textSegments.length} segments...`);
-            
-            // Обработка каждого сегмента
             while (segmentIndex < this.state.textSegments.length) {
                 const segment = this.state.textSegments[segmentIndex];
                 
-                // Тестируем добавление сегмента
-                const testSegments = [...currentPageSegments, segment];
-                const testHTML = this.segmentsToHTML(testSegments);
+                // Подсчитываем строки для этого сегмента
+                lineCounter.innerHTML = this.formatSegmentForMeasurement(segment);
+                const segmentLines = this.countLines(lineCounter);
                 
-                measurer.innerHTML = testHTML;
-                
-                // Проверяем, помещается ли контент
-                const fits = measurer.scrollHeight <= availableHeight;
-                
-                if (fits) {
+                // Проверяем, поместится ли сегмент
+                if (currentLineCount + segmentLines <= safeMaxLines) {
                     // Сегмент помещается
                     currentPageSegments.push(segment);
+                    currentLineCount += segmentLines;
                     segmentIndex++;
                 } else {
                     // Сегмент не помещается
@@ -207,25 +232,40 @@
                             id: this.state.pages.length,
                             html: pageHTML,
                             segments: [...currentPageSegments],
-                            wordCount: currentPageSegments.reduce((sum, s) => sum + s.wordCount, 0)
+                            lineCount: currentLineCount
                         });
                         
-                        // Начинаем новую страницу с текущим сегментом
-                        currentPageSegments = [segment];
-                        segmentIndex++;
-                    } else {
-                        // Даже один сегмент не помещается - разбиваем по предложениям
-                        const splitPages = await this.splitLongSegment(segment, availableHeight, measurer);
-                        this.state.pages.push(...splitPages);
-                        segmentIndex++;
+                        console.log(`📄 Page ${this.state.pages.length}: ${currentLineCount} lines, ${currentPageSegments.length} segments`);
+                        
+                        // Начинаем новую страницу
                         currentPageSegments = [];
+                        currentLineCount = 0;
+                        // НЕ увеличиваем segmentIndex - повторяем с тем же сегментом
+                    } else {
+                        // Даже один сегмент не помещается - разбиваем
+                        const splitSegments = this.splitSegmentByLines(segment, safeMaxLines, lineCounter);
+                        for (const splitSeg of splitSegments) {
+                            const splitHTML = this.segmentsToHTML([splitSeg]);
+                            lineCounter.innerHTML = splitHTML;
+                            const splitLines = this.countLines(lineCounter);
+                            
+                            this.state.pages.push({
+                                id: this.state.pages.length,
+                                html: splitHTML,
+                                segments: [splitSeg],
+                                lineCount: splitLines
+                            });
+                            
+                            console.log(`📄 Page ${this.state.pages.length}: ${splitLines} lines (split segment)`);
+                        }
+                        segmentIndex++;
                     }
                 }
                 
                 // Показываем прогресс
-                if (segmentIndex % 10 === 0) {
+                if (segmentIndex % 5 === 0) {
                     this.showLoading(`Пагинация: ${segmentIndex}/${this.state.textSegments.length} сегментов...`);
-                    await this.delay(1); // Позволяем UI обновиться
+                    await this.delay(1);
                 }
             }
             
@@ -236,20 +276,34 @@
                     id: this.state.pages.length,
                     html: pageHTML,
                     segments: [...currentPageSegments],
-                    wordCount: currentPageSegments.reduce((sum, s) => sum + s.wordCount, 0)
+                    lineCount: currentLineCount
                 });
+                
+                console.log(`📄 Final page ${this.state.pages.length}: ${currentLineCount} lines`);
             }
             
-            // Убираем измеритель
-            document.body.removeChild(measurer);
+            document.body.removeChild(lineCounter);
             
             this.state.totalPages = this.state.pages.length;
             
-            // Проверка на потери текста
-            this.validatePagination();
+            // ПРОВЕРКА НА ПОТЕРИ
+            const originalCount = this.state.textSegments.length;
+            const processedCount = this.state.pages.reduce((sum, page) => sum + page.segments.length, 0);
             
-            console.log(`✅ Created ${this.state.totalPages} perfect pages`);
+            console.log('✅ ПАГИНАЦИЯ ЗАВЕРШЕНА:', {
+                totalPages: this.state.totalPages,
+                originalSegments: originalCount,
+                processedSegments: processedCount,
+                maxLinesPerPage: safeMaxLines
+            });
+            
+            if (originalCount === processedCount) {
+                console.log('🎉 ИДЕАЛЬНО! Все сегменты сохранены!');
+            } else {
+                console.error(`❌ ПОТЕРИ: ${originalCount - processedCount} сегментов потеряно!`);
+            }
         }
+
         
         async splitLongSegment(segment, availableHeight, measurer) {
             const sentences = segment.text.split(/(?<=[.!?])\s+/);
@@ -638,10 +692,74 @@
             });
         }
         
-        delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-    }
+                delay(ms) {
+                    return new Promise(resolve => setTimeout(resolve, ms));
+                }
+                
+                // НОВЫЕ МЕТОДЫ ДЛЯ ТОЧНОЙ ПАГИНАЦИИ
+                countLines(element) {
+                    const style = getComputedStyle(element);
+                    const lineHeight = parseFloat(style.lineHeight);
+                    const height = element.offsetHeight;
+                    return Math.ceil(height / lineHeight);
+                }
+        
+                formatSegmentForMeasurement(segment) {
+                    switch (segment.type) {
+                        case 'title':
+                            return `<h1 style="font-size: clamp(1.75rem, 4vw, 2.5rem); line-height: 1.2; margin: 0 0 1.5rem 0; font-weight: 700;">${segment.text}</h1>`;
+                        case 'author':
+                            return `<div style="font-size: 1.25rem; font-style: italic; text-align: center; margin: 1rem 0 3rem 0;">${segment.text}</div>`;
+                        case 'chapter':
+                            return `<h2 style="font-size: clamp(1.25rem, 3vw, 1.75rem); line-height: 1.3; margin: 2rem 0 1rem 0; font-weight: 600;">${segment.text}</h2>`;
+                        default:
+                            return `<p style="margin: 0 0 1rem 0; text-align: justify;">${segment.text}</p>`;
+                    }
+                }
+        
+                splitSegmentByLines(segment, maxLines, measurer) {
+                    const words = segment.text.split(' ');
+                    const splitSegments = [];
+                    let currentWords = [];
+                    
+                    for (let i = 0; i < words.length; i++) {
+                        const testWords = [...currentWords, words[i]];
+                        const testSegment = { ...segment, text: testWords.join(' ') };
+                        const testHTML = this.formatSegmentForMeasurement(testSegment);
+                        
+                        measurer.innerHTML = testHTML;
+                        const lines = this.countLines(measurer);
+                        
+                        if (lines <= maxLines) {
+                            currentWords.push(words[i]);
+                        } else {
+                            if (currentWords.length > 0) {
+                                splitSegments.push({
+                                    ...segment,
+                                    text: currentWords.join(' ')
+                                });
+                                currentWords = [words[i]];
+                            } else {
+                                // Даже одно слово не помещается - добавляем принудительно
+                                splitSegments.push({
+                                    ...segment,
+                                    text: words[i]
+                                });
+                            }
+                        }
+                    }
+                    
+                    if (currentWords.length > 0) {
+                        splitSegments.push({
+                            ...segment,
+                            text: currentWords.join(' ')
+                        });
+                    }
+                    
+                    return splitSegments;
+                }
+            }
+
 
     // Инициализация
     if (document.readyState === 'loading') {
