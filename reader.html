@@ -2,125 +2,73 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <meta name="theme-color" content="#0a0a0a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>КрымЧиталка — Premium Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1c1c1e">
+    <title>КрымЧиталка — Идеальная пагинация</title>
     
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     
     <style>
-        /* ПРЕМИУМ ДИЗАЙН СИСТЕМА */
+        /* ИДЕАЛЬНАЯ СИСТЕМА ПАГИНАЦИИ */
         :root {
-            /* Цветовая палитра премиум */
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #161618;
-            --bg-tertiary: #1f1f23;
-            --bg-glass: rgba(22, 22, 24, 0.8);
-            
+            --bg-primary: #000000;
+            --bg-secondary: #1c1c1e;
             --text-primary: #ffffff;
-            --text-secondary: #a0a0a8;
+            --text-secondary: #8e8e93;
             --text-tertiary: #6c6c70;
-            --text-accent: #f5f5f7;
-            
-            --border-primary: rgba(255, 255, 255, 0.08);
-            --border-secondary: rgba(255, 255, 255, 0.04);
-            
+            --border-primary: #38383a;
             --accent-primary: #007aff;
             --accent-secondary: #5856d6;
-            --accent-gradient: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
             
-            --shadow-small: 0 2px 8px rgba(0, 0, 0, 0.3);
-            --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.4);
-            --shadow-large: 0 16px 64px rgba(0, 0, 0, 0.5);
+            --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+            --font-reading: "Crimson Text", Georgia, serif;
+            --font-size-reading: 18px;
+            --line-height-reading: 1.6;
             
-            /* Типографика премиум */
-            --font-ui: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-            --font-reading: "Crimson Text", Georgia, Charter, serif;
-            --font-display: "Playfair Display", Georgia, serif;
+            --header-height: 60px;
+            --footer-height: 84px;
+            --page-padding: 24px;
             
-            --font-size-reading: 19px;
-            --line-height-reading: 1.65;
-            --letter-spacing-ui: -0.01em;
-            --letter-spacing-display: -0.02em;
-            
-            /* Анимации премиум */
-            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-            --ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
-            --transition-fast: 0.2s var(--ease-out-expo);
-            --transition-medium: 0.4s var(--ease-out-expo);
-            --transition-slow: 0.6s var(--ease-out-expo);
+            --transition: 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
         }
         
         [data-theme="light"] {
             --bg-primary: #ffffff;
             --bg-secondary: #f8f9fa;
-            --bg-tertiary: #f0f1f3;
-            --bg-glass: rgba(248, 249, 250, 0.9);
-            
             --text-primary: #1d1d1f;
             --text-secondary: #424245;
             --text-tertiary: #6c6c70;
-            --text-accent: #000000;
-            
-            --border-primary: rgba(0, 0, 0, 0.08);
-            --border-secondary: rgba(0, 0, 0, 0.04);
-            
-            --shadow-small: 0 2px 8px rgba(0, 0, 0, 0.1);
-            --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
-            --shadow-large: 0 16px 64px rgba(0, 0, 0, 0.15);
+            --border-primary: #d1d1d6;
         }
         
-        [data-theme="warm"] {
-            --bg-primary: #1a1611;
-            --bg-secondary: #242018;
-            --bg-tertiary: #2d2a20;
-            --bg-glass: rgba(36, 32, 24, 0.8);
-            
-            --text-primary: #f4f1e8;
-            --text-secondary: #c4b896;
-            --text-tertiary: #8a8068;
-            
-            --accent-primary: #ff9f0a;
-            --accent-secondary: #ff6b35;
-            --accent-gradient: linear-gradient(135deg, #ff9f0a 0%, #ff6b35 100%);
+        [data-theme="sepia"] {
+            --bg-primary: #f7f0e6;
+            --bg-secondary: #ede8d3;
+            --text-primary: #5d4e37;
+            --text-secondary: #8d7053;
+            --border-primary: #d3c7b8;
+            --accent-primary: #8b6914;
         }
         
-        /* БАЗОВЫЕ СТИЛИ */
-        *, *::before, *::after {
+        * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
         
-        html {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            scroll-behavior: smooth;
-            text-size-adjust: 100%;
-            -webkit-text-size-adjust: 100%;
-        }
-        
-        html::-webkit-scrollbar { display: none; }
-        
-        body {
-            font-family: var(--font-reading);
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: var(--font-ui);
             background: var(--bg-primary);
             color: var(--text-primary);
-            font-size: var(--font-size-reading);
-            line-height: var(--line-height-reading);
-            font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            text-rendering: optimizeLegibility;
-            overflow-x: hidden;
-            min-height: 100vh;
         }
         
-        /* LOADING ПРЕМИУМ */
+        /* LOADING */
         .loading {
             position: fixed;
             inset: 0;
@@ -129,7 +77,7 @@
             justify-content: center;
             background: var(--bg-primary);
             z-index: 9999;
-            transition: opacity var(--transition-medium);
+            transition: opacity var(--transition);
         }
         
         .loading.hidden {
@@ -139,116 +87,66 @@
         
         .loading-content {
             text-align: center;
-            padding: 3rem;
+            padding: 2rem;
         }
         
-        .loading-logo {
-            width: 64px;
-            height: 64px;
-            margin: 0 auto 2rem;
-            background: var(--accent-gradient);
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--shadow-medium);
-            animation: pulse 2s ease-in-out infinite;
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border-primary);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
         }
         
-        .loading-logo::after {
-            content: "📖";
-            font-size: 28px;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
         
         .loading h2 {
-            font-family: var(--font-display);
-            font-size: 2rem;
+            font-size: 1.5rem;
             font-weight: 600;
-            color: var(--text-accent);
             margin-bottom: 0.5rem;
-            letter-spacing: var(--letter-spacing-display);
+            color: var(--text-primary);
         }
         
         .loading p {
-            font-family: var(--font-ui);
             color: var(--text-secondary);
             font-size: 1rem;
-            font-weight: 400;
         }
         
-        /* НАВИГАЦИОННАЯ ПАНЕЛЬ ПРЕМИУМ */
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 88px;
+        /* LAYOUT SYSTEM */
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+        
+        /* HEADER */
+        .header {
+            height: var(--header-height);
+            min-height: var(--header-height);
+            max-height: var(--header-height);
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 2rem;
-            background: var(--bg-glass);
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            padding: 0 1.5rem;
+            background: var(--bg-secondary);
             border-bottom: 1px solid var(--border-primary);
-            z-index: 1000;
+            z-index: 100;
             transform: translateY(-100%);
-            transition: transform var(--transition-medium);
+            transition: transform var(--transition);
         }
         
-        .navbar.visible {
+        .header.visible {
             transform: translateY(0);
         }
         
-        .navbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            text-decoration: none;
-        }
-        
-        .brand-icon {
-            width: 32px;
-            height: 32px;
-            background: var(--accent-gradient);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-        }
-        
-        .brand-text h1 {
-            font-family: var(--font-display);
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-accent);
-            letter-spacing: var(--letter-spacing-display);
-            line-height: 1.2;
-        }
-        
-        .brand-text p {
-            font-family: var(--font-ui);
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            font-weight: 400;
-            letter-spacing: var(--letter-spacing-ui);
-        }
-        
-        .navbar-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .nav-btn {
-            width: 48px;
-            height: 48px;
+        .header-btn {
+            width: 44px;
+            height: 44px;
             border: none;
             border-radius: 12px;
             background: transparent;
@@ -257,488 +155,517 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all var(--transition-fast);
-            position: relative;
+            transition: all 0.15s ease;
         }
         
-        .nav-btn:hover {
-            background: var(--bg-tertiary);
+        .header-btn:hover {
+            background: var(--bg-primary);
             color: var(--text-primary);
-            transform: translateY(-1px);
         }
         
-        .nav-btn:active {
-            transform: translateY(0) scale(0.95);
+        .header-title {
+            flex: 1;
+            margin: 0 1rem;
+            min-width: 0;
         }
         
-        .nav-btn.primary {
-            background: var(--accent-gradient);
-            color: white;
-            box-shadow: var(--shadow-small);
+        .header-title h1 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
-        .nav-btn.primary:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-medium);
+        .header-title span {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
         }
         
-        /* ПРОГРЕСС БАР ПРЕМИУМ */
-        .reading-progress {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--border-primary);
-            z-index: 1001;
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
         }
         
-        .progress-bar {
-            height: 100%;
-            background: var(--accent-gradient);
-            width: 0%;
-            transition: width 0.1s ease-out;
+        /* READER AREA */
+        .reader {
+            flex: 1;
             position: relative;
+            overflow: hidden;
+            background: var(--bg-primary);
         }
         
-        .progress-bar::after {
-            content: '';
+        .page-container {
             position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 8px;
-            height: 8px;
-            background: var(--accent-primary);
-            border-radius: 50%;
-            box-shadow: 0 0 12px var(--accent-primary);
+            inset: 0;
+            padding: var(--page-padding);
+            overflow: hidden;
         }
         
-        /* КОНТЕНТ ПРЕМИУМ */
-        .reader-container {
-            max-width: 760px;
+        .page-content {
+            width: 100%;
+            height: 100%;
+            max-width: 680px;
             margin: 0 auto;
-            padding: 6rem 2rem 4rem;
-            position: relative;
-        }
-        
-        .reader-content {
             font-family: var(--font-reading);
             font-size: var(--font-size-reading);
             line-height: var(--line-height-reading);
             color: var(--text-primary);
-        }
-        
-        .reader-content h1 {
-            font-family: var(--font-display);
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            font-weight: 600;
-            color: var(--text-accent);
-            text-align: center;
-            margin: 4rem 0 2rem;
-            letter-spacing: var(--letter-spacing-display);
-            line-height: 1.1;
-        }
-        
-        .reader-content .author {
-            font-family: var(--font-display);
-            font-size: 1.5rem;
-            font-style: italic;
-            color: var(--text-secondary);
-            text-align: center;
-            margin: 0 0 6rem;
-            font-weight: 400;
-        }
-        
-        .reader-content h2 {
-            font-family: var(--font-display);
-            font-size: clamp(1.75rem, 3vw, 2.25rem);
-            font-weight: 500;
-            color: var(--text-accent);
-            margin: 4rem 0 2rem;
-            letter-spacing: var(--letter-spacing-display);
-            line-height: 1.2;
-        }
-        
-        .reader-content p {
-            margin: 0 0 1.75rem;
-            text-align: justify;
-            text-justify: inter-word;
+            overflow: hidden;
+            word-wrap: break-word;
             hyphens: auto;
             -webkit-hyphens: auto;
+        }
+        
+        .page-content h1 {
+            font-size: clamp(1.75rem, 4vw, 2.5rem);
+            line-height: 1.2;
+            margin: 0 0 1.5rem 0;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-align: center;
+        }
+        
+        .page-content h2 {
+            font-size: clamp(1.25rem, 3vw, 1.75rem);
+            line-height: 1.3;
+            margin: 2rem 0 1rem 0;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .page-content p {
+            margin: 0 0 1rem 0;
+            text-align: justify;
+            text-justify: inter-word;
             orphans: 2;
             widows: 2;
         }
         
-        .reader-content p:last-child {
-            margin-bottom: 6rem;
+        .page-content p:last-child {
+            margin-bottom: 0;
         }
         
-        /* ПЛАВАЮЩИЕ ЭЛЕМЕНТЫ */
-        .floating-controls {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
+        .author {
+            font-size: 1.25rem;
+            font-style: italic;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 1rem 0 3rem 0;
+        }
+        
+        /* TOUCH ZONES */
+        .touch-zones {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            z-index: 10;
+        }
+        
+        .touch-zone {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.1s ease;
+        }
+        
+        .touch-zone:active {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        /* FOOTER */
+        .footer {
+            height: var(--footer-height);
+            min-height: var(--footer-height);
+            max-height: var(--footer-height);
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-            opacity: 0;
-            transform: translateX(100px);
-            transition: all var(--transition-medium);
-            z-index: 900;
-        }
-        
-        .floating-controls.visible {
-            opacity: 1;
-            transform: translateX(0);
-        }
-        
-        .floating-btn {
-            width: 56px;
-            height: 56px;
-            border: none;
-            border-radius: 16px;
-            background: var(--bg-glass);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            color: var(--text-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--shadow-medium);
-            border: 1px solid var(--border-primary);
-            transition: all var(--transition-fast);
-        }
-        
-        .floating-btn:hover {
-            transform: translateY(-2px) scale(1.05);
-            box-shadow: var(--shadow-large);
-            background: var(--accent-gradient);
-            color: white;
-        }
-        
-        /* МОДАЛЬНОЕ ОКНО ПРЕМИУМ */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: all var(--transition-medium);
-        }
-        
-        .modal-overlay.visible {
-            opacity: 1;
-            pointer-events: all;
-        }
-        
-        .modal {
-            width: min(480px, 90vw);
-            max-height: 80vh;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
             background: var(--bg-secondary);
-            border-radius: 24px;
-            border: 1px solid var(--border-primary);
-            box-shadow: var(--shadow-large);
-            overflow: hidden;
-            transform: scale(0.9) translateY(40px);
-            transition: all var(--transition-medium);
+            border-top: 1px solid var(--border-primary);
+            z-index: 100;
+            transform: translateY(100%);
+            transition: transform var(--transition);
         }
         
-        .modal-overlay.visible .modal {
-            transform: scale(1) translateY(0);
+        .footer.visible {
+            transform: translateY(0);
         }
         
-        .modal-header {
-            padding: 2rem 2rem 1rem;
-            border-bottom: 1px solid var(--border-primary);
+        .progress-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .progress-info {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
         }
         
-        .modal-title {
-            font-family: var(--font-display);
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-accent);
-            letter-spacing: var(--letter-spacing-display);
+        .progress-bar {
+            height: 6px;
+            background: var(--border-primary);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
         }
         
-        .modal-close {
-            width: 36px;
-            height: 36px;
-            border: none;
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.2s ease;
+        }
+        
+        .nav-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+        
+        .nav-btn {
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--border-primary);
             border-radius: 10px;
-            background: var(--bg-tertiary);
+            background: var(--bg-primary);
             color: var(--text-secondary);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all var(--transition-fast);
+            transition: all 0.15s ease;
         }
         
-        .modal-close:hover {
+        .nav-btn:hover:not(:disabled) {
             background: var(--accent-primary);
+            border-color: var(--accent-primary);
             color: white;
         }
         
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .page-input {
+            width: 64px;
+            height: 40px;
+            border: 1px solid var(--border-primary);
+            border-radius: 10px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            text-align: center;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 0;
+            font-family: var(--font-ui);
+        }
+        
+        .page-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        
+        /* SETTINGS MODAL */
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition);
+        }
+        
+        .modal.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
         .modal-content {
-            padding: 2rem;
+            width: min(400px, 90vw);
+            max-height: 80vh;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 16px;
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: transform var(--transition);
+            box-shadow: var(--shadow);
+        }
+        
+        .modal.visible .modal-content {
+            transform: scale(1);
+        }
+        
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-primary);
+        }
+        
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+        
+        .close-btn:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
             max-height: 60vh;
             overflow-y: auto;
         }
         
-        .settings-group {
-            margin-bottom: 2.5rem;
+        .setting-group {
+            margin-bottom: 2rem;
         }
         
-        .settings-group:last-child {
+        .setting-group:last-child {
             margin-bottom: 0;
         }
         
-        .settings-label {
-            font-family: var(--font-ui);
-            font-size: 1rem;
+        .setting-label {
+            display: block;
+            margin-bottom: 0.75rem;
             font-weight: 600;
-            color: var(--text-accent);
-            margin-bottom: 1rem;
-            letter-spacing: var(--letter-spacing-ui);
+            color: var(--text-primary);
+            font-size: 0.9375rem;
         }
         
-        .settings-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 0.75rem;
+        .option-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
         }
         
-        .settings-btn {
-            padding: 1rem 1.5rem;
+        .option-btn {
+            padding: 0.75rem 1rem;
             border: 2px solid var(--border-primary);
-            border-radius: 12px;
-            background: var(--bg-tertiary);
+            border-radius: 10px;
+            background: var(--bg-primary);
             color: var(--text-secondary);
-            font-family: var(--font-ui);
             font-size: 0.875rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all var(--transition-fast);
-            text-align: center;
+            transition: all 0.15s ease;
+            min-width: 80px;
         }
         
-        .settings-btn:hover {
+        .option-btn:hover {
             border-color: var(--accent-primary);
             color: var(--text-primary);
         }
         
-        .settings-btn.active {
+        .option-btn.active {
             border-color: var(--accent-primary);
-            background: var(--accent-gradient);
+            background: var(--accent-primary);
             color: white;
-            box-shadow: var(--shadow-small);
         }
         
-        .settings-slider {
+        .range-slider {
             width: 100%;
-            height: 8px;
-            border-radius: 4px;
-            background: var(--bg-tertiary);
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border-primary);
             outline: none;
             -webkit-appearance: none;
             cursor: pointer;
-            position: relative;
         }
         
-        .settings-slider::-webkit-slider-thumb {
+        .range-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            background: var(--accent-gradient);
+            background: var(--accent-primary);
             cursor: pointer;
-            box-shadow: var(--shadow-small);
-            border: 3px solid var(--bg-secondary);
+            border: 2px solid var(--bg-secondary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
         
-        .settings-slider::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: var(--accent-gradient);
-            cursor: pointer;
-            box-shadow: var(--shadow-small);
-            border: 3px solid var(--bg-secondary);
-        }
-        
-        /* АДАПТИВНОСТЬ ПРЕМИУМ */
+        /* RESPONSIVE */
         @media (max-width: 768px) {
-            .navbar {
-                height: 72px;
-                padding: 0 1.5rem;
+            :root {
+                --header-height: 56px;
+                --footer-height: 80px;
+                --page-padding: 16px;
             }
             
-            .brand-text h1 {
-                font-size: 1.125rem;
-            }
-            
-            .brand-text p {
-                font-size: 0.8125rem;
-            }
-            
-            .nav-btn {
-                width: 44px;
-                height: 44px;
-            }
-            
-            .reader-container {
-                padding: 4.5rem 1.5rem 3rem;
-            }
-            
-            .floating-controls {
-                bottom: 1.5rem;
-                right: 1.5rem;
-            }
-            
-            .floating-btn {
-                width: 52px;
-                height: 52px;
-            }
-            
-            .modal {
-                margin: 1rem;
-            }
-            
-            .modal-header, .modal-content {
-                padding: 1.5rem;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .navbar {
-                height: 64px;
+            .header {
                 padding: 0 1rem;
             }
             
-            .reader-container {
-                padding: 4rem 1rem 2rem;
+            .header-title h1 {
+                font-size: 1rem;
             }
             
-            .reader-content h1 {
-                margin: 3rem 0 1.5rem;
+            .header-title span {
+                font-size: 0.8125rem;
             }
             
-            .reader-content .author {
-                margin: 0 0 4rem;
+            .footer {
+                padding: 0.75rem 1rem;
+            }
+            
+            .nav-btn {
+                width: 36px;
+                height: 36px;
+            }
+            
+            .page-input {
+                width: 56px;
+                height: 36px;
             }
         }
     </style>
 </head>
 <body data-theme="dark">
-    <!-- Loading Screen -->
-    <div class="loading" id="loading">
-        <div class="loading-content">
-            <div class="loading-logo"></div>
-            <h2>КрымЧиталка</h2>
-            <p id="loading-status">Загрузка премиум издания...</p>
-        </div>
-    </div>
-    
-    <!-- Reading Progress -->
-    <div class="reading-progress">
-        <div class="progress-bar" id="progress-bar"></div>
-    </div>
-    
-    <!-- Navigation Bar -->
-    <nav class="navbar" id="navbar">
-        <a href="#" class="navbar-brand" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
-            <div class="brand-icon">📖</div>
-            <div class="brand-text">
-                <h1>Хаджи-Гирай</h1>
-                <p>Алим Къуртсеит</p>
+    <div class="app">
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <h2>КрымЧиталка</h2>
+                <p id="loading-status">Загрузка книги...</p>
             </div>
-        </a>
-        
-        <div class="navbar-actions">
-            <button class="nav-btn" id="theme-btn" title="Сменить тему">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    ircle cx="12" cy="12" r="="5"/>
-                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                </svg>
-            </button>
-            <button class="nav-btn primary" id="settings-btn" title="Настройки">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                    ircle cx="12" cycy="12" r="3"/>
-                </svg>
-            </button>
         </div>
-    </nav>
-    
-    <!-- Main Content -->
-    <main class="reader-container">
-        <article class="reader-content" id="content">
-            <!-- Контент будет загружен здесь -->
-        </article>
-    </main>
-    
-    <!-- Floating Controls -->
-    <div class="floating-controls" id="floating-controls">
-        <button class="floating-btn" id="scroll-top" title="В начало">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="m18 15-6-6-6 6"/>
-            </svg>
-        </button>
-        <button class="floating-btn" id="scroll-bottom" title="В конец">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="m6 9 6 6 6-6"/>
-            </svg>
-        </button>
-    </div>
-    
-    <!-- Settings Modal -->
-    <div class="modal-overlay" id="settings-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 class="modal-title">Настройки чтения</h2>
-                <button class="modal-close" id="close-settings">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="m18 6-12 12"/>
-                        <path d="m6 6 12 12"/>
+
+        <!-- Header -->
+        <header class="header" id="header">
+            <button class="header-btn" id="back-btn" onclick="history.back()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m15 18-6-6 6-6"/>
+                </svg>
+            </button>
+            
+            <div class="header-title">
+                <h1>Хаджи-Гирай</h1>
+                <span>Алим Къуртсеит</span>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" id="settings-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        ircle cx="12" cycy="12" r="3"/>
+                        <path d="m12 1 1.57 4.13L17 4l2 2-1.13 3.43L22 11v2l-4.13 1.57L19 18l-2 2-3.43-1.13L11 23H9l-1.57-4.13L4 20l-2-2 1.13-3.43L1 13v-2l4.13-1.57L4 6l2-2 3.43 1.13L11 1h2z"/>
                     </svg>
                 </button>
             </div>
+        </header>
+
+        <!-- Reader -->
+        <main class="reader">
+            <div class="page-container">
+                <div class="page-content" id="page-content">
+                    <!-- Контент страницы -->
+                </div>
+            </div>
+            
+            <!-- Touch Zones -->
+            <div class="touch-zones">
+                <button class="touch-zone" id="prev-zone"></button>
+                <button class="touch-zone" id="menu-zone"></button>
+                <button class="touch-zone" id="next-zone"></button>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer" id="footer">
+            <div class="progress-section">
+                <div class="progress-info">
+                    <span>Страница <span id="current-page">1</span> из <span id="total-pages">100</span></span>
+                    <span>•</span>
+                    <span id="reading-time">~5 мин</span>
+                </div>
+                <div class="progress-bar" id="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+            
+            <div class="nav-controls">
+                <button class="nav-btn" id="prev-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                </button>
+                <input type="number" class="page-input" id="page-input" min="1" value="1">
+                <button class="nav-btn" id="next-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                </button>
+            </div>
+        </footer>
+
+        <!-- Settings Modal -->
+        <div class="modal" id="settings-modal">
             <div class="modal-content">
-                <div class="settings-group">
-                    <div class="settings-label">Цветовая тема</div>
-                    <div class="settings-options">
-                        <button class="settings-btn" data-theme="light">Светлая</button>
-                        <button class="settings-btn active" data-theme="dark">Тёмная</button>
-                        <button class="settings-btn" data-theme="warm">Тёплая</button>
+                <div class="modal-header">
+                    <h3 class="modal-title">Настройки чтения</h3>
+                    <button class="close-btn" id="close-settings">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m18 6-12 12"/>
+                            <path d="m6 6 12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="setting-group">
+                        <label class="setting-label">Тема оформления</label>
+                        <div class="option-buttons">
+                            <button class="option-btn" data-theme="light">Светлая</button>
+                            <button class="option-btn active" data-theme="dark">Тёмная</button>
+                            <button class="option-btn" data-theme="sepia">Сепия</button>
+                        </div>
                     </div>
-                </div>
-                
-                <div class="settings-group">
-                    <div class="settings-label">Размер шрифта: <span id="font-size-value">19px</span></div>
-                    <input type="range" class="settings-slider" id="font-size-slider" min="16" max="28" value="19" step="1">
-                </div>
-                
-                <div class="settings-group">
-                    <div class="settings-label">Междустрочный интервал: <span id="line-height-value">1.65</span></div>
-                    <input type="range" class="settings-slider" id="line-height-slider" min="1.4" max="2.2" value="1.65" step="0.05">
-                </div>
-                
-                <div class="settings-group">
-                    <div class="settings-label">Шрифт для чтения</div>
-                    <div class="settings-options">
-                        <button class="settings-btn active" data-font="crimson">Crimson Text</button>
-                        <button class="settings-btn" data-font="playfair">Playfair Display</button>
-                        <button class="settings-btn" data-font="georgia">Georgia</button>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">Размер шрифта: <span id="font-size-value">18px</span></label>
+                        <input type="range" class="range-slider" id="font-size-slider" min="14" max="24" value="18" step="1">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">Междустрочный интервал: <span id="line-height-value">1.6</span></label>
+                        <input type="range" class="range-slider" id="line-height-slider" min="1.2" max="2.0" value="1.6" step="0.1">
                     </div>
                 </div>
             </div>
