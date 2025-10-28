@@ -315,33 +315,57 @@
         
         createMeasurer() {
             const measurer = document.createElement('div');
+            const computedStyle = getComputedStyle(this.elements.pageContent);
+            
             measurer.style.cssText = `
                 position: absolute;
-                top: -9999px;
+                top: -99999px;
                 left: 0;
-                width: calc(100vw - ${getComputedStyle(document.documentElement).getPropertyValue('--page-padding')} * 2);
-                max-width: 680px;
-                margin: 0 auto;
-                padding: ${getComputedStyle(document.documentElement).getPropertyValue('--page-padding')};
-                font-family: ${getComputedStyle(document.documentElement).getPropertyValue('--font-reading')};
-                font-size: ${getComputedStyle(document.documentElement).getPropertyValue('--font-size-reading')};
-                line-height: ${getComputedStyle(document.documentElement).getPropertyValue('--line-height-reading')};
-                color: var(--text-primary);
+                width: ${this.elements.pageContent.offsetWidth}px;
+                font-family: ${computedStyle.fontFamily};
+                font-size: ${computedStyle.fontSize};
+                line-height: ${computedStyle.lineHeight};
+                color: ${computedStyle.color};
                 overflow: hidden;
                 box-sizing: border-box;
                 visibility: hidden;
                 pointer-events: none;
+                word-wrap: break-word;
+                hyphens: auto;
+                -webkit-hyphens: auto;
+                padding: 0;
+                margin: 0;
+                border: none;
             `;
+            
             return measurer;
         }
+
         
         getAvailableHeight() {
-            const headerHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height'));
-            const footerHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--footer-height'));
-            const pagePadding = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--page-padding'));
+            const computedStyle = getComputedStyle(document.documentElement);
+            const headerHeight = parseInt(computedStyle.getPropertyValue('--header-height'));
+            const footerHeight = parseInt(computedStyle.getPropertyValue('--footer-height'));
+            const pagePadding = parseInt(computedStyle.getPropertyValue('--page-padding'));
+            const safeAreaBottom = parseInt(computedStyle.getPropertyValue('--safe-area-bottom')) || 0;
             
-            return window.innerHeight - headerHeight - footerHeight - (pagePadding * 2);
+            const availableHeight = window.innerHeight - headerHeight - (footerHeight + safeAreaBottom) - (pagePadding * 2);
+            const buffer = 10;
+            const finalHeight = Math.max(200, availableHeight - buffer);
+            
+            console.log('📏 Height calculation:', {
+                windowHeight: window.innerHeight,
+                headerHeight: headerHeight,
+                footerHeight: footerHeight + safeAreaBottom,
+                pagePadding: pagePadding * 2,
+                buffer: buffer,
+                availableHeight: availableHeight,
+                finalHeight: finalHeight
+            });
+            
+            return finalHeight;
         }
+
         
         segmentsToHTML(segments) {
             return segments.map(segment => {
