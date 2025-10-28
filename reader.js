@@ -610,327 +610,265 @@ openSettings() {
 }
 
 /**
- * Создает панель настроек динамически
+ * Создает рабочую панель настроек
  */
 createSettingsPanel() {
-    console.log('🔧 Creating settings panel dynamically...');
+    console.log('🔧 Creating settings panel...');
+    
+    // Удаляем старую панель
+    const existingPanel = document.getElementById('settingsDrawer');
+    if (existingPanel) {
+        existingPanel.remove();
+    }
     
     const settingsHTML = `
-        <aside class="settings-drawer visible" id="settingsDrawer">
-            <div class="settings-backdrop" id="settingsBackdrop"></div>
-            
-            <div class="settings-panel">
-                <header class="settings-header">
-                    <h3>Настройки чтения</h3>
-                    <button class="close-button" id="closeSettingsButton">✕</button>
-                </header>
-                
-                <div class="settings-content">
-                    <!-- Яркость -->
-                    <section class="setting-group">
-                        <label>Яркость</label>
-                        <div class="brightness-control">
-                            <input type="range" id="brightnessSlider" min="30" max="100" value="100">
-                        </div>
-                    </section>
-
-                    <!-- Темы -->
-                    <section class="setting-group">
-                        <label>Тема оформления</label>
-                        <div class="theme-options">
-                            <button class="theme-option" data-theme="sepia" id="themeSepia">
-                                <div class="theme-preview sepia"></div>
-                                <span>Сепия</span>
-                            </button>
-                            <button class="theme-option" data-theme="gray" id="themeGray">
-                                <div class="theme-preview gray"></div>
-                                <span>Серый</span>
-                            </button>
-                            <button class="theme-option active" data-theme="dark" id="themeDark">
-                                <div class="theme-preview dark"></div>
-                                <span>Черный</span>
-                            </button>
-                        </div>
-                    </section>
-
-                    <!-- Размер шрифта -->
-                    <section class="setting-group">
-                        <label>Размер шрифта</label>
-                        <div class="font-controls">
-                            <button class="font-btn" id="decreaseFontSize">А-</button>
-                            <button class="font-btn" id="increaseFontSize">А+</button>
-                        </div>
-                    </section>
-
-                    <!-- Межстрочный интервал -->
-                    <section class="setting-group">
-                        <label>Межстрочный интервал</label>
-                        <div class="spacing-controls">
-                            <button class="spacing-btn" id="spacingTight" data-spacing="1.4">Узкий</button>
-                            <button class="spacing-btn active" id="spacingNormal" data-spacing="1.6">Нормальный</button>
-                            <button class="spacing-btn" id="spacingLoose" data-spacing="2.0">Широкий</button>
-                        </div>
-                    </section>
-                </div>
-            </div>
-        </aside>
-    `;
-    
-    // Добавляем CSS для настроек
-    const settingsCSS = `
-        .settings-drawer {
+        <div class="settings-drawer visible" id="settingsDrawer" style="
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            transform: translateY(100%);
-            transition: transform 0.3s ease;
-            z-index: 200;
-        }
-        
-        .settings-drawer.visible {
-            transform: translateY(0);
-        }
-        
-        .settings-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-        }
-        
-        .settings-panel {
             background: rgba(20, 20, 20, 0.95);
             backdrop-filter: blur(20px);
+            z-index: 9999;
+            padding: 20px;
+            color: white;
             border-radius: 20px 20px 0 0;
-            max-height: 70vh;
-            overflow: hidden;
-            color: #fff;
-        }
-        
-        .settings-header {
-            padding: 20px 24px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .close-button {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 8px;
-        }
-        
-        .close-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .settings-content {
-            padding: 24px;
-            max-height: 50vh;
+            max-height: 80vh;
             overflow-y: auto;
-        }
-        
-        .setting-group {
-            margin-bottom: 24px;
-        }
-        
-        .setting-group label {
-            display: block;
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 12px;
-            color: #fff;
-        }
-        
-        .brightness-control input[type="range"] {
-            width: 100%;
-            height: 4px;
-            border-radius: 2px;
-            background: rgba(255, 255, 255, 0.2);
-            outline: none;
-            -webkit-appearance: none;
-        }
-        
-        .brightness-control input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #007aff;
-            cursor: pointer;
-        }
-        
-        .theme-options, .font-controls, .spacing-controls {
-            display: flex;
-            gap: 12px;
-        }
-        
-        .theme-option, .font-btn, .spacing-btn {
-            flex: 1;
-            padding: 12px 8px;
-            background: none;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: #fff;
-            font-size: 14px;
-        }
-        
-        .theme-option {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .theme-option.active, .font-btn:hover, .spacing-btn.active {
-            border-color: #007aff;
-            background: rgba(0, 122, 255, 0.1);
-        }
-        
-        .font-btn:hover, .spacing-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .theme-preview {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-        }
-        
-        .theme-preview.sepia { background: #f7f0e6; }
-        .theme-preview.gray { background: #f5f5f5; }
-        .theme-preview.dark { background: #000; }
+        ">
+            <div style="text-align: center; margin-bottom: 20px; position: relative;">
+                <h3 style="margin: 0;">Настройки чтения</h3>
+                <button id="closeSettingsButton" style="
+                    position: absolute;
+                    top: -5px;
+                    right: 0;
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 24px;
+                    cursor: pointer;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                ">✕</button>
+            </div>
+            
+            <!-- Яркость -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 500;">Яркость</label>
+                <input type="range" id="brightnessSlider" min="50" max="100" value="100" style="
+                    width: 100%;
+                    height: 6px;
+                    border-radius: 3px;
+                    background: rgba(255,255,255,0.3);
+                    outline: none;
+                    -webkit-appearance: none;
+                ">
+            </div>
+            
+            <!-- Размер шрифта -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 500;">Размер шрифта</label>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button id="decreaseFontSize" style="
+                        padding: 12px 20px;
+                        background: rgba(255,255,255,0.1);
+                        border: 1px solid rgba(255,255,255,0.3);
+                        border-radius: 8px;
+                        color: white;
+                        cursor: pointer;
+                        font-size: 16px;
+                        min-width: 60px;
+                    ">А-</button>
+                    <button id="increaseFontSize" style="
+                        padding: 12px 20px;
+                        background: rgba(255,255,255,0.1);
+                        border: 1px solid rgba(255,255,255,0.3);
+                        border-radius: 8px;
+                        color: white;
+                        cursor: pointer;
+                        font-size: 16px;
+                        min-width: 60px;
+                    ">А+</button>
+                </div>
+            </div>
+            
+            <!-- Темы -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 500;">Тема оформления</label>
+                <div style="display: flex; gap: 8px;">
+                    <button class="theme-btn" data-theme="sepia" style="
+                        flex: 1;
+                        padding: 15px 10px;
+                        background: #f7f0e6;
+                        border: 2px solid rgba(255,255,255,0.3);
+                        border-radius: 12px;
+                        color: #5c4b37;
+                        cursor: pointer;
+                        font-size: 14px;
+                        text-align: center;
+                        font-weight: 500;
+                    ">Сепия</button>
+                    <button class="theme-btn" data-theme="gray" style="
+                        flex: 1;
+                        padding: 15px 10px;
+                        background: #f5f5f5;
+                        border: 2px solid rgba(255,255,255,0.3);
+                        border-radius: 12px;
+                        color: #333;
+                        cursor: pointer;
+                        font-size: 14px;
+                        text-align: center;
+                        font-weight: 500;
+                    ">Серая</button>
+                    <button class="theme-btn active" data-theme="dark" style="
+                        flex: 1;
+                        padding: 15px 10px;
+                        background: #000;
+                        border: 2px solid #007aff;
+                        border-radius: 12px;
+                        color: white;
+                        cursor: pointer;
+                        font-size: 14px;
+                        text-align: center;
+                        font-weight: 500;
+                    ">Темная</button>
+                </div>
+            </div>
+            
+            <!-- Межстрочный интервал -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 500;">Межстрочный интервал</label>
+                <div style="display: flex; gap: 8px;">
+                    <button class="spacing-btn" data-spacing="1.4" style="
+                        flex: 1;
+                        padding: 12px;
+                        background: rgba(255,255,255,0.1);
+                        border: 1px solid rgba(255,255,255,0.3);
+                        border-radius: 8px;
+                        color: white;
+                        cursor: pointer;
+                        font-size: 14px;
+                    ">Узкий</button>
+                    <button class="spacing-btn active" data-spacing="1.6" style="
+                        flex: 1;
+                        padding: 12px;
+                        background: rgba(0,122,255,0.2);
+                        border: 1px solid #007aff;
+                        border-radius: 8px;
+                        color: white;
+                        cursor: pointer;
+                        font-size: 14px;
+                    ">Обычный</button>
+                    <button class="spacing-btn" data-spacing="2.0" style="
+                        flex: 1;
+                        padding: 12px;
+                        background: rgba(255,255,255,0.1);
+                        border: 1px solid rgba(255,255,255,0.3);
+                        border-radius: 8px;
+                        color: white;
+                        cursor: pointer;
+                        font-size: 14px;
+                    ">Широкий</button>
+                </div>
+            </div>
+        </div>
     `;
     
-    // Добавляем CSS
-    const styleSheet = document.createElement('style');
-    styleSheet.textContent = settingsCSS;
-    document.head.appendChild(styleSheet);
-    
-    // Добавляем HTML
+    // Добавляем HTML в DOM
     document.body.insertAdjacentHTML('beforeend', settingsHTML);
     
     // Обновляем ссылки на элементы
     this.elements.settingsDrawer = document.getElementById('settingsDrawer');
-    this.elements.settingsBackdrop = document.getElementById('settingsBackdrop');
     this.elements.closeSettingsButton = document.getElementById('closeSettingsButton');
     this.elements.brightnessSlider = document.getElementById('brightnessSlider');
     this.elements.decreaseFontSize = document.getElementById('decreaseFontSize');
     this.elements.increaseFontSize = document.getElementById('increaseFontSize');
     
-    // ПРИВЯЗЫВАЕМ СОБЫТИЯ ДЛЯ ВСЕХ КНОПОК
+    // ПРИВЯЗЫВАЕМ ВСЕ СОБЫТИЯ
     this.bindDynamicSettingsEvents();
     
-    console.log('✅ Settings panel created and shown');
+    console.log('✅ Settings panel created with working buttons!');
 }
 
 /**
- * НОВЫЙ МЕТОД: Привязывает события для динамически созданных кнопок
+ * Привязывает события для кнопок настроек
  */
 bindDynamicSettingsEvents() {
-    console.log('🎮 Binding dynamic settings events...');
+    console.log('🎮 Binding settings events...');
     
-    // Закрытие панели
-    this.elements.closeSettingsButton?.addEventListener('click', () => {
-        console.log('🔄 Close settings clicked');
-        this.closeSettings();
-    });
-    
-    this.elements.settingsBackdrop?.addEventListener('click', () => {
-        console.log('🔄 Settings backdrop clicked');
-        this.closeSettings();
-    });
+    // Закрытие
+    if (this.elements.closeSettingsButton) {
+        this.elements.closeSettingsButton.addEventListener('click', (e) => {
+            console.log('🔄 Close settings clicked');
+            e.stopPropagation();
+            this.closeSettings();
+        });
+    }
     
     // Яркость
-    this.elements.brightnessSlider?.addEventListener('input', (event) => {
-        console.log('🔄 Brightness changed:', event.target.value);
-        this.updateBrightness(parseInt(event.target.value));
-    });
+    if (this.elements.brightnessSlider) {
+        this.elements.brightnessSlider.addEventListener('input', (e) => {
+            console.log('🔄 Brightness:', e.target.value);
+            this.updateBrightness(parseInt(e.target.value));
+        });
+    }
     
-    // Размер шрифта
-    this.elements.decreaseFontSize?.addEventListener('click', () => {
-        console.log('🔄 Decrease font size clicked');
-        this.adjustFontSize(-2);
-    });
+    // Шрифт
+    if (this.elements.decreaseFontSize) {
+        this.elements.decreaseFontSize.addEventListener('click', (e) => {
+            console.log('🔄 Font size decrease');
+            e.stopPropagation();
+            this.adjustFontSize(-2);
+        });
+    }
     
-    this.elements.increaseFontSize?.addEventListener('click', () => {
-        console.log('🔄 Increase font size clicked');
-        this.adjustFontSize(2);
-    });
+    if (this.elements.increaseFontSize) {
+        this.elements.increaseFontSize.addEventListener('click', (e) => {
+            console.log('🔄 Font size increase');
+            e.stopPropagation();
+            this.adjustFontSize(2);
+        });
+    }
     
     // Темы
-    document.querySelectorAll('.theme-option').forEach(button => {
-        button.addEventListener('click', () => {
+    document.querySelectorAll('.theme-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
             console.log('🔄 Theme clicked:', button.dataset.theme);
+            e.stopPropagation();
             this.changeTheme(button.dataset.theme);
+            
+            // Обновляем активную кнопку
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.style.border = '2px solid rgba(255,255,255,0.3)';
+            });
+            button.style.border = '2px solid #007aff';
         });
     });
     
     // Межстрочный интервал
     document.querySelectorAll('.spacing-btn').forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', (e) => {
             console.log('🔄 Spacing clicked:', button.dataset.spacing);
+            e.stopPropagation();
             this.changeLineHeight(parseFloat(button.dataset.spacing));
+            
+            // Обновляем активную кнопку
+            document.querySelectorAll('.spacing-btn').forEach(btn => {
+                btn.style.background = 'rgba(255,255,255,0.1)';
+                btn.style.border = '1px solid rgba(255,255,255,0.3)';
+            });
+            button.style.background = 'rgba(0,122,255,0.2)';
+            button.style.border = '1px solid #007aff';
         });
     });
     
-    console.log('✅ Dynamic settings events bound');
+    console.log('✅ All settings events bound successfully!');
 }
 
-/**
- * НОВЫЕ МЕТОДЫ для работы с настройками
- */
-updateBrightness(brightness) {
-    this.state.settings.brightness = brightness;
-    document.documentElement.style.filter = `brightness(${brightness}%)`;
-    this.saveSettings();
-    console.log(`🔆 Brightness set to: ${brightness}%`);
-}
-
-adjustFontSize(delta) {
-    const newSize = Math.max(14, Math.min(24, this.state.settings.fontSize + delta));
-    
-    if (newSize !== this.state.settings.fontSize) {
-        this.state.settings.fontSize = newSize;
-        this.applyTypographySettings();
-        this.saveSettings();
-        console.log(`📏 Font size changed to: ${newSize}px`);
-    }
-}
-
-changeTheme(themeName) {
-    this.state.settings.theme = themeName;
-    document.body.setAttribute('data-theme', themeName);
-    this.saveSettings();
-    
-    // Обновляем активную тему
-    document.querySelectorAll('.theme-option').forEach(option => {
-        option.classList.toggle('active', option.dataset.theme === themeName);
-    });
-    
-    console.log(`🎨 Theme changed to: ${themeName}`);
-}
-
-changeLineHeight(lineHeight) {
-    this.state.settings.lineHeight = lineHeight;
-    this.applyTypographySettings();
-    this.saveSettings();
-    
-    // Обновляем активную кнопку
-    document.querySelectorAll('.spacing-btn').forEach(btn => {
-        const spacing = parseFloat(btn.dataset.spacing);
-        btn.classList.toggle('active', Math.abs(spacing - lineHeight) < 0.1);
-    });
-    
-    console.log(`📐 Line height changed to: ${lineHeight}`);
-}
 
 
 /**
