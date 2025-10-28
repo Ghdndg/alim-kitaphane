@@ -2,410 +2,164 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Хаджи-Гирай</title>
-    <style>
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-        }
-        
-        body { 
-            font-family: Georgia, serif; 
-            background: #1a1a1a;
-            color: #e0e0e0;
-            line-height: 1.6;
-        }
-        
-        .container { 
-            max-width: 900px; 
-            margin: 0 auto; 
-            background: #2a2a2a; 
-            min-height: 100vh;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-        }
-        
-        .header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; 
-            padding: 30px 20px; 
-            text-align: center; 
-        }
-        
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
-            font-style: italic;
-        }
-        
-        .page { 
-            padding: 40px; 
-            min-height: 600px; 
-            font-size: 19px; 
-            line-height: 1.7;
-        }
-        
-        .page h2 {
-            color: #f39c12;
-            font-size: 1.6rem;
-            margin: 30px 0 20px 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #f39c12;
-        }
-        
-        .page p {
-            margin-bottom: 20px;
-            text-align: justify;
-            text-indent: 2em;
-        }
-        
-        .page p:first-of-type {
-            text-indent: 0;
-        }
-        
-        .controls { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; 
-            padding: 25px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            position: sticky; 
-            bottom: 0;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
-        }
-        
-        .nav-btn { 
-            background: rgba(255,255,255,0.2); 
-            color: white; 
-            border: 2px solid rgba(255,255,255,0.3); 
-            padding: 12px 24px; 
-            cursor: pointer;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-        
-        .nav-btn:hover { 
-            background: rgba(255,255,255,0.3);
-            border-color: rgba(255,255,255,0.6);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-        
-        .nav-btn:disabled { 
-            background: rgba(255,255,255,0.1);
-            border-color: rgba(255,255,255,0.1);
-            color: rgba(255,255,255,0.5);
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .page-info {
-            text-align: center;
-            font-size: 18px;
-            font-weight: 600;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-        }
-        
-        .progress-bar {
-            width: 200px;
-            height: 6px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 3px;
-            margin: 10px 0;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #f39c12, #e74c3c);
-            border-radius: 3px;
-            transition: width 0.3s ease;
-            width: 0%;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
-            font-size: 20px;
-            color: #f39c12;
-        }
-        
-        .loading::after {
-            content: '';
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f39c12;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-left: 10px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .error {
-            color: #e74c3c;
-            text-align: center;
-            padding: 60px 20px;
-            font-size: 18px;
-            background: rgba(231, 76, 60, 0.1);
-            border-radius: 10px;
-            margin: 20px;
-        }
-        
-        /* Адаптивность */
-        @media (max-width: 768px) {
-            .container {
-                margin: 0;
-            }
-            
-            .header {
-                padding: 20px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .page {
-                padding: 20px;
-                font-size: 17px;
-            }
-            
-            .controls {
-                padding: 15px;
-                flex-direction: column;
-                gap: 15px;
-            }
-            
-            .nav-btn {
-                width: 100%;
-                max-width: 200px;
-            }
-            
-            .progress-bar {
-                width: 100%;
-                max-width: 300px;
-            }
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Хаджи-Гирай | КрымЧиталка</title>
+    <link rel="stylesheet" href="reader.css">
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Хаджи-Гирай</h1>
-            <p>Алим Къуртсеит</p>
-        </div>
-        
-        <div class="page" id="page">
-            <div class="loading">Загрузка книги</div>
-        </div>
-        
-        <div class="controls">
-            <button id="prevBtn" class="nav-btn" onclick="prevPage()">← Назад</button>
-            
-            <div class="page-info">
-                <div id="info">Страница 1 из 1</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
-                <div id="timeInfo">Время чтения: ~5 мин</div>
-            </div>
-            
-            <button id="nextBtn" class="nav-btn" onclick="nextPage()">Вперед →</button>
+<body data-theme="dark">
+    <!-- Загрузочный экран -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>КрымЧиталка</h2>
+            <p id="loadingStatus">Инициализация...</p>
         </div>
     </div>
-    
-    <script>
-        let pages = [];
-        let currentPage = 0;
-        
-        // Загрузка и разбивка на страницы
-        fetch('Khadzhi-Girai.txt')
-            .then(response => response.text())
-            .then(text => {
-                console.log('Загружено символов:', text.length);
-                
-                // Очищаем текст
-                const cleanText = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
-                
-                // Разбиваем на параграфы
-                const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
-                console.log('Найдено параграфов:', paragraphs.length);
-                
-                // Создаем страницы по 300 слов
-                let currentPageText = '';
-                let wordCount = 0;
-                const wordsPerPage = 300;
-                
-                for (const paragraph of paragraphs) {
-                    const words = paragraph.split(/\s+/).filter(w => w.length > 0).length;
-                    
-                    // Если добавление параграфа превысит лимит и уже есть контент - создаем страницу
-                    if (wordCount + words > wordsPerPage && currentPageText) {
-                        pages.push(formatPage(currentPageText));
-                        currentPageText = paragraph;
-                        wordCount = words;
-                    } else {
-                        // Добавляем параграф к текущей странице
-                        currentPageText += (currentPageText ? '\n\n' : '') + paragraph;
-                        wordCount += words;
-                    }
-                }
-                
-                // Добавляем последнюю страницу
-                if (currentPageText) {
-                    pages.push(formatPage(currentPageText));
-                }
-                
-                console.log('Создано страниц:', pages.length);
-                console.log('Средний размер страницы:', Math.round(text.length / pages.length), 'символов');
-                
-                showPage();
-            })
-            .catch(error => {
-                console.error('Ошибка загрузки:', error);
-                document.getElementById('page').innerHTML = 
-                    '<div class="error">Ошибка загрузки файла: ' + error.message + 
-                    '<br><br>Убедитесь, что файл Khadzhi-Girai.txt находится в той же папке.</div>';
-            });
-        
-        // Форматирование страницы
-        function formatPage(text) {
-            const paragraphs = text.split('\n\n');
+
+    <!-- Основной интерфейс -->
+    <div class="reader-app" id="readerApp" style="display: none;">
+        <!-- Строка прогресса -->
+        <div class="progress-indicator">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <!-- Верхняя панель -->
+        <header class="top-bar" id="topBar">
+            <button class="icon-btn back-btn" id="backBtn">
+                <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+            </button>
+            <div class="book-title">
+                <h1>Хаджи-Гирай</h1>
+                <span>Алим Къуртсеит</span>
+            </div>
+            <button class="icon-btn menu-btn" id="menuBtn">
+                <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+            </button>
+        </header>
+
+        <!-- Область чтения -->
+        <main class="reading-area" id="readingArea">
+            <div class="page-container" id="pageContainer">
+                <div class="page-content" id="pageContent">
+                    <!-- Контент страницы -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Нижняя панель навигации -->
+        <footer class="bottom-bar" id="bottomBar">
+            <div class="page-info">
+                <span class="page-counter">
+                    <span id="currentPage">1</span>%
+                </span>
+                <span class="reading-time" id="readingTime">5 мин</span>
+            </div>
             
-            return paragraphs.map(p => {
-                const trimmed = p.trim();
-                
-                // Заголовок книги
-                if (trimmed === 'Хаджи-Гирай' || trimmed.includes('Хаджи-Гирай')) {
-                    return `<h1 style="text-align: center; font-size: 2.5rem; margin: 0 0 30px 0; color: #f39c12;">${trimmed}</h1>`;
-                }
-                
-                // Автор
-                if (trimmed === 'Алим Къуртсеит' || trimmed.includes('Алим Къуртсеит')) {
-                    return `<p style="text-align: center; font-style: italic; font-size: 1.3rem; margin-bottom: 40px; color: #bdc3c7;">${trimmed}</p>`;
-                }
-                
-                // Заголовки глав (короткие строки заглавными буквами)
-                if (trimmed.length < 60 && (trimmed === trimmed.toUpperCase() || /^[А-ЯЁ\s\-\.]{3,50}$/.test(trimmed))) {
-                    return `<h2>${trimmed}</h2>`;
-                }
-                
-                // Обычные параграфы
-                return `<p>${trimmed}</p>`;
-            }).join('');
-        }
-        
-        // Показать текущую страницу
-        function showPage() {
-            if (pages.length === 0) return;
-            
-            document.getElementById('page').innerHTML = pages[currentPage] || '<div class="error">Пустая страница</div>';
-            
-            // Обновляем информацию
-            document.getElementById('info').textContent = `Страница ${currentPage + 1} из ${pages.length}`;
-            
-            // Прогресс бар
-            const progress = pages.length > 1 ? (currentPage / (pages.length - 1)) * 100 : 0;
-            document.getElementById('progressFill').style.width = progress + '%';
-            
-            // Время чтения (примерно 1 страница = 1-2 минуты)
-            const remainingPages = pages.length - currentPage - 1;
-            const minutes = Math.ceil(remainingPages * 1.5);
-            document.getElementById('timeInfo').textContent = `Осталось: ~${minutes} мин`;
-            
-            // Состояние кнопок
-            document.getElementById('prevBtn').disabled = currentPage === 0;
-            document.getElementById('nextBtn').disabled = currentPage === pages.length - 1;
-            
-            // Прокрутка в начало страницы
-            document.getElementById('page').scrollTop = 0;
-        }
-        
-        // Навигация
-        function nextPage() {
-            if (currentPage < pages.length - 1) {
-                currentPage++;
-                showPage();
-            }
-        }
-        
-        function prevPage() {
-            if (currentPage > 0) {
-                currentPage--;
-                showPage();
-            }
-        }
-        
-        // Клавиатурная навигация
-        document.addEventListener('keydown', function(e) {
-            if (e.target.tagName === 'INPUT') return;
-            
-            switch(e.key) {
-                case 'ArrowRight':
-                case ' ':
-                    e.preventDefault();
-                    nextPage();
-                    break;
-                case 'ArrowLeft':
-                    e.preventDefault();
-                    prevPage();
-                    break;
-                case 'Home':
-                    currentPage = 0;
-                    showPage();
-                    break;
-                case 'End':
-                    currentPage = pages.length - 1;
-                    showPage();
-                    break;
-            }
-        });
-        
-        // Сохранение/загрузка позиции
-        function savePosition() {
-            localStorage.setItem('hadji_girai_page', currentPage);
-        }
-        
-        function loadPosition() {
-            const saved = localStorage.getItem('hadji_girai_page');
-            if (saved && !isNaN(saved)) {
-                currentPage = Math.min(parseInt(saved), pages.length - 1);
-                showPage();
-            }
-        }
-        
-        // Автосохранение при смене страницы
-        const originalNext = nextPage;
-        const originalPrev = prevPage;
-        
-        nextPage = function() {
-            originalNext();
-            savePosition();
-        };
-        
-        prevPage = function() {
-            originalPrev();
-            savePosition();
-        };
-        
-        // Загрузка позиции после создания страниц
-        setTimeout(loadPosition, 100);
-    </script>
+            <div class="nav-controls">
+                <button class="nav-btn" id="prevBtn" disabled>
+                    <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                </button>
+                <button class="nav-btn" id="nextBtn">
+                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                </button>
+            </div>
+        </footer>
+
+        <!-- Панель настроек -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-overlay" id="settingsOverlay"></div>
+            <div class="settings-content">
+                <!-- Яркость -->
+                <div class="brightness-control">
+                    <svg class="brightness-icon" viewBox="0 0 24 24">
+                        <path d="M20 15.31L23.31 12 20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69z"/>
+                    </svg>
+                    <input type="range" class="brightness-slider" id="brightnessSlider" min="20" max="100" value="100">
+                    <svg class="brightness-icon" viewBox="0 0 24 24">
+                        <path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/>
+                    </svg>
+                </div>
+
+                <!-- Темы -->
+                <div class="theme-selector">
+                    <button class="theme-btn" data-theme="sepia" aria-label="Сепия">
+                        <div class="theme-preview theme-sepia"></div>
+                        <span>Сепия</span>
+                    </button>
+                    <button class="theme-btn" data-theme="gray" aria-label="Серый">
+                        <div class="theme-preview theme-gray"></div>
+                        <span>Серый</span>
+                    </button>
+                    <button class="theme-btn active" data-theme="dark" aria-label="Черный">
+                        <div class="theme-preview theme-dark"></div>
+                        <span>Черный</span>
+                    </button>
+                    <button class="theme-btn" data-theme="auto" aria-label="Как в системе">
+                        <div class="theme-preview theme-auto"></div>
+                        <span>Как в системе</span>
+                    </button>
+                </div>
+
+                <!-- Настройки текста -->
+                <div class="text-settings">
+                    <div class="font-family">
+                        <span class="font-name">Kazimir</span>
+                        <div class="font-size-controls">
+                            <button class="font-btn" id="decreaseFont">−</button>
+                            <button class="font-btn" id="increaseFont">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Межстрочный интервал -->
+                    <div class="line-height-controls">
+                        <button class="line-height-btn" data-height="1.4">
+                            <div class="lines tight"></div>
+                        </button>
+                        <button class="line-height-btn active" data-height="1.6">
+                            <div class="lines normal"></div>
+                        </button>
+                        <button class="line-height-btn" data-height="2.0">
+                            <div class="lines loose"></div>
+                        </button>
+                    </div>
+
+                    <!-- Выравнивание -->
+                    <div class="alignment-controls">
+                        <button class="alignment-btn" data-align="left">
+                            <div class="alignment-preview left"></div>
+                        </button>
+                        <button class="alignment-btn active" data-align="justify">
+                            <div class="alignment-preview justify"></div>
+                        </button>
+                        <button class="alignment-btn" data-align="center">
+                            <div class="alignment-preview center"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Прокрутка текста -->
+                <div class="scroll-setting">
+                    <span>Прокрутка текста</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="scrollToggle">
+                        <label for="scrollToggle" class="toggle-label"></label>
+                    </div>
+                </div>
+
+                <button class="additional-settings">ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ</button>
+            </div>
+        </div>
+
+        <!-- Зоны касания -->
+        <div class="touch-zones">
+            <div class="touch-zone left" id="leftZone"></div>
+            <div class="touch-zone center" id="centerZone"></div>
+            <div class="touch-zone right" id="rightZone"></div>
+        </div>
+    </div>
+
+    <script src="reader.js"></script>
 </body>
 </html>
