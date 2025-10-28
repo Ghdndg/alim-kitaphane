@@ -1,57 +1,149 @@
-class BookReader {
+// TypeScript-style interfaces (в комментариях для JavaScript)
+interface ReaderState {
+    bookText: string;
+    pages: Page[];
+    currentPageIndex: number;
+    totalPages: number;
+    isUIVisible: boolean;
+    isSettingsVisible: boolean;
+    settings: ReaderSettings;
+}
+
+interface Page {
+    id: number;
+    content: string;
+    wordCount: number;
+}
+
+interface ReaderSettings {
+    theme: 'sepia' | 'gray' | 'dark' | 'auto';
+    fontSize: number;
+    lineHeight: number;
+    alignment: 'left' | 'justify' | 'center';
+    brightness: number;
+    scrollMode: boolean;
+}
+
+/**
+ * Профессиональный ридер в стиле Яндекс.Книг
+ * Архитектура: TypeScript-подобная с прямым DOM рендерингом
+ */
+class YandexStyleReader {
+    private state: ReaderState;
+    private elements: { [key: string]: HTMLElement };
+    private readonly WORDS_PER_PAGE = 300;
+    private readonly STORAGE_KEY = 'yandex-reader-state';
+    
     constructor() {
-        this.bookText = '';
-        this.pages = [];
-        this.currentPageIndex = 0;
-        this.totalPages = 0;
-        this.isUIVisible = false;
-        
-        this.settings = {
-            theme: 'dark',
-            fontSize: 18,
-            lineHeight: 1.6,
-            wordsPerPage: 300
-        };
-        
-        this.elements = {
-            loadingScreen: document.getElementById('loadingScreen'),
-            loadingStatus: document.getElementById('loadingStatus'),
-            readerInterface: document.getElementById('readerInterface'),
-            pageContent: document.getElementById('pageContent'),
-            currentPage: document.getElementById('currentPage'),
-            totalPages: document.getElementById('totalPages'),
-            progressFill: document.getElementById('progressFill'),
-            readingTime: document.getElementById('readingTime'),
-            pageInput: document.getElementById('pageInput'),
-            prevBtn: document.getElementById('prevBtn'),
-            nextBtn: document.getElementById('nextBtn'),
-            settingsModal: document.getElementById('settingsModal')
-        };
-        
+        this.state = this.initializeState();
+        this.elements = this.bindElements();
         this.init();
     }
-    
-    async init() {
+
+    /**
+     * Инициализация состояния приложения
+     */
+    private initializeState(): ReaderState {
+        const savedSettings = this.loadFromStorage('settings');
+        return {
+            bookText: '',
+            pages: [],
+            currentPageIndex: 0,
+            totalPages: 0,
+            isUIVisible: false,
+            isSettingsVisible: false,
+            settings: {
+                theme: 'dark',
+                fontSize: 18,
+                lineHeight: 1.6,
+                alignment: 'justify',
+                brightness: 100,
+                scrollMode: false,
+                ...savedSettings
+            }
+        };
+    }
+
+    /**
+     * Связывание DOM элементов
+     */
+    private bindElements(): { [key: string]: HTMLElement } {
+        const elements = {
+            // Основные контейнеры
+            loadingScreen: document.getElementById('loadingScreen'),
+            loadingStatus: document.getElementById('loadingStatus'),
+            readerApp: document.getElementById('readerApp'),
+            
+            // Элементы интерфейса
+            topBar: document.getElementById('topBar'),
+            bottomBar: document.getElementById('bottomBar'),
+            progressFill: document.getElementById('progressFill'),
+            
+            // Контент
+            pageContent: document.getElementById('pageContent'),
+            currentPage: document.getElementById('currentPage'),
+            readingTime: document.getElementById('readingTime'),
+            
+            // Кнопки навигации
+            prevBtn: document.getElementById('prevBtn'),
+            nextBtn: document.getElementById('nextBtn'),
+            menuBtn: document.getElementById('menuBtn'),
+            backBtn: document.getElementById('backBtn'),
+            
+            // Зоны касания
+            leftZone: document.getElementById('leftZone'),
+            centerZone: document.getElementById('centerZone'),
+            rightZone: document.getElementById('rightZone'),
+            
+            // Панель настроек
+            settingsPanel: document.getElementById('settingsPanel'),
+            settingsOverlay: document.getElementById('settingsOverlay'),
+            
+            // Контролы настроек
+            brightnessSlider: document.getElementById('brightnessSlider'),
+            decreaseFont: document.getElementById('decreaseFont'),
+            increaseFont: document.getElementById('increaseFont'),
+            scrollToggle: document.getElementById('scrollToggle')
+        };
+
+        // Проверка обязательных элементов
+        Object.entries(elements).forEach(([key, element]) => {
+            if (!element) {
+                console.warn(`Element not found: ${key}`);
+            }
+        });
+
+        return elements;
+    }
+
+    /**
+     * Инициализация приложения
+     */
+    private async init(): Promise<void> {
         try {
-            this.loadSettings();
+            this.updateLoadingStatus('Инициализация ридера...');
+            
+            this.applySettings();
             await this.loadBookFile();
             this.createPages();
-            this.bindEvents();
+            this.bindEventListeners();
             this.loadProgress();
+            
             this.renderCurrentPage();
             this.hideLoading();
             this.showUIBriefly();
             
-            console.log('📖 Книга успешно загружена');
-            console.log(`📊 Создано страниц: ${this.totalPages}`);
-            console.log(`📝 Слов на страницу: ${this.settings.wordsPerPage}`);
+            console.log('📖 Ридер инициализирован успешно');
         } catch (error) {
             console.error('❌ Ошибка инициализации:', error);
-            this.showError('Ошибка загрузки книги. Проверьте файл Khadzhi-Girai.txt');
+            this.showError('Ошибка загрузки книги');
         }
     }
-    
-    async loadBookFile() {
+
+    /**
+     * Загрузка файла книги
+     */
+    private async loadBookFile(): Promise<void> {
         this.updateLoadingStatus('Загрузка текста книги...');
         
         try {
@@ -60,104 +152,143 @@ class BookReader {
                 throw new Error(`HTTP ${response.status}: Файл не найден`);
             }
             
-            this.bookText = await response.text();
+            this.state.bookText = await response.text();
             
-            if (!this.bookText.trim()) {
+            if (!this.state.bookText.trim()) {
                 throw new Error('Файл пуст');
             }
             
-            console.log(`📚 Загружено символов: ${this.bookText.length}`);
+            console.log(`📚 Загружено ${this.state.bookText.length} символов`);
         } catch (error) {
-            throw new Error(`Не удалось загрузить файл: ${error.message}`);
+            throw new Error(`Не удалось загрузить книгу: ${error.message}`);
         }
     }
-    
-    createPages() {
+
+    /**
+     * Создание страниц с точной пагинацией
+     */
+    private createPages(): void {
         this.updateLoadingStatus('Создание страниц...');
         
-        // Очистка и нормализация текста
-        const cleanText = this.bookText
-            .replace(/\r\n/g, '\n')
-            .replace(/\n{3,}/g, '\n\n')
-            .trim();
+        const cleanText = this.preprocessText(this.state.bookText);
+        const paragraphs = this.splitIntoParagraphs(cleanText);
         
-        // Разделение на параграфы
-        const paragraphs = cleanText.split('\n\n').filter(p => p.trim());
-        
-        this.pages = [];
-        let currentPageParagraphs = [];
+        this.state.pages = [];
+        let currentPageParagraphs: string[] = [];
         let currentWordCount = 0;
         
-        console.log(`🔄 Обрабатывается ${paragraphs.length} параграфов...`);
+        console.log(`🔄 Обработка ${paragraphs.length} параграфов...`);
         
-        for (let i = 0; i < paragraphs.length; i++) {
-            const paragraph = paragraphs[i].trim();
+        for (const paragraph of paragraphs) {
             const wordCount = this.countWords(paragraph);
             
-            // Проверяем, поместится ли параграф на текущую страницу
-            if (currentWordCount + wordCount > this.settings.wordsPerPage && currentPageParagraphs.length > 0) {
-                // Сохраняем текущую страницу
-                this.pages.push(this.formatPage(currentPageParagraphs));
-                console.log(`📄 Страница ${this.pages.length}: ${currentWordCount} слов`);
+            if (currentWordCount + wordCount > this.WORDS_PER_PAGE && currentPageParagraphs.length > 0) {
+                // Создаем страницу из текущих параграфов
+                this.addPage(currentPageParagraphs, currentWordCount);
                 
                 // Начинаем новую страницу
                 currentPageParagraphs = [paragraph];
                 currentWordCount = wordCount;
             } else {
-                // Добавляем параграф на текущую страницу
                 currentPageParagraphs.push(paragraph);
                 currentWordCount += wordCount;
-            }
-            
-            // Показываем прогресс
-            if (i % 10 === 0) {
-                this.updateLoadingStatus(`Обработка... ${i + 1}/${paragraphs.length} параграфов`);
-                await this.delay(1);
             }
         }
         
         // Добавляем последнюю страницу
         if (currentPageParagraphs.length > 0) {
-            this.pages.push(this.formatPage(currentPageParagraphs));
-            console.log(`📄 Финальная страница ${this.pages.length}: ${currentWordCount} слов`);
+            this.addPage(currentPageParagraphs, currentWordCount);
         }
         
-        this.totalPages = this.pages.length;
+        this.state.totalPages = this.state.pages.length;
+        this.validatePagination(paragraphs);
         
-        // Проверка целостности данных
-        this.verifyDataIntegrity(paragraphs);
+        console.log(`✅ Создано ${this.state.totalPages} страниц`);
     }
-    
-    countWords(text) {
+
+    /**
+     * Предобработка текста
+     */
+    private preprocessText(text: string): string {
+        return text
+            .replace(/\r\n/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    }
+
+    /**
+     * Разделение на параграфы
+     */
+    private splitIntoParagraphs(text: string): string[] {
+        return text.split('\n\n').filter(p => p.trim());
+    }
+
+    /**
+     * Подсчет слов в тексте
+     */
+    private countWords(text: string): number {
         return text.split(/\s+/).filter(word => word.length > 0).length;
     }
-    
-    formatPage(paragraphs) {
+
+    /**
+     * Добавление страницы
+     */
+    private addPage(paragraphs: string[], wordCount: number): void {
+        const content = this.formatPageContent(paragraphs);
+        const page: Page = {
+            id: this.state.pages.length,
+            content,
+            wordCount
+        };
+        
+        this.state.pages.push(page);
+    }
+
+    /**
+     * Форматирование содержимого страницы
+     */
+    private formatPageContent(paragraphs: string[]): string {
         return paragraphs.map(paragraph => {
             const text = paragraph.trim();
             
-            // Определяем тип контента
+            // Заголовок книги
             if (this.isMainTitle(text)) {
                 return `<h1>${text}</h1>`;
-            } else if (this.isAuthor(text)) {
-                return `<div class="author">${text}</div>`;
-            } else if (this.isChapterTitle(text)) {
-                return `<h2>${text}</h2>`;
-            } else {
-                return `<p>${text}</p>`;
             }
+            
+            // Автор
+            if (this.isAuthor(text)) {
+                return `<div class="author">${text}</div>`;
+            }
+            
+            // Заголовок главы
+            if (this.isChapterTitle(text)) {
+                return `<h2>${text}</h2>`;
+            }
+            
+            // Обычный параграф
+            return `<p>${text}</p>`;
         }).join('');
     }
-    
-    isMainTitle(text) {
+
+    /**
+     * Проверка на заголовок книги
+     */
+    private isMainTitle(text: string): boolean {
         return text === 'Хаджи-Гирай' || text.includes('Хаджи-Гирай');
     }
-    
-    isAuthor(text) {
+
+    /**
+     * Проверка на автора
+     */
+    private isAuthor(text: string): boolean {
         return text === 'Алим Къуртсеит' || text.includes('Алим Къуртсеит');
     }
-    
-    isChapterTitle(text) {
+
+    /**
+     * Проверка на заголовок главы
+     */
+    private isChapterTitle(text: string): boolean {
         return text.length < 80 && (
             text.startsWith('Глава') ||
             text.startsWith('ГЛАВА') ||
@@ -165,317 +296,464 @@ class BookReader {
             text === text.toUpperCase()
         );
     }
-    
-    verifyDataIntegrity(originalParagraphs) {
+
+    /**
+     * Валидация пагинации
+     */
+    private validatePagination(originalParagraphs: string[]): void {
         const originalWordCount = originalParagraphs.reduce((total, p) => total + this.countWords(p), 0);
+        const paginatedWordCount = this.state.pages.reduce((total, page) => total + page.wordCount, 0);
         
-        let pagesWordCount = 0;
-        this.pages.forEach(page => {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = page;
-            const pageText = tempDiv.textContent || tempDiv.innerText || '';
-            pagesWordCount += this.countWords(pageText);
-        });
+        const difference = Math.abs(originalWordCount - paginatedWordCount);
         
-        const lostWords = originalWordCount - pagesWordCount;
-        
-        console.log(`🔍 Проверка целостности:`);
-        console.log(`   Исходных слов: ${originalWordCount}`);
-        console.log(`   Слов в страницах: ${pagesWordCount}`);
-        console.log(`   Потеряно слов: ${lostWords}`);
-        
-        if (Math.abs(lostWords) > 10) {
-            console.warn('⚠️ Обнаружена возможная потеря данных');
+        if (difference > 10) {
+            console.warn(`⚠️ Возможная потеря данных: ${difference} слов`);
         } else {
-            console.log('✅ Данные сохранены без потерь');
+            console.log('✅ Пагинация выполнена без потерь');
         }
     }
-    
-    renderCurrentPage() {
-        if (!this.pages[this.currentPageIndex]) return;
-        
-        this.elements.pageContent.innerHTML = this.pages[this.currentPageIndex];
-        this.updateUI();
-    }
-    
-    updateUI() {
-        const current = this.currentPageIndex + 1;
-        const total = this.totalPages;
-        
-        this.elements.currentPage.textContent = current;
-        this.elements.totalPages.textContent = total;
-        this.elements.pageInput.value = current;
-        this.elements.pageInput.max = total;
-        
-        // Обновление прогресс-бара
-        const progress = total > 1 ? (this.currentPageIndex / (total - 1)) * 100 : 0;
-        this.elements.progressFill.style.width = `${progress}%`;
-        
-        // Расчет времени чтения
-        const remainingPages = total - current;
-        const estimatedMinutes = Math.ceil(remainingPages * (this.settings.wordsPerPage / 200));
-        this.elements.readingTime.textContent = `${estimatedMinutes} мин`;
-        
-        // Состояние кнопок навигации
-        this.elements.prevBtn.disabled = this.currentPageIndex === 0;
-        this.elements.nextBtn.disabled = this.currentPageIndex === total - 1;
-        
-        this.saveProgress();
-    }
-    
-    nextPage() {
-        if (this.currentPageIndex < this.totalPages - 1) {
-            this.currentPageIndex++;
-            this.renderCurrentPage();
-        }
-    }
-    
-    prevPage() {
-        if (this.currentPageIndex > 0) {
-            this.currentPageIndex--;
-            this.renderCurrentPage();
-        }
-    }
-    
-    goToPage(pageNumber) {
-        const pageIndex = Math.max(0, Math.min(pageNumber - 1, this.totalPages - 1));
-        if (pageIndex !== this.currentPageIndex) {
-            this.currentPageIndex = pageIndex;
-            this.renderCurrentPage();
-        }
-    }
-    
-    updateLoadingStatus(message) {
-        this.elements.loadingStatus.textContent = message;
-    }
-    
-    hideLoading() {
-        this.elements.loadingScreen.classList.add('hidden');
-        this.elements.readerInterface.style.display = 'flex';
-        setTimeout(() => {
-            this.elements.loadingScreen.style.display = 'none';
-        }, 500);
-    }
-    
-    showError(message) {
-        this.elements.loadingStatus.textContent = message;
-        this.elements.loadingScreen.querySelector('.spinner').style.display = 'none';
-    }
-    
-    showUIBriefly() {
-        // UI показывается сразу и скрывается через 3 секунды
-        setTimeout(() => {
-            // Можно добавить логику скрытия UI
-        }, 3000);
-    }
-    
-    // Настройки
-    loadSettings() {
-        try {
-            const saved = localStorage.getItem('bookReaderSettings');
-            if (saved) {
-                Object.assign(this.settings, JSON.parse(saved));
-            }
-        } catch (error) {
-            console.warn('Не удалось загрузить настройки:', error);
-        }
-        
-        this.applySettings();
-    }
-    
-    saveSettings() {
-        try {
-            localStorage.setItem('bookReaderSettings', JSON.stringify(this.settings));
-        } catch (error) {
-            console.warn('Не удалось сохранить настройки:', error);
-        }
-    }
-    
-    applySettings() {
-        document.body.setAttribute('data-theme', this.settings.theme);
-        
-        if (this.elements.pageContent) {
-            this.elements.pageContent.style.fontSize = `${this.settings.fontSize}px`;
-            this.elements.pageContent.style.lineHeight = this.settings.lineHeight;
-        }
-    }
-    
-    updateSetting(key, value) {
-        this.settings[key] = value;
-        this.applySettings();
-        this.saveSettings();
-        
-        // Пересоздаем страницы при изменении количества слов
-        if (key === 'wordsPerPage') {
-            const currentProgress = this.currentPageIndex / (this.totalPages - 1);
-            this.createPages();
-            this.currentPageIndex = Math.round(currentProgress * (this.totalPages - 1));
-            this.renderCurrentPage();
-        }
-    }
-    
-    // Прогресс чтения
-    saveProgress() {
-        try {
-            localStorage.setItem('bookReaderProgress', JSON.stringify({
-                pageIndex: this.currentPageIndex,
-                totalPages: this.totalPages,
-                timestamp: Date.now()
-            }));
-        } catch (error) {
-            console.warn('Не удалось сохранить прогресс:', error);
-        }
-    }
-    
-    loadProgress() {
-        try {
-            const saved = localStorage.getItem('bookReaderProgress');
-            if (saved) {
-                const progress = JSON.parse(saved);
-                if (progress.pageIndex < this.totalPages) {
-                    this.currentPageIndex = progress.pageIndex;
-                }
-            }
-        } catch (error) {
-            console.warn('Не удалось загрузить прогресс:', error);
-        }
-    }
-    
-    bindEvents() {
-        // Навигация кнопками
-        this.elements.prevBtn.addEventListener('click', () => this.prevPage());
-        this.elements.nextBtn.addEventListener('click', () => this.nextPage());
+
+    /**
+     * Привязка обработчиков событий
+     */
+    private bindEventListeners(): void {
+        // Навигация
+        this.elements.prevBtn?.addEventListener('click', () => this.previousPage());
+        this.elements.nextBtn?.addEventListener('click', () => this.nextPage());
         
         // Зоны касания
-        document.getElementById('prevZone').addEventListener('click', () => this.prevPage());
-        document.getElementById('nextZone').addEventListener('click', () => this.nextPage());
-        document.getElementById('menuZone').addEventListener('click', () => this.toggleSettings());
+        this.elements.leftZone?.addEventListener('click', () => this.previousPage());
+        this.elements.rightZone?.addEventListener('click', () => this.nextPage());
+        this.elements.centerZone?.addEventListener('click', () => this.toggleUI());
         
-        // Ввод номера страницы
-        this.elements.pageInput.addEventListener('change', (e) => {
-            this.goToPage(parseInt(e.target.value) || 1);
-        });
-        
-        // Прогресс-бар
-        document.getElementById('progressBar').addEventListener('click', (e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const ratio = (e.clientX - rect.left) / rect.width;
-            const targetPage = Math.ceil(ratio * this.totalPages);
-            this.goToPage(targetPage);
-        });
+        // Панель настроек
+        this.elements.menuBtn?.addEventListener('click', () => this.toggleSettings());
+        this.elements.settingsOverlay?.addEventListener('click', () => this.hideSettings());
         
         // Настройки
-        document.getElementById('settingsBtn').addEventListener('click', () => this.toggleSettings());
-        document.getElementById('closeBtn').addEventListener('click', () => this.hideSettings());
+        this.elements.brightnessSlider?.addEventListener('input', (e) => {
+            this.updateBrightness((e.target as HTMLInputElement).valueAsNumber);
+        });
         
-        // Клик вне модального окна
-        this.elements.settingsModal.addEventListener('click', (e) => {
-            if (e.target === this.elements.settingsModal) {
-                this.hideSettings();
-            }
+        this.elements.decreaseFont?.addEventListener('click', () => this.adjustFontSize(-1));
+        this.elements.increaseFont?.addEventListener('click', () => this.adjustFontSize(1));
+        
+        this.elements.scrollToggle?.addEventListener('change', (e) => {
+            this.toggleScrollMode((e.target as HTMLInputElement).checked);
         });
         
         // Кнопки тем
         document.querySelectorAll('.theme-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.updateSetting('theme', btn.dataset.theme);
+                const theme = btn.getAttribute('data-theme');
+                if (theme) this.updateTheme(theme as any);
             });
         });
         
-        // Слайдеры
-        this.bindSlider('fontSizeSlider', 'fontSizeValue', 'fontSize', (value) => `${value}px`);
-        this.bindSlider('lineHeightSlider', 'lineHeightValue', 'lineHeight', (value) => value.toFixed(1));
-        this.bindSlider('wordsPerPageSlider', 'wordsPerPageValue', 'wordsPerPage', (value) => value.toString());
+        // Межстрочный интервал
+        document.querySelectorAll('.line-height-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const height = parseFloat(btn.getAttribute('data-height') || '1.6');
+                this.updateLineHeight(height);
+            });
+        });
         
-        // Клавиатурные сокращения
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
+        // Выравнивание
+        document.querySelectorAll('.alignment-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const align = btn.getAttribute('data-align');
+                if (align) this.updateAlignment(align as any);
+            });
+        });
+        
+        // Клавиатурная навигация
+        document.addEventListener('keydown', (e) => this.handleKeydown(e));
+        
+        // Жесты
+        this.bindGestures();
+    }
+
+    /**
+     * Привязка жестов
+     */
+    private bindGestures(): void {
+        let startX = 0;
+        let startY = 0;
+        
+        this.elements.pageContent?.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        });
+        
+        this.elements.pageContent?.addEventListener('touchend', (e) => {
+            const endX = e.changedTouches[0].clientX;
+            const endY = e.changedTouches[0].clientY;
             
-            switch (e.key) {
-                case 'ArrowLeft':
-                case 'PageUp':
-                    e.preventDefault();
-                    this.prevPage();
-                    break;
-                case 'ArrowRight':
-                case 'PageDown':
-                case ' ':
-                    e.preventDefault();
+            const deltaX = endX - startX;
+            const deltaY = endY - startY;
+            
+            // Проверяем горизонтальный свайп
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                if (deltaX > 0) {
+                    this.previousPage();
+                } else {
                     this.nextPage();
-                    break;
-                case 'Home':
-                    e.preventDefault();
-                    this.goToPage(1);
-                    break;
-                case 'End':
-                    e.preventDefault();
-                    this.goToPage(this.totalPages);
-                    break;
-                case 'Escape':
-                    if (this.elements.settingsModal.classList.contains('visible')) {
-                        this.hideSettings();
-                    }
-                    break;
+                }
             }
         });
-        
-        // Обновление значений слайдеров при загрузке
-        this.updateSettingsUI();
     }
-    
-    bindSlider(sliderId, valueId, settingKey, formatter) {
-        const slider = document.getElementById(sliderId);
-        const valueDisplay = document.getElementById(valueId);
+
+    /**
+     * Обработка клавиатуры
+     */
+    private handleKeydown(e: KeyboardEvent): void {
+        if (e.target instanceof HTMLInputElement) return;
         
-        slider.addEventListener('input', (e) => {
-            const value = settingKey === 'lineHeight' ? parseFloat(e.target.value) : parseInt(e.target.value);
-            valueDisplay.textContent = formatter(value);
-            this.updateSetting(settingKey, value);
-        });
+        switch (e.key) {
+            case 'ArrowLeft':
+            case 'PageUp':
+                e.preventDefault();
+                this.previousPage();
+                break;
+            case 'ArrowRight':
+            case 'PageDown':
+            case ' ':
+                e.preventDefault();
+                this.nextPage();
+                break;
+            case 'Home':
+                this.goToPage(0);
+                break;
+            case 'End':
+                this.goToPage(this.state.totalPages - 1);
+                break;
+            case 'Escape':
+                if (this.state.isSettingsVisible) {
+                    this.hideSettings();
+                } else if (this.state.isUIVisible) {
+                    this.hideUI();
+                }
+                break;
+        }
     }
-    
-    updateSettingsUI() {
-        // Обновляем значения слайдеров
-        document.getElementById('fontSizeSlider').value = this.settings.fontSize;
-        document.getElementById('fontSizeValue').textContent = `${this.settings.fontSize}px`;
+
+    /**
+     * Рендеринг текущей страницы
+     */
+    private renderCurrentPage(): void {
+        const currentPage = this.state.pages[this.state.currentPageIndex];
+        if (!currentPage || !this.elements.pageContent) return;
         
-        document.getElementById('lineHeightSlider').value = this.settings.lineHeight;
-        document.getElementById('lineHeightValue').textContent = this.settings.lineHeight.toFixed(1);
+        // Прямой DOM рендеринг без виртуального DOM
+        this.elements.pageContent.innerHTML = currentPage.content;
         
-        document.getElementById('wordsPerPageSlider').value = this.settings.wordsPerPage;
-        document.getElementById('wordsPerPageValue').textContent = this.settings.wordsPerPage.toString();
-        
-        // Обновляем активную тему
-        document.querySelectorAll('.theme-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.theme === this.settings.theme);
-        });
+        this.updateUI();
+        this.saveProgress();
     }
-    
-    toggleSettings() {
-        if (this.elements.settingsModal.classList.contains('visible')) {
+
+    /**
+     * Обновление UI элементов
+     */
+    private updateUI(): void {
+        const current = this.state.currentPageIndex + 1;
+        const total = this.state.totalPages;
+        const progress = total > 1 ? (this.state.currentPageIndex / (total - 1)) * 100 : 0;
+        
+        // Обновляем прогресс
+        if (this.elements.progressFill) {
+            this.elements.progressFill.style.width = `${progress}%`;
+        }
+        
+        // Обновляем счетчик страниц (в процентах как в Яндекс.Книгах)
+        if (this.elements.currentPage) {
+            this.elements.currentPage.textContent = Math.round(progress).toString();
+        }
+        
+        // Время чтения
+        if (this.elements.readingTime) {
+            const remainingPages = total - current;
+            const minutes = Math.ceil(remainingPages * 1.5);
+            this.elements.readingTime.textContent = `${minutes} мин`;
+        }
+        
+        // Кнопки навигации
+        if (this.elements.prevBtn) {
+            this.elements.prevBtn.disabled = this.state.currentPageIndex === 0;
+        }
+        
+        if (this.elements.nextBtn) {
+            this.elements.nextBtn.disabled = this.state.currentPageIndex === total - 1;
+        }
+    }
+
+    /**
+     * Навигация по страницам
+     */
+    private nextPage(): void {
+        if (this.state.currentPageIndex < this.state.totalPages - 1) {
+            this.state.currentPageIndex++;
+            this.renderCurrentPage();
+        }
+    }
+
+    private previousPage(): void {
+        if (this.state.currentPageIndex > 0) {
+            this.state.currentPageIndex--;
+            this.renderCurrentPage();
+        }
+    }
+
+    private goToPage(pageIndex: number): void {
+        const clampedIndex = Math.max(0, Math.min(pageIndex, this.state.totalPages - 1));
+        if (clampedIndex !== this.state.currentPageIndex) {
+            this.state.currentPageIndex = clampedIndex;
+            this.renderCurrentPage();
+        }
+    }
+
+    /**
+     * Управление UI
+     */
+    private toggleUI(): void {
+        if (this.state.isUIVisible) {
+            this.hideUI();
+        } else {
+            this.showUI();
+        }
+    }
+
+    private showUI(): void {
+        this.state.isUIVisible = true;
+        this.elements.topBar?.classList.add('visible');
+        this.elements.bottomBar?.classList.add('visible');
+    }
+
+    private hideUI(): void {
+        this.state.isUIVisible = false;
+        this.elements.topBar?.classList.remove('visible');
+        this.elements.bottomBar?.classList.remove('visible');
+    }
+
+    private showUIBriefly(): void {
+        this.showUI();
+        setTimeout(() => {
+            if (!this.state.isSettingsVisible) {
+                this.hideUI();
+            }
+        }, 3000);
+    }
+
+    /**
+     * Управление настройками
+     */
+    private toggleSettings(): void {
+        if (this.state.isSettingsVisible) {
             this.hideSettings();
         } else {
             this.showSettings();
         }
     }
-    
-    showSettings() {
-        this.elements.settingsModal.classList.add('visible');
+
+    private showSettings(): void {
+        this.state.isSettingsVisible = true;
+        this.elements.settingsPanel?.classList.add('visible');
+        this.showUI(); // Показываем UI при открытии настроек
         this.updateSettingsUI();
     }
-    
-    hideSettings() {
-        this.elements.settingsModal.classList.remove('visible');
+
+    private hideSettings(): void {
+        this.state.isSettingsVisible = false;
+        this.elements.settingsPanel?.classList.remove('visible');
     }
-    
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+
+    /**
+     * Обновление настроек UI
+     */
+    private updateSettingsUI(): void {
+        // Яркость
+        if (this.elements.brightnessSlider) {
+            (this.elements.brightnessSlider as HTMLInputElement).value = this.state.settings.brightness.toString();
+        }
+        
+        // Режим прокрутки
+        if (this.elements.scrollToggle) {
+            (this.elements.scrollToggle as HTMLInputElement).checked = this.state.settings.scrollMode;
+        }
+        
+        // Активная тема
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-theme') === this.state.settings.theme);
+        });
+        
+        // Межстрочный интервал
+        document.querySelectorAll('.line-height-btn').forEach(btn => {
+            const height = parseFloat(btn.getAttribute('data-height') || '1.6');
+            btn.classList.toggle('active', Math.abs(height - this.state.settings.lineHeight) < 0.1);
+        });
+        
+        // Выравнивание
+        document.querySelectorAll('.alignment-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-align') === this.state.settings.alignment);
+        });
+    }
+
+    /**
+     * Обновление настроек
+     */
+    private updateTheme(theme: string): void {
+        this.state.settings.theme = theme as any;
+        document.body.setAttribute('data-theme', theme);
+        this.saveSettings();
+        this.updateSettingsUI();
+    }
+
+    private updateBrightness(brightness: number): void {
+        this.state.settings.brightness = brightness;
+        document.documentElement.style.filter = `brightness(${brightness}%)`;
+        this.saveSettings();
+    }
+
+    private adjustFontSize(delta: number): void {
+        const newSize = Math.max(14, Math.min(28, this.state.settings.fontSize + delta));
+        if (newSize !== this.state.settings.fontSize) {
+            this.state.settings.fontSize = newSize;
+            this.applySettings();
+            this.saveSettings();
+        }
+    }
+
+    private updateLineHeight(lineHeight: number): void {
+        this.state.settings.lineHeight = lineHeight;
+        this.applySettings();
+        this.saveSettings();
+        this.updateSettingsUI();
+    }
+
+    private updateAlignment(alignment: string): void {
+        this.state.settings.alignment = alignment as any;
+        this.applySettings();
+        this.saveSettings();
+        this.updateSettingsUI();
+    }
+
+    private toggleScrollMode(enabled: boolean): void {
+        this.state.settings.scrollMode = enabled;
+        document.body.classList.toggle('scroll-mode', enabled);
+        this.saveSettings();
+    }
+
+    /**
+     * Применение настроек
+     */
+    private applySettings(): void {
+        const { theme, fontSize, lineHeight, alignment, brightness, scrollMode } = this.state.settings;
+        
+        // Тема
+        document.body.setAttribute('data-theme', theme);
+        
+        // Яркость
+        document.documentElement.style.filter = `brightness(${brightness}%)`;
+        
+        // Режим прокрутки
+        document.body.classList.toggle('scroll-mode', scrollMode);
+        
+        // Стили текста
+        if (this.elements.pageContent) {
+            this.elements.pageContent.style.fontSize = `${fontSize}px`;
+            this.elements.pageContent.style.lineHeight = lineHeight.toString();
+            this.elements.pageContent.style.textAlign = alignment;
+        }
+        
+        // CSS переменные
+        document.documentElement.style.setProperty('--font-size', `${fontSize}px`);
+        document.documentElement.style.setProperty('--line-height', lineHeight.toString());
+    }
+
+    /**
+     * Сохранение и загрузка состояния
+     */
+    private saveSettings(): void {
+        this.saveToStorage('settings', this.state.settings);
+    }
+
+    private saveProgress(): void {
+        this.saveToStorage('progress', {
+            pageIndex: this.state.currentPageIndex,
+            totalPages: this.state.totalPages,
+            timestamp: Date.now()
+        });
+    }
+
+    private loadProgress(): void {
+        const progress = this.loadFromStorage('progress');
+        if (progress && progress.pageIndex < this.state.totalPages) {
+            this.state.currentPageIndex = progress.pageIndex;
+        }
+    }
+
+    private saveToStorage(key: string, data: any): void {
+        try {
+            localStorage.setItem(`${this.STORAGE_KEY}-${key}`, JSON.stringify(data));
+        } catch (error) {
+            console.warn('Не удалось сохранить в localStorage:', error);
+        }
+    }
+
+    private loadFromStorage(key: string): any {
+        try {
+            const data = localStorage.getItem(`${this.STORAGE_KEY}-${key}`);
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.warn('Не удалось загрузить из localStorage:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Утилиты загрузки
+     */
+    private updateLoadingStatus(message: string): void {
+        if (this.elements.loadingStatus) {
+            this.elements.loadingStatus.textContent = message;
+        }
+    }
+
+    private hideLoading(): void {
+        this.elements.loadingScreen?.classList.add('hidden');
+        if (this.elements.readerApp) {
+            this.elements.readerApp.style.display = 'flex';
+        }
+        
+        setTimeout(() => {
+            if (this.elements.loadingScreen) {
+                this.elements.loadingScreen.style.display = 'none';
+            }
+        }, 300);
+    }
+
+    private showError(message: string): void {
+        this.updateLoadingStatus(message);
+        console.error(message);
+    }
+}
+
+// Синхронизация состояния между устройствами (заглушка для демонстрации)
+class StateSynchronizer {
+    static sync(state: any): void {
+        // В реальном приложении здесь была бы синхронизация с сервером
+        console.log('Синхронизация состояния:', state);
     }
 }
 
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', () => {
-    new BookReader();
+    const reader = new YandexStyleReader();
+    
+    // Периодическая синхронизация (демонстрация)
+    setInterval(() => {
+        StateSynchronizer.sync({
+            page: reader['state'].currentPageIndex,
+            settings: reader['state'].settings
+        });
+    }, 30000);
 });
