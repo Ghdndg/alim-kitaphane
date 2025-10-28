@@ -5,161 +5,238 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
     <title>Хаджи-Гирай | КрымЧиталка</title>
     <link rel="stylesheet" href="reader.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Text:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body data-theme="dark">
+    <!-- Индикатор прогресса чтения -->
+    <div class="reading-progress" id="readingProgress">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
     <!-- Загрузочный экран -->
-    <div class="loading-screen" id="loadingScreen">
+    <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
             <div class="loading-spinner"></div>
-            <h2>КрымЧиталка</h2>
-            <p id="loadingStatus">Инициализация...</p>
+            <h2 class="loading-title">КрымЧиталка</h2>
+            <p class="loading-status" id="loadingStatus">Инициализация...</p>
         </div>
     </div>
 
-    <!-- Основной интерфейс -->
-    <div class="reader-app" id="readerApp" style="display: none;">
-        <!-- Строка прогресса -->
-        <div class="progress-indicator">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
-
-        <!-- Верхняя панель -->
-        <header class="top-bar" id="topBar">
-            <button class="icon-btn back-btn" id="backBtn">
-                <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+    <!-- Основной интерфейс читалки -->
+    <div class="reader-container" id="readerContainer" style="display: none;">
+        
+        <!-- Верхняя навигационная панель -->
+        <header class="top-navigation" id="topNavigation">
+            <button class="nav-button back-button" id="backButton" aria-label="Назад">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/>
+                </svg>
             </button>
-            <div class="book-title">
-                <h1>Хаджи-Гирай</h1>
-                <span>Алим Къуртсеит</span>
+            
+            <div class="book-metadata">
+                <h1 class="book-title">Хаджи-Гирай</h1>
+                <span class="book-author">Алим Къуртсеит</span>
             </div>
-            <button class="icon-btn menu-btn" id="menuBtn">
-                <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+            
+            <button class="nav-button settings-button" id="settingsButton" aria-label="Настройки">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                </svg>
             </button>
         </header>
 
-        <!-- Область чтения -->
-        <main class="reading-area" id="readingArea">
-            <div class="page-container" id="pageContainer">
-                <div class="page-content" id="pageContent">
-                    <!-- Контент страницы -->
-                </div>
+        <!-- Область для отображения текста -->
+        <main class="reading-viewport" id="readingViewport">
+            <div class="page-wrapper" id="pageWrapper">
+                <article class="page-content" id="pageContent">
+                    <!-- Динамически загружаемый контент страницы -->
+                </article>
             </div>
         </main>
 
-        <!-- Нижняя панель навигации -->
-        <footer class="bottom-bar" id="bottomBar">
-            <div class="page-info">
-                <span class="page-counter">
-                    <span id="currentPage">1</span>%
+        <!-- Нижняя панель управления -->
+        <footer class="bottom-controls" id="bottomControls">
+            <div class="reading-info">
+                <span class="page-progress">
+                    <span id="currentProgress">1</span>%
                 </span>
                 <span class="reading-time" id="readingTime">5 мин</span>
             </div>
             
-            <div class="nav-controls">
-                <button class="nav-btn" id="prevBtn" disabled>
-                    <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+            <div class="navigation-controls">
+                <button class="control-button prev-button" id="prevButton" aria-label="Предыдущая страница">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/>
+                    </svg>
                 </button>
-                <button class="nav-btn" id="nextBtn">
-                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                
+                <button class="control-button next-button" id="nextButton" aria-label="Следующая страница">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                    </svg>
                 </button>
             </div>
         </footer>
 
         <!-- Панель настроек -->
-        <div class="settings-panel" id="settingsPanel">
-            <div class="settings-overlay" id="settingsOverlay"></div>
-            <div class="settings-content">
-                <!-- Яркость -->
-                <div class="brightness-control">
-                    <svg class="brightness-icon" viewBox="0 0 24 24">
-                        <path d="M20 15.31L23.31 12 20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69z"/>
-                    </svg>
-                    <input type="range" class="brightness-slider" id="brightnessSlider" min="20" max="100" value="100">
-                    <svg class="brightness-icon" viewBox="0 0 24 24">
-                        <path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/>
-                    </svg>
-                </div>
-
-                <!-- Темы -->
-                <div class="theme-selector">
-                    <button class="theme-btn" data-theme="sepia" aria-label="Сепия">
-                        <div class="theme-preview theme-sepia"></div>
-                        <span>Сепия</span>
+        <aside class="settings-drawer" id="settingsDrawer">
+            <div class="settings-backdrop" id="settingsBackdrop"></div>
+            
+            <div class="settings-panel">
+                <header class="settings-header">
+                    <h3>Настройки чтения</h3>
+                    <button class="close-button" id="closeSettingsButton" aria-label="Закрыть">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                        </svg>
                     </button>
-                    <button class="theme-btn" data-theme="gray" aria-label="Серый">
-                        <div class="theme-preview theme-gray"></div>
-                        <span>Серый</span>
-                    </button>
-                    <button class="theme-btn active" data-theme="dark" aria-label="Черный">
-                        <div class="theme-preview theme-dark"></div>
-                        <span>Черный</span>
-                    </button>
-                    <button class="theme-btn" data-theme="auto" aria-label="Как в системе">
-                        <div class="theme-preview theme-auto"></div>
-                        <span>Как в системе</span>
-                    </button>
-                </div>
-
-                <!-- Настройки текста -->
-                <div class="text-settings">
-                    <div class="font-family">
-                        <span class="font-name">Kazimir</span>
-                        <div class="font-size-controls">
-                            <button class="font-btn" id="decreaseFont">−</button>
-                            <button class="font-btn" id="increaseFont">+</button>
+                </header>
+                
+                <div class="settings-content">
+                    <!-- Контроль яркости -->
+                    <section class="setting-group brightness-control">
+                        <label class="setting-label">Яркость</label>
+                        <div class="brightness-slider-container">
+                            <svg class="brightness-icon dim" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M20 15.31L23.31 12 20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69z"/>
+                            </svg>
+                            <input type="range" 
+                                   class="brightness-slider" 
+                                   id="brightnessSlider" 
+                                   min="30" 
+                                   max="100" 
+                                   value="100" 
+                                   aria-label="Настройка яркости">
+                            <svg class="brightness-icon bright" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/>
+                            </svg>
                         </div>
-                    </div>
+                    </section>
 
-                    <!-- Межстрочный интервал -->
-                    <div class="line-height-controls">
-                        <button class="line-height-btn" data-height="1.4">
-                            <div class="lines tight"></div>
-                        </button>
-                        <button class="line-height-btn active" data-height="1.6">
-                            <div class="lines normal"></div>
-                        </button>
-                        <button class="line-height-btn" data-height="2.0">
-                            <div class="lines loose"></div>
-                        </button>
-                    </div>
+                    <!-- Выбор темы оформления -->
+                    <section class="setting-group theme-selection">
+                        <label class="setting-label">Тема оформления</label>
+                        <div class="theme-options">
+                            <button class="theme-option" data-theme="sepia" aria-label="Сепия тема">
+                                <div class="theme-preview sepia"></div>
+                                <span>Сепия</span>
+                            </button>
+                            <button class="theme-option" data-theme="gray" aria-label="Серая тема">
+                                <div class="theme-preview gray"></div>
+                                <span>Серый</span>
+                            </button>
+                            <button class="theme-option active" data-theme="dark" aria-label="Тёмная тема">
+                                <div class="theme-preview dark"></div>
+                                <span>Черный</span>
+                            </button>
+                            <button class="theme-option" data-theme="auto" aria-label="Системная тема">
+                                <div class="theme-preview auto"></div>
+                                <span>Как в системе</span>
+                            </button>
+                        </div>
+                    </section>
 
-                    <!-- Выравнивание -->
-                    <div class="alignment-controls">
-                        <button class="alignment-btn" data-align="left">
-                            <div class="alignment-preview left"></div>
-                        </button>
-                        <button class="alignment-btn active" data-align="justify">
-                            <div class="alignment-preview justify"></div>
-                        </button>
-                        <button class="alignment-btn" data-align="center">
-                            <div class="alignment-preview center"></div>
-                        </button>
-                    </div>
+                    <!-- Настройки шрифта и текста -->
+                    <section class="setting-group typography-controls">
+                        <div class="font-settings">
+                            <label class="setting-label">Семейство шрифтов</label>
+                            <div class="font-family-control">
+                                <span class="font-name">Kazimir</span>
+                                <div class="font-size-controls">
+                                    <button class="font-size-button decrease" id="decreaseFontSize" aria-label="Уменьшить шрифт">−</button>
+                                    <button class="font-size-button increase" id="increaseFontSize" aria-label="Увеличить шрифт">+</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="line-spacing-control">
+                            <label class="setting-label">Межстрочный интервал</label>
+                            <div class="line-spacing-options">
+                                <button class="spacing-option" data-spacing="1.4" aria-label="Узкий интервал">
+                                    <div class="lines-preview tight">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </button>
+                                <button class="spacing-option active" data-spacing="1.6" aria-label="Нормальный интервал">
+                                    <div class="lines-preview normal">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </button>
+                                <button class="spacing-option" data-spacing="2.0" aria-label="Широкий интервал">
+                                    <div class="lines-preview loose">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="text-alignment-control">
+                            <label class="setting-label">Выравнивание текста</label>
+                            <div class="alignment-options">
+                                <button class="align-option" data-align="left" aria-label="По левому краю">
+                                    <div class="align-preview left">
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </button>
+                                <button class="align-option active" data-align="justify" aria-label="По ширине">
+                                    <div class="align-preview justify">
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </button>
+                                <button class="align-option" data-align="center" aria-label="По центру">
+                                    <div class="align-preview center">
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Переключатель режима прокрутки -->
+                    <section class="setting-group scroll-mode-toggle">
+                        <div class="toggle-setting">
+                            <label class="setting-label">Прокрутка текста</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" 
+                                       class="toggle-input" 
+                                       id="scrollModeToggle" 
+                                       aria-label="Включить режим прокрутки">
+                                <label class="toggle-label" for="scrollModeToggle"></label>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Кнопка дополнительных настроек -->
+                    <button class="additional-settings-button">
+                        ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ
+                    </button>
                 </div>
-
-                <!-- Прокрутка текста -->
-                <div class="scroll-setting">
-                    <span>Прокрутка текста</span>
-                    <div class="toggle-switch">
-                        <input type="checkbox" id="scrollToggle">
-                        <label for="scrollToggle" class="toggle-label"></label>
-                    </div>
-                </div>
-
-                <button class="additional-settings">ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ</button>
             </div>
-        </div>
+        </aside>
 
-        <!-- Зоны касания -->
-        <div class="touch-zones">
-            <div class="touch-zone left" id="leftZone"></div>
-            <div class="touch-zone center" id="centerZone"></div>
-            <div class="touch-zone right" id="rightZone"></div>
+        <!-- Невидимые зоны для управления жестами -->
+        <div class="touch-interaction-zones">
+            <div class="touch-zone left-zone" id="leftTouchZone" aria-label="Предыдущая страница"></div>
+            <div class="touch-zone center-zone" id="centerTouchZone" aria-label="Показать/скрыть панели"></div>
+            <div class="touch-zone right-zone" id="rightTouchZone" aria-label="Следующая страница"></div>
         </div>
     </div>
 
+    <!-- Подключение скрипта -->
     <script src="reader.js"></script>
 </body>
 </html>
