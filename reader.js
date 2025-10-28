@@ -1,10 +1,10 @@
 /**
  * Профессиональный ридер в стиле Яндекс.Книг
- * Совместимость: ES6+ без экспериментальных функций
+ * Совместимая версия без приватных полей
  */
 class YandexBooksReader {
     constructor() {
-        // Состояние ридера (публичные свойства для совместимости)
+        // Состояние ридера
         this.state = {
             bookContent: '',
             pages: [],
@@ -307,8 +307,6 @@ class YandexBooksReader {
         } else {
             console.log('✅ Pagination completed without significant data loss');
         }
-        
-        console.log(`📊 Word count - Original: ${originalWordCount}, Paginated: ${paginatedWordCount}`);
     }
 
     /**
@@ -328,21 +326,41 @@ class YandexBooksReader {
      * Привязывает события навигации
      */
     bindNavigationEvents() {
+        console.log('🎯 Binding navigation events...');
+        
         if (this.elements.prevButton) {
-            this.elements.prevButton.addEventListener('click', () => this.goToPreviousPage());
+            this.elements.prevButton.addEventListener('click', () => {
+                console.log('⬅️ Previous button clicked');
+                this.goToPreviousPage();
+            });
         }
+        
         if (this.elements.nextButton) {
-            this.elements.nextButton.addEventListener('click', () => this.goToNextPage());
+            this.elements.nextButton.addEventListener('click', () => {
+                console.log('➡️ Next button clicked');
+                this.goToNextPage();
+            });
         }
         
         if (this.elements.leftTouchZone) {
-            this.elements.leftTouchZone.addEventListener('click', () => this.goToPreviousPage());
+            this.elements.leftTouchZone.addEventListener('click', () => {
+                console.log('👈 Left zone clicked');
+                this.goToPreviousPage();
+            });
         }
+        
         if (this.elements.rightTouchZone) {
-            this.elements.rightTouchZone.addEventListener('click', () => this.goToNextPage());
+            this.elements.rightTouchZone.addEventListener('click', () => {
+                console.log('👉 Right zone clicked');
+                this.goToNextPage();
+            });
         }
+        
         if (this.elements.centerTouchZone) {
-            this.elements.centerTouchZone.addEventListener('click', () => this.toggleUI());
+            this.elements.centerTouchZone.addEventListener('click', () => {
+                console.log('👆 Center zone clicked');
+                this.toggleUI();
+            });
         }
     }
 
@@ -500,6 +518,8 @@ class YandexBooksReader {
             return;
         }
         
+        console.log(`📖 Rendering page ${this.state.currentPageIndex + 1}/${this.state.totalPages}`);
+        
         this.performDirectDOMUpdate(currentPage.content);
         this.updateInterfaceState();
         this.saveProgress();
@@ -511,13 +531,18 @@ class YandexBooksReader {
     performDirectDOMUpdate(content) {
         if (!this.elements.pageContent) return;
         
+        // Плавная анимация смены контента
         this.elements.pageContent.style.opacity = '0.7';
         this.elements.pageContent.style.transform = 'translateY(8px)';
         
         setTimeout(() => {
+            // Прямое обновление innerHTML (без виртуального DOM)
             this.elements.pageContent.innerHTML = content;
+            
+            // Применение пользовательских настроек к новому контенту
             this.applyTypographySettings();
             
+            // Завершение анимации
             setTimeout(() => {
                 this.elements.pageContent.style.opacity = '1';
                 this.elements.pageContent.style.transform = 'translateY(0)';
@@ -533,20 +558,24 @@ class YandexBooksReader {
         const totalPages = this.state.totalPages;
         const progressPercentage = totalPages > 1 ? (currentIndex / (totalPages - 1)) * 100 : 0;
         
+        // Обновление индикатора прогресса
         if (this.elements.progressFill) {
             this.elements.progressFill.style.width = `${progressPercentage}%`;
         }
         
+        // Обновление счетчика страниц (в процентах, как в Яндекс.Книгах)
         if (this.elements.currentProgress) {
             this.elements.currentProgress.textContent = Math.round(progressPercentage).toString();
         }
         
+        // Обновление времени чтения
         if (this.elements.readingTime) {
             const remainingPages = totalPages - currentIndex - 1;
             const estimatedMinutes = Math.ceil(remainingPages * (this.wordsPerPage / 220));
             this.elements.readingTime.textContent = `${estimatedMinutes} мин`;
         }
         
+        // Состояние кнопок навигации
         if (this.elements.prevButton) {
             this.elements.prevButton.disabled = currentIndex === 0;
         }
@@ -557,28 +586,32 @@ class YandexBooksReader {
     }
 
     /**
-     * Переходит к следующей странице
+     * ИСПРАВЛЕННЫЕ методы навигации (БЕЗ приватных полей!)
      */
     goToNextPage() {
+        console.log(`📖 Trying to go to next page. Current: ${this.state.currentPageIndex + 1}/${this.state.totalPages}`);
+        
         if (this.state.currentPageIndex < this.state.totalPages - 1) {
             this.state.currentPageIndex++;
+            console.log(`✅ Moving to page ${this.state.currentPageIndex + 1}`);
             this.renderCurrentPage();
+        } else {
+            console.log('❌ Already on last page');
         }
     }
 
-    /**
-     * Переходит к предыдущей странице
-     */
     goToPreviousPage() {
+        console.log(`📖 Trying to go to previous page. Current: ${this.state.currentPageIndex + 1}/${this.state.totalPages}`);
+        
         if (this.state.currentPageIndex > 0) {
             this.state.currentPageIndex--;
+            console.log(`✅ Moving to page ${this.state.currentPageIndex + 1}`);
             this.renderCurrentPage();
+        } else {
+            console.log('❌ Already on first page');
         }
     }
 
-    /**
-     * Переходит к указанной странице
-     */
     goToPage(pageIndex) {
         const clampedIndex = Math.max(0, Math.min(pageIndex, this.state.totalPages - 1));
         
@@ -589,7 +622,7 @@ class YandexBooksReader {
     }
 
     /**
-     * Переключает видимость пользовательского интерфейса
+     * Управление UI
      */
     toggleUI() {
         if (this.state.isUIVisible) {
@@ -599,9 +632,6 @@ class YandexBooksReader {
         }
     }
 
-    /**
-     * Показывает пользовательский интерфейс
-     */
     showUI() {
         this.state.isUIVisible = true;
         
@@ -611,11 +641,10 @@ class YandexBooksReader {
         if (this.elements.bottomControls) {
             this.elements.bottomControls.classList.add('visible');
         }
+        
+        console.log('👁️ UI shown');
     }
 
-    /**
-     * Скрывает пользовательский интерфейс
-     */
     hideUI() {
         this.state.isUIVisible = false;
         
@@ -625,11 +654,10 @@ class YandexBooksReader {
         if (this.elements.bottomControls) {
             this.elements.bottomControls.classList.remove('visible');
         }
+        
+        console.log('🙈 UI hidden');
     }
 
-    /**
-     * Показывает интерфейс временно
-     */
     showUITemporarily() {
         this.showUI();
         
@@ -641,7 +669,7 @@ class YandexBooksReader {
     }
 
     /**
-     * Открывает панель настроек
+     * Управление настройками
      */
     openSettings() {
         this.state.isSettingsOpen = true;
@@ -652,22 +680,19 @@ class YandexBooksReader {
         
         this.showUI();
         this.updateSettingsInterface();
+        console.log('⚙️ Settings opened');
     }
 
-    /**
-     * Закрывает панель настроек
-     */
     closeSettings() {
         this.state.isSettingsOpen = false;
         
         if (this.elements.settingsDrawer) {
             this.elements.settingsDrawer.classList.remove('visible');
         }
+        
+        console.log('⚙️ Settings closed');
     }
 
-    /**
-     * Обновляет интерфейс настроек
-     */
     updateSettingsInterface() {
         if (this.elements.brightnessSlider) {
             this.elements.brightnessSlider.value = this.state.settings.brightness.toString();
@@ -695,7 +720,7 @@ class YandexBooksReader {
     }
 
     /**
-     * Изменяет тему оформления
+     * Настройки
      */
     changeTheme(themeName) {
         this.state.settings.theme = themeName;
@@ -704,18 +729,12 @@ class YandexBooksReader {
         this.updateSettingsInterface();
     }
 
-    /**
-     * Обновляет яркость экрана
-     */
     updateBrightness(brightness) {
         this.state.settings.brightness = brightness;
         document.documentElement.style.filter = `brightness(${brightness}%)`;
         this.saveSettings();
     }
 
-    /**
-     * Изменяет размер шрифта
-     */
     adjustFontSize(delta) {
         const newSize = Math.max(14, Math.min(24, this.state.settings.fontSize + delta));
         
@@ -726,9 +745,6 @@ class YandexBooksReader {
         }
     }
 
-    /**
-     * Изменяет межстрочный интервал
-     */
     changeLineHeight(lineHeight) {
         this.state.settings.lineHeight = lineHeight;
         this.applyTypographySettings();
@@ -736,9 +752,6 @@ class YandexBooksReader {
         this.updateSettingsInterface();
     }
 
-    /**
-     * Изменяет выравнивание текста
-     */
     changeTextAlignment(alignment) {
         this.state.settings.textAlign = alignment;
         this.applyTypographySettings();
@@ -746,18 +759,12 @@ class YandexBooksReader {
         this.updateSettingsInterface();
     }
 
-    /**
-     * Переключает режим прокрутки
-     */
     toggleScrollMode(enabled) {
         this.state.settings.scrollMode = enabled;
         document.body.classList.toggle('scroll-mode', enabled);
         this.saveSettings();
     }
 
-    /**
-     * Применяет настройки типографики
-     */
     applyTypographySettings() {
         if (!this.elements.pageContent) return;
         
@@ -771,15 +778,12 @@ class YandexBooksReader {
         document.documentElement.style.setProperty('--line-height-base', lineHeight.toString());
     }
 
-    /**
-     * Обрабатывает действие "Назад"
-     */
     handleBackAction() {
         console.log('⬅️ Back action');
     }
 
     /**
-     * Сохраняет настройки в localStorage
+     * Сохранение и загрузка
      */
     saveSettings() {
         try {
@@ -792,9 +796,6 @@ class YandexBooksReader {
         }
     }
 
-    /**
-     * Загружает настройки из localStorage
-     */
     loadSettings() {
         try {
             const savedSettings = localStorage.getItem(`${this.storageKey}-settings`);
@@ -810,9 +811,6 @@ class YandexBooksReader {
         this.applySettings();
     }
 
-    /**
-     * Применяет все настройки
-     */
     applySettings() {
         document.body.setAttribute('data-theme', this.state.settings.theme);
         document.documentElement.style.filter = `brightness(${this.state.settings.brightness}%)`;
@@ -820,9 +818,6 @@ class YandexBooksReader {
         this.applyTypographySettings();
     }
 
-    /**
-     * Сохраняет прогресс чтения
-     */
     saveProgress() {
         try {
             const progressData = {
@@ -840,9 +835,6 @@ class YandexBooksReader {
         }
     }
 
-    /**
-     * Загружает прогресс чтения
-     */
     loadProgress() {
         try {
             const savedProgress = localStorage.getItem(`${this.storageKey}-progress`);
@@ -852,6 +844,7 @@ class YandexBooksReader {
                 
                 if (progressData.pageIndex < this.state.totalPages) {
                     this.state.currentPageIndex = progressData.pageIndex;
+                    console.log(`📖 Progress restored: page ${progressData.pageIndex + 1}`);
                 }
             }
         } catch (error) {
@@ -860,7 +853,7 @@ class YandexBooksReader {
     }
 
     /**
-     * Обновляет статус загрузки
+     * Утилиты загрузки
      */
     updateLoadingStatus(message) {
         if (this.elements.loadingStatus) {
@@ -869,9 +862,6 @@ class YandexBooksReader {
         console.log(`🔄 ${message}`);
     }
 
-    /**
-     * Скрывает экран загрузки
-     */
     hideLoading() {
         if (this.elements.loadingOverlay) {
             this.elements.loadingOverlay.classList.add('hidden');
@@ -889,9 +879,6 @@ class YandexBooksReader {
         }, 500);
     }
 
-    /**
-     * Показывает ошибку
-     */
     showError(message) {
         this.updateLoadingStatus(message);
         console.error(`❌ ${message}`);
@@ -910,10 +897,13 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('🏁 DOM loaded, initializing reader...');
     
     try {
+        // Создаем глобальный экземпляр ридера
         window.yandexBooksReader = new YandexBooksReader();
+        
     } catch (error) {
         console.error('💥 Critical initialization error:', error);
         
+        // Показываем пользовательский экран ошибки
         document.body.innerHTML = `
             <div style="
                 display: flex; 
