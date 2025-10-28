@@ -1,7 +1,7 @@
 // Простой рабочий JavaScript без TypeScript синтаксиса
 class YandexStyleReader {
     constructor() {
-        this.WORDS_PER_PAGE = 300;
+        this.WORDS_PER_PAGE = 250; // Уменьшили для лучшего отображения
         this.STORAGE_KEY = 'yandex-reader-state';
         
         // Инициализируем состояние
@@ -63,8 +63,7 @@ class YandexStyleReader {
             'pageContent', 'currentPage', 'readingTime',
             'prevBtn', 'nextBtn', 'menuBtn', 'backBtn',
             'leftZone', 'centerZone', 'rightZone',
-            'settingsPanel', 'settingsOverlay',
-            'brightnessSlider', 'decreaseFont', 'increaseFont', 'scrollToggle'
+            'settingsPanel', 'settingsOverlay'
         ];
         
         elementIds.forEach(id => {
@@ -101,7 +100,7 @@ class YandexStyleReader {
         }
     }
 
-    // Создание страниц
+    // ИСПРАВЛЕННОЕ создание страниц
     createPages() {
         console.log('📄 Создание страниц...');
         
@@ -123,8 +122,9 @@ class YandexStyleReader {
             const paragraph = paragraphs[i].trim();
             const wordCount = this.countWords(paragraph);
             
+            // Проверяем, поместится ли параграф на текущую страницу
             if (currentWordCount + wordCount > this.WORDS_PER_PAGE && currentPageParagraphs.length > 0) {
-                // Создаем страницу
+                // Создаем страницу из накопленных параграфов
                 const pageContent = this.formatPageContent(currentPageParagraphs);
                 this.state.pages.push({
                     id: this.state.pages.length,
@@ -136,8 +136,14 @@ class YandexStyleReader {
                 currentPageParagraphs = [paragraph];
                 currentWordCount = wordCount;
             } else {
+                // Добавляем параграф на текущую страницу
                 currentPageParagraphs.push(paragraph);
                 currentWordCount += wordCount;
+            }
+            
+            // Показываем прогресс
+            if (i % 20 === 0) {
+                this.updateLoadingStatus(`Обработано ${i}/${paragraphs.length} параграфов...`);
             }
         }
         
@@ -155,6 +161,9 @@ class YandexStyleReader {
         
         console.log(`✅ Создано страниц: ${this.state.totalPages}`);
         console.log(`📊 Слов на страницу: ~${this.WORDS_PER_PAGE}`);
+        
+        // Проверка целостности
+        this.verifyPages(paragraphs);
     }
 
     // Подсчет слов
@@ -162,7 +171,7 @@ class YandexStyleReader {
         return text.split(/\s+/).filter(word => word.length > 0).length;
     }
 
-    // Форматирование содержимого страницы
+    // ИСПРАВЛЕННОЕ форматирование содержимого страницы
     formatPageContent(paragraphs) {
         return paragraphs.map(paragraph => {
             const text = paragraph.trim();
@@ -190,6 +199,22 @@ class YandexStyleReader {
             // Обычный параграф
             return `<p>${text}</p>`;
         }).join('');
+    }
+
+    // Проверка целостности страниц
+    verifyPages(originalParagraphs) {
+        const originalWordCount = originalParagraphs.reduce((total, p) => total + this.countWords(p), 0);
+        const paginatedWordCount = this.state.pages.reduce((total, page) => total + page.wordCount, 0);
+        
+        const difference = Math.abs(originalWordCount - paginatedWordCount);
+        
+        if (difference > 20) {
+            console.warn(`⚠️ Возможная потеря данных: ${difference} слов`);
+        } else {
+            console.log('✅ Пагинация выполнена без значительных потерь');
+        }
+        
+        console.log(`📊 Статистика: оригинал ${originalWordCount} слов, страницы ${paginatedWordCount} слов`);
     }
 
     // Привязка событий
@@ -264,11 +289,20 @@ class YandexStyleReader {
     // Рендеринг страницы
     renderCurrentPage() {
         const currentPage = this.state.pages[this.state.currentPageIndex];
-        if (!currentPage || !this.elements.pageContent) return;
+        if (!currentPage || !this.elements.pageContent) {
+            console.warn('Нет страницы для отображения');
+            return;
+        }
         
-        this.elements.pageContent.innerHTML = currentPage.content;
-        this.updateUI();
-        this.saveProgress();
+        // Плавная смена контента
+        this.elements.pageContent.style.opacity = '0.7';
+        
+        setTimeout(() => {
+            this.elements.pageContent.innerHTML = currentPage.content;
+            this.elements.pageContent.style.opacity = '1';
+            this.updateUI();
+            this.saveProgress();
+        }, 100);
     }
 
     // Обновление UI
@@ -282,7 +316,7 @@ class YandexStyleReader {
             this.elements.progressFill.style.width = `${progress}%`;
         }
         
-        // Счетчик страниц (в процентах)
+        // Счетчик страниц (в процентах как в Яндекс.Книгах)
         if (this.elements.currentPage) {
             this.elements.currentPage.textContent = Math.round(progress).toString();
         }
@@ -290,7 +324,7 @@ class YandexStyleReader {
         // Время чтения
         if (this.elements.readingTime) {
             const remainingPages = total - current;
-            const minutes = Math.ceil(remainingPages * 1.5);
+            const minutes = Math.ceil(remainingPages * 1.2);
             this.elements.readingTime.textContent = `${minutes} мин`;
         }
         
@@ -399,11 +433,10 @@ class YandexStyleReader {
     }
 
     applySettings() {
-        const { theme, fontSize, lineHeight, alignment, brightness, scrollMode } = this.state.settings;
+        const { theme, fontSize, lineHeight, alignment, brightness } = this.state.settings;
         
         document.body.setAttribute('data-theme', theme);
         document.documentElement.style.filter = `brightness(${brightness}%)`;
-        document.body.classList.toggle('scroll-mode', scrollMode);
         
         if (this.elements.pageContent) {
             this.elements.pageContent.style.fontSize = `${fontSize}px`;
