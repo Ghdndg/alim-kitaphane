@@ -639,7 +639,7 @@ openSettings() {
                                 <input type="range" id="brightnessSlider" min="30" max="100" value="100">
                             </div>
                         </section>
-    
+
                         <!-- Темы -->
                         <section class="setting-group">
                             <label>Тема оформления</label>
@@ -658,7 +658,7 @@ openSettings() {
                                 </button>
                             </div>
                         </section>
-    
+
                         <!-- Размер шрифта -->
                         <section class="setting-group">
                             <label>Размер шрифта</label>
@@ -667,7 +667,7 @@ openSettings() {
                                 <button class="font-btn" id="increaseFontSize">А+</button>
                             </div>
                         </section>
-    
+
                         <!-- Межстрочный интервал -->
                         <section class="setting-group">
                             <label>Межстрочный интервал</label>
@@ -681,6 +681,7 @@ openSettings() {
                 </div>
             </aside>
         `;
+
         
         // Добавляем CSS для настроек
         const settingsCSS = `
@@ -914,146 +915,193 @@ openSettings() {
 
 
 
-/**
- * Закрытие настроек
- */
-closeSettings() {
-    console.log('⚙️ Settings closed');
-    
-    this.state.isSettingsOpen = false;
-    
-    if (this.elements.settingsDrawer) {
-        this.elements.settingsDrawer.classList.remove('visible');
-        
-        // Удаляем панель через секунду
-        setTimeout(() => {
-            if (this.elements.settingsDrawer && !this.state.isSettingsOpen) {
-                this.elements.settingsDrawer.remove();
-                this.elements.settingsDrawer = null;
-            }
-        }, 300);
-    }
-}
-
-/**
- * Обновление интерфейса настроек
- */
-updateSettingsInterface() {
-    console.log('🔄 Updating settings interface');
-    // Заглушка для обновления настроек
-}
-
-
-    handleBackAction() {
-        console.log('⬅️ Back action');
-    }
-
     /**
-     * Применяет настройки типографики
-     */
-    applyTypographySettings() {
-        if (!this.elements.pageContent) return;
+    * Закрытие настроек
+    */
+    closeSettings() {
+        console.log('⚙️ Settings closed');
         
-        const { fontSize, lineHeight, textAlign } = this.state.settings;
+        this.state.isSettingsOpen = false;
         
-        this.elements.pageContent.style.fontSize = `${fontSize}px`;
-        this.elements.pageContent.style.lineHeight = lineHeight.toString();
-        this.elements.pageContent.style.textAlign = textAlign;
-    }
-
-    /**
-     * Работа с настройками и прогрессом (заглушки)
-     */
-    saveSettings() {
-        try {
-            localStorage.setItem(`${this.storageKey}-settings`, JSON.stringify(this.state.settings));
-        } catch (error) {
-            console.warn('⚠️ Failed to save settings:', error);
-        }
-    }
-
-    loadSettings() {
-        try {
-            const savedSettings = localStorage.getItem(`${this.storageKey}-settings`);
-            if (savedSettings) {
-                Object.assign(this.state.settings, JSON.parse(savedSettings));
-            }
-        } catch (error) {
-            console.warn('⚠️ Failed to load settings:', error);
-        }
-        this.applySettings();
-    }
-
-    applySettings() {
-        document.body.setAttribute('data-theme', this.state.settings.theme);
-        this.applyTypographySettings();
-    }
-
-    saveProgress() {
-        try {
-            const progressData = {
-                pageIndex: this.state.currentPageIndex,
-                totalPages: this.state.totalPages,
-                timestamp: Date.now()
-            };
-            localStorage.setItem(`${this.storageKey}-progress`, JSON.stringify(progressData));
-        } catch (error) {
-            console.warn('⚠️ Failed to save progress:', error);
-        }
-    }
-
-    loadProgress() {
-        try {
-            const savedProgress = localStorage.getItem(`${this.storageKey}-progress`);
-            if (savedProgress) {
-                const progressData = JSON.parse(savedProgress);
-                if (progressData.pageIndex < this.state.totalPages) {
-                    this.state.currentPageIndex = progressData.pageIndex;
-                    console.log(`📖 Progress restored: page ${progressData.pageIndex + 1}`);
+        if (this.elements.settingsDrawer) {
+            this.elements.settingsDrawer.classList.remove('visible');
+            
+            // Удаляем панель через секунду
+            setTimeout(() => {
+                if (this.elements.settingsDrawer && !this.state.isSettingsOpen) {
+                    this.elements.settingsDrawer.remove();
+                    this.elements.settingsDrawer = null;
                 }
-            }
-        } catch (error) {
-            console.warn('⚠️ Failed to load progress:', error);
+            }, 300);
         }
     }
 
     /**
-     * Утилиты загрузки
+     * Обновление интерфейса настроек
      */
-    updateLoadingStatus(message) {
-        if (this.elements.loadingStatus) {
-            this.elements.loadingStatus.textContent = message;
-        }
-        console.log(`🔄 ${message}`);
+    updateSettingsInterface() {
+        console.log('🔄 Updating settings interface');
+        // Заглушка для обновления настроек
     }
 
-    hideLoading() {
-        if (this.elements.loadingOverlay) {
-            this.elements.loadingOverlay.classList.add('hidden');
+
+        handleBackAction() {
+            console.log('⬅️ Back action');
         }
-        
-        if (this.elements.readerContainer) {
-            this.elements.readerContainer.style.display = 'flex';
-            this.elements.readerContainer.classList.add('ready');
+
+        /**
+         * Применяет настройки типографики
+         */
+        applyTypographySettings() {
+            if (!this.elements.pageContent) return;
+            
+            const { fontSize, lineHeight, textAlign } = this.state.settings;
+            
+            this.elements.pageContent.style.fontSize = `${fontSize}px`;
+            this.elements.pageContent.style.lineHeight = lineHeight.toString();
+            this.elements.pageContent.style.textAlign = textAlign;
         }
-        
-        setTimeout(() => {
-            if (this.elements.loadingOverlay) {
-                this.elements.loadingOverlay.style.display = 'none';
+
+        /**
+         * Работа с настройками и прогрессом (заглушки)
+         */
+        saveSettings() {
+            try {
+                localStorage.setItem(`${this.storageKey}-settings`, JSON.stringify(this.state.settings));
+            } catch (error) {
+                console.warn('⚠️ Failed to save settings:', error);
             }
-        }, 500);
-    }
+        }
 
-    showError(message) {
-        this.updateLoadingStatus(message);
-        console.error(`❌ ${message}`);
-        
-        const spinner = document.querySelector('.loading-spinner');
-        if (spinner) {
-            spinner.style.display = 'none';
+        loadSettings() {
+            try {
+                const savedSettings = localStorage.getItem(`${this.storageKey}-settings`);
+                if (savedSettings) {
+                    Object.assign(this.state.settings, JSON.parse(savedSettings));
+                }
+            } catch (error) {
+                console.warn('⚠️ Failed to load settings:', error);
+            }
+            this.applySettings();
+        }
+
+        applySettings() {
+            document.body.setAttribute('data-theme', this.state.settings.theme);
+            this.applyTypographySettings();
+        }
+
+        saveProgress() {
+            try {
+                const progressData = {
+                    pageIndex: this.state.currentPageIndex,
+                    totalPages: this.state.totalPages,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(`${this.storageKey}-progress`, JSON.stringify(progressData));
+            } catch (error) {
+                console.warn('⚠️ Failed to save progress:', error);
+            }
+        }
+
+        loadProgress() {
+            try {
+                const savedProgress = localStorage.getItem(`${this.storageKey}-progress`);
+                if (savedProgress) {
+                    const progressData = JSON.parse(savedProgress);
+                    if (progressData.pageIndex < this.state.totalPages) {
+                        this.state.currentPageIndex = progressData.pageIndex;
+                        console.log(`📖 Progress restored: page ${progressData.pageIndex + 1}`);
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Failed to load progress:', error);
+            }
+        }
+
+        /**
+        * Утилиты загрузки
+        */
+        updateLoadingStatus(message) {
+            if (this.elements.loadingStatus) {
+                this.elements.loadingStatus.textContent = message;
+            }
+            console.log(`🔄 ${message}`);
+        }
+
+        hideLoading() {
+            if (this.elements.loadingOverlay) {
+                this.elements.loadingOverlay.classList.add('hidden');
+            }
+            
+            if (this.elements.readerContainer) {
+                this.elements.readerContainer.style.display = 'flex';
+                this.elements.readerContainer.classList.add('ready');
+            }
+            
+            setTimeout(() => {
+                if (this.elements.loadingOverlay) {
+                    this.elements.loadingOverlay.style.display = 'none';
+                }
+            }, 500);
+        }
+
+        showError(message) {
+            this.updateLoadingStatus(message);
+            console.error(`❌ ${message}`);
+            
+            const spinner = document.querySelector('.loading-spinner');
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+        }
+
+        /**
+         * Методы для работы настроек
+         */
+        updateBrightness(brightness) {
+            this.state.settings.brightness = brightness;
+            document.documentElement.style.filter = `brightness(${brightness}%)`;
+            this.saveSettings();
+            console.log(`🔆 Brightness: ${brightness}%`);
+        }
+
+        adjustFontSize(delta) {
+            const newSize = Math.max(14, Math.min(24, this.state.settings.fontSize + delta));
+            if (newSize !== this.state.settings.fontSize) {
+                this.state.settings.fontSize = newSize;
+                this.applyTypographySettings();
+                this.saveSettings();
+                console.log(`📏 Font size: ${newSize}px`);
+            }
+        }
+
+        changeTheme(themeName) {
+            this.state.settings.theme = themeName;
+            document.body.setAttribute('data-theme', themeName);
+            this.saveSettings();
+            
+            // Обновляем активную тему
+            document.querySelectorAll('.theme-option').forEach(option => {
+                option.classList.toggle('active', option.dataset.theme === themeName);
+            });
+            
+            console.log(`🎨 Theme: ${themeName}`);
+        }
+
+        changeLineHeight(lineHeight) {
+            this.state.settings.lineHeight = lineHeight;
+            this.applyTypographySettings();
+            this.saveSettings();
+            
+            // Обновляем активную кнопку
+            document.querySelectorAll('.spacing-btn').forEach(btn => {
+                const spacing = parseFloat(btn.dataset.spacing);
+                btn.classList.toggle('active', Math.abs(spacing - lineHeight) < 0.1);
+            });
+            
+            console.log(`📐 Line height: ${lineHeight}`);
         }
     }
-}
 
 /**
  * Инициализация приложения
