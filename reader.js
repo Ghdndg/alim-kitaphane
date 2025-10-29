@@ -173,17 +173,26 @@ class YandexBooksReader {
                 
                 if (actualHeight <= maxHeight) {
                     found = true;
-                    // Если помещается, попробуем добавить еще слов
-                    const nextBest = Math.min(best + 50, words.length - index);
-                    const nextSliceText = words.slice(index, index + nextBest).join(' ');
-                    const nextHtml = this.formatSimplePage(nextSliceText, pageNumber === 0 ? 0 : index);
-                    measureEl.innerHTML = nextHtml;
-                    measureEl.offsetHeight;
-                    const nextHeight = measureEl.scrollHeight;
+                    // Если помещается, попробуем добавить еще слов более агрессивно
+                    let nextBest = Math.min(best + 100, words.length - index);
+                    let maxAttempts = 5;
+                    let attempts = 0;
                     
-                    if (nextHeight <= maxHeight) {
-                        best = nextBest;
-                        console.log(`✅ Can fit more: ${best} words, height ${nextHeight}px`);
+                    while (attempts < maxAttempts && nextBest < words.length - index) {
+                        const nextSliceText = words.slice(index, index + nextBest).join(' ');
+                        const nextHtml = this.formatSimplePage(nextSliceText, pageNumber === 0 ? 0 : index);
+                        measureEl.innerHTML = nextHtml;
+                        measureEl.offsetHeight;
+                        const nextHeight = measureEl.scrollHeight;
+                        
+                        if (nextHeight <= maxHeight) {
+                            best = nextBest;
+                            console.log(`✅ Can fit more: ${best} words, height ${nextHeight}px (${Math.round(nextHeight/maxHeight * 100)}% filled)`);
+                            nextBest = Math.min(best + 50, words.length - index);
+                        } else {
+                            break;
+                        }
+                        attempts++;
                     }
                     break;
                 }
@@ -211,16 +220,16 @@ class YandexBooksReader {
             let finalHeight = measureEl.scrollHeight;
             let finalBest = best;
             
-            // Дополнительная оптимизация: если на странице много свободного места, попробуем добавить еще слов
-            if (finalHeight < maxHeight * 0.7 && index + best < words.length) {
+            // Дополнительная оптимизация: если на странице есть свободное место, попробуем добавить еще слов
+            if (finalHeight < maxHeight * 0.9 && index + best < words.length) {
                 console.log(`🔧 Page has ${Math.round((1 - finalHeight/maxHeight) * 100)}% free space, trying to add more words...`);
                 
                 let additionalWords = 0;
                 let testBest = best;
                 
-                // Пробуем добавить по 10 слов за раз
-                while (testBest < words.length - index && additionalWords < 100) {
-                    testBest += 10;
+                // Пробуем добавить по 5 слов за раз для более точного заполнения
+                while (testBest < words.length - index && additionalWords < 200) {
+                    testBest += 5;
                     const testSliceText = words.slice(index, index + testBest).join(' ');
                     const testHtml = this.formatSimplePage(testSliceText, pageNumber === 0 ? 0 : index);
                     measureEl.innerHTML = testHtml;
@@ -230,9 +239,28 @@ class YandexBooksReader {
                     if (testHeight <= maxHeight) {
                         finalBest = testBest;
                         finalHeight = testHeight;
-                        additionalWords += 10;
-                        console.log(`✅ Added ${additionalWords} more words, height: ${testHeight}px`);
+                        additionalWords += 5;
+                        console.log(`✅ Added ${additionalWords} more words, height: ${testHeight}px (${Math.round(testHeight/maxHeight * 100)}% filled)`);
                     } else {
+                        // Если не помещается, попробуем добавить по 1 слову
+                        testBest -= 5;
+                        while (testBest < words.length - index && testBest < best + additionalWords + 20) {
+                            testBest += 1;
+                            const singleTestSliceText = words.slice(index, index + testBest).join(' ');
+                            const singleTestHtml = this.formatSimplePage(singleTestSliceText, pageNumber === 0 ? 0 : index);
+                            measureEl.innerHTML = singleTestHtml;
+                            measureEl.offsetHeight;
+                            const singleTestHeight = measureEl.scrollHeight;
+                            
+                            if (singleTestHeight <= maxHeight) {
+                                finalBest = testBest;
+                                finalHeight = singleTestHeight;
+                                additionalWords = testBest - best;
+                                console.log(`✅ Added ${additionalWords} more words (1 by 1), height: ${singleTestHeight}px (${Math.round(singleTestHeight/maxHeight * 100)}% filled)`);
+                            } else {
+                                break;
+                            }
+                        }
                         break;
                     }
                 }
@@ -247,6 +275,35 @@ class YandexBooksReader {
                 wordCount: finalBest,
                 actualHeight: finalHeight
             });
+            
+            // Финальная проверка: если страница заполнена менее чем на 85%, попробуем добавить еще слов
+            if (finalHeight < maxHeight * 0.85 && index + finalBest < words.length) {
+                console.log(`🔧 Final optimization: page only ${Math.round(finalHeight/maxHeight * 100)}% filled, trying to add more...`);
+                
+                let extraWords = 0;
+                let testFinal = finalBest;
+                
+                while (testFinal < words.length - index && extraWords < 50) {
+                    testFinal += 1;
+                    const extraSliceText = words.slice(index, index + testFinal).join(' ');
+                    const extraHtml = this.formatSimplePage(extraSliceText, pageNumber === 0 ? 0 : index);
+                    measureEl.innerHTML = extraHtml;
+                    measureEl.offsetHeight;
+                    const extraHeight = measureEl.scrollHeight;
+                    
+                    if (extraHeight <= maxHeight) {
+                        finalBest = testFinal;
+                        finalHeight = extraHeight;
+                        extraWords++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                if (extraWords > 0) {
+                    console.log(`✅ Final optimization added ${extraWords} more words`);
+                }
+            }
             
             console.log(`📄 Created page ${pageNumber + 1}: ${finalBest} words, height: ${finalHeight}px/${maxHeight}px (${Math.round(finalHeight/maxHeight * 100)}% filled)`);
             pageNumber += 1;
