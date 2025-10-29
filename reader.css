@@ -751,72 +751,6 @@ body {
     margin: 0 auto;
 }
 
-/* Переключатель режима прокрутки */
-.toggle-setting {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.toggle-switch {
-    position: relative;
-}
-
-.toggle-input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-label {
-    display: block;
-    width: 48px;
-    height: 28px;
-    background: var(--color-border);
-    border-radius: 14px;
-    cursor: pointer;
-    transition: background var(--transition-fast);
-    position: relative;
-}
-
-.toggle-label::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 24px;
-    height: 24px;
-    background: var(--color-text-primary);
-    border-radius: 12px;
-    transition: transform var(--transition-fast);
-}
-
-.toggle-input:checked + .toggle-label {
-    background: #007aff;
-}
-
-.toggle-input:checked + .toggle-label::after {
-    transform: translateX(20px);
-}
-
-/* Кнопка дополнительных настроек */
-.additional-settings-button {
-    width: 100%;
-    padding: 16px;
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background: var(--color-button-bg);
-    color: var(--color-text-primary);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    margin-top: 16px;
-}
-
-.additional-settings-button:hover {
-    border-color: #007aff;
-}
 
 /* Зоны для жестового управления */
 .touch-interaction-zones {
@@ -885,25 +819,6 @@ body {
     }
 }
 
-/* Стили для режима прокрутки */
-.scroll-mode .reading-viewport {
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.scroll-mode .page-content {
-    max-height: none;
-    overflow: visible;
-}
-
-.scroll-mode .top-navigation,
-.scroll-mode .bottom-controls {
-    transform: translateY(-100%);
-}
-
-.scroll-mode .bottom-controls {
-    transform: translateY(100%);
-}
 
 /* Улучшения для фокуса и доступности */
 button:focus-visible,
