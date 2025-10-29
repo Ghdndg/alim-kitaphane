@@ -143,33 +143,71 @@ class YandexBooksReader {
         const normalizedText = this.preprocessText(this.state.bookContent);
         console.log(`📝 Normalized text length: ${normalizedText.length}`);
         
-        // Простое разделение на куски по словам
-        const allWords = normalizedText.split(/\s+/).filter(word => word.trim().length > 0);
-        console.log(`📝 Total words in book: ${allWords.length}`);
+        // Разбиваем на абзацы, сохраняя структуру
+        const paragraphs = normalizedText.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+        console.log(`📝 Found ${paragraphs.length} paragraphs`);
         
         this.state.pages = [];
+        let currentPageText = '';
+        let currentWordCount = 0;
         
-        // НОВЫЙ АЛГОРИТМ: Разбиваем по фиксированному количеству слов
-        for (let i = 0; i < allWords.length; i += this.wordsPerPage) {
-            const pageWords = allWords.slice(i, i + this.wordsPerPage);
-            const pageText = pageWords.join(' ');
+        for (let i = 0; i < paragraphs.length; i++) {
+            const paragraph = paragraphs[i].trim();
+            const paragraphWords = paragraph.split(/\s+/).filter(word => word.length > 0);
             
-            // Форматируем страницу
-            const formattedContent = this.formatSimplePage(pageText, i);
-            
+            // Если добавление этого абзаца превысит лимит слов на странице
+            if (currentWordCount + paragraphWords.length > this.wordsPerPage && currentPageText.length > 0) {
+                // Сохраняем текущую страницу
+                const formattedContent = this.formatSimplePage(currentPageText, this.state.pages.length);
+                this.state.pages.push({
+                    id: this.state.pages.length,
+                    content: formattedContent,
+                    wordCount: currentWordCount
+                });
+                
+                console.log(`📄 Created page ${this.state.pages.length}: ${currentWordCount} words`);
+                
+                // Начинаем новую страницу
+                currentPageText = paragraph;
+                currentWordCount = paragraphWords.length;
+            } else {
+                // Добавляем абзац к текущей странице
+                if (currentPageText.length > 0) {
+                    currentPageText += '\n\n' + paragraph;
+                } else {
+                    currentPageText = paragraph;
+                }
+                currentWordCount += paragraphWords.length;
+            }
+        }
+        
+        // Добавляем последнюю страницу, если есть текст
+        if (currentPageText.length > 0) {
+            const formattedContent = this.formatSimplePage(currentPageText, this.state.pages.length);
             this.state.pages.push({
                 id: this.state.pages.length,
                 content: formattedContent,
-                wordCount: pageWords.length
+                wordCount: currentWordCount
             });
             
-            console.log(`📄 Created page ${this.state.pages.length}: ${pageWords.length} words`);
+            console.log(`📄 Created page ${this.state.pages.length}: ${currentWordCount} words`);
         }
         
         this.state.totalPages = this.state.pages.length;
         
         console.log(`✅ PAGES CREATED: ${this.state.totalPages} pages total`);
         console.log(`📊 Average words per page: ${this.wordsPerPage}`);
+        
+        // Дополнительная проверка для отладки
+        if (this.state.totalPages > 0) {
+            const totalWords = this.state.pages.reduce((sum, page) => sum + page.wordCount, 0);
+            const originalWords = this.state.bookContent.split(/\s+/).filter(word => word.trim().length > 0).length;
+            console.log(`📊 Total words in pages: ${totalWords}, Original text words: ${originalWords}`);
+            
+            if (totalWords < originalWords * 0.8) {
+                console.warn('⚠️ WARNING: Significant text loss detected!');
+            }
+        }
         
         // Проверяем что создались страницы
         if (this.state.totalPages <= 1) {
@@ -186,20 +224,20 @@ class YandexBooksReader {
     createMorePages(text) {
         console.log('🔧 Force creating more pages...');
         
-        // Еще более мелкое разделение
-        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
-        console.log(`📝 Found ${sentences.length} sentences`);
+        // Разбиваем на более мелкие части по абзацам
+        const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+        console.log(`📝 Found ${paragraphs.length} paragraphs`);
         
         this.state.pages = [];
-        const sentencesPerPage = Math.max(3, Math.floor(sentences.length / 50)); // Минимум 50 страниц
+        const paragraphsPerPage = Math.max(1, Math.floor(paragraphs.length / 30)); // Минимум 30 страниц
         
-        for (let i = 0; i < sentences.length; i += sentencesPerPage) {
-            const pageSentences = sentences.slice(i, i + sentencesPerPage);
-            const pageText = pageSentences.join('. ').trim() + '.';
+        for (let i = 0; i < paragraphs.length; i += paragraphsPerPage) {
+            const pageParagraphs = paragraphs.slice(i, i + paragraphsPerPage);
+            const pageText = pageParagraphs.join('\n\n');
             
             this.state.pages.push({
                 id: this.state.pages.length,
-                content: `<p>${this.escapeHtml(pageText)}</p>`,
+                content: this.formatTextContent(pageText),
                 wordCount: this.countWords(pageText)
             });
         }
@@ -217,11 +255,30 @@ class YandexBooksReader {
             return `
                 <h1>Хаджи Гирай</h1>
                 <div class="author">Алим Мидат</div>
-                <p>${this.escapeHtml(text)}</p>
+                ${this.formatTextContent(text)}
             `;
         }
         
-        return `<p>${this.escapeHtml(text)}</p>`;
+        return this.formatTextContent(text);
+    }
+
+    /**
+     * Форматирует содержимое текста с сохранением абзацев
+     */
+    formatTextContent(text) {
+        // Разбиваем на абзацы и форматируем каждый
+        const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+        
+        return paragraphs.map(paragraph => {
+            const trimmedParagraph = paragraph.trim();
+            if (trimmedParagraph.length === 0) return '';
+            
+            // Экранируем HTML и сохраняем переносы строк внутри абзаца
+            const escapedParagraph = this.escapeHtml(trimmedParagraph)
+                .replace(/\n/g, '<br>');
+            
+            return `<p>${escapedParagraph}</p>`;
+        }).join('');
     }
 
     /**
@@ -231,7 +288,7 @@ class YandexBooksReader {
         return text
             .replace(/\r\n/g, '\n')
             .replace(/\n{3,}/g, '\n\n')
-            .replace(/\s+/g, ' ') // Заменяем все пробелы на одинарные
+            .replace(/[ \t]+/g, ' ') // Заменяем только множественные пробелы и табы на одинарные
             .trim();
     }
 
