@@ -311,23 +311,10 @@ body {
     -webkit-hyphens: auto;
     user-select: text;
     -webkit-user-select: text;
-    
-    /* Фиксированная высота для предотвращения обрезания */
+
+    /* Фиксированная высота страницы, без прокрутки */
     height: calc(100vh - var(--header-height) - var(--footer-height) - var(--safe-area-top) - var(--safe-area-bottom) - 48px);
-    min-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--safe-area-top) - var(--safe-area-bottom) - 48px);
-    max-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--safe-area-top) - var(--safe-area-bottom) - 48px);
-    
-    /* Правильная обработка переполнения */
-    overflow-y: auto;
-    overflow-x: hidden;
-    
-    /* Обеспечиваем правильное отображение текста */
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    word-break: break-word;
-    
-    /* Плавные переходы */
-    transition: opacity var(--transition-medium), transform var(--transition-medium);
+    overflow: hidden; /* исключаем вертикальную прокрутку внутри страницы */
 }
 
 .page-content h1 {
@@ -358,12 +345,6 @@ body {
 .page-content p {
     margin-bottom: 16px;
     text-indent: 2em;
-    /* Обеспечиваем правильное отображение текста */
-    word-spacing: normal;
-    white-space: normal;
-    overflow-wrap: break-word;
-    word-break: break-word;
-    line-height: inherit;
 }
 
 .page-content p:first-of-type,
@@ -371,23 +352,6 @@ body {
 .page-content h2 + p,
 .page-content .author + p {
     text-indent: 0;
-}
-
-/* Дополнительные стили для предотвращения обрезания текста */
-.page-content * {
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
-.page-content h1,
-.page-content h2,
-.page-content h3,
-.page-content h4,
-.page-content h5,
-.page-content h6 {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    word-break: break-word;
 }
 
 /* Нижняя панель управления */
