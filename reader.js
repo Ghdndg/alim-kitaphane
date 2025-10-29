@@ -18,7 +18,6 @@ class YandexBooksReader {
                 lineHeight: 1.6,
                 textAlign: 'justify',
                 brightness: 100,
-                scrollMode: false
             }
         };
 
@@ -60,7 +59,6 @@ class YandexBooksReader {
             brightnessSlider: 'brightnessSlider',
             decreaseFontSize: 'decreaseFontSize',
             increaseFontSize: 'increaseFontSize',
-            scrollModeToggle: 'scrollModeToggle'
         };
 
         Object.entries(elementSelectors).forEach(([key, id]) => {
@@ -411,13 +409,6 @@ class YandexBooksReader {
             });
         });
         
-        // Режим прокрутки
-        if (this.elements.scrollModeToggle) {
-            this.elements.scrollModeToggle.addEventListener('change', (e) => {
-                console.log('🔄 Scroll mode toggled:', e.target.checked);
-                this.toggleScrollMode(e.target.checked);
-            });
-        }
         
         console.log('✅ Settings events bound');
     }
@@ -728,10 +719,6 @@ class YandexBooksReader {
             btn.classList.toggle('active', btn.dataset.align === this.state.settings.textAlign);
         });
         
-        // Обновляем режим прокрутки
-        if (this.elements.scrollModeToggle) {
-            this.elements.scrollModeToggle.checked = this.state.settings.scrollMode;
-        }
     }
 
 
@@ -905,18 +892,6 @@ class YandexBooksReader {
             console.log(`📐 Text alignment: ${alignment}`);
         }
 
-        toggleScrollMode(enabled) {
-            this.state.settings.scrollMode = enabled;
-            this.saveSettings();
-            
-            if (enabled) {
-                document.body.classList.add('scroll-mode');
-            } else {
-                document.body.classList.remove('scroll-mode');
-            }
-            
-            console.log(`📜 Scroll mode: ${enabled ? 'enabled' : 'disabled'}`);
-        }
     }
 
 /**
