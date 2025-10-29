@@ -312,9 +312,14 @@ body {
     user-select: text;
     -webkit-user-select: text;
     
-    /* Высота с учетом панелей и отступов */
+    /* Гибкая высота с учетом панелей и отступов */
     max-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--safe-area-top) - var(--safe-area-bottom) - 48px);
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    
+    /* Обеспечиваем правильное отображение контента */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .page-content h1 {
@@ -345,6 +350,10 @@ body {
 .page-content p {
     margin-bottom: 16px;
     text-indent: 2em;
+    /* Обеспечиваем правильное отображение текста */
+    word-spacing: normal;
+    white-space: normal;
+    overflow-wrap: break-word;
 }
 
 .page-content p:first-of-type,
@@ -352,6 +361,12 @@ body {
 .page-content h2 + p,
 .page-content .author + p {
     text-indent: 0;
+}
+
+/* Дополнительные стили для предотвращения обрезания текста */
+.page-content * {
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 /* Нижняя панель управления */
