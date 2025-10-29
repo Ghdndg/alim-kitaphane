@@ -349,8 +349,12 @@ body {
 }
 
 .page-content p {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     text-indent: 2em;
+    line-height: 1.7;
+    text-align: justify;
+    hyphens: auto;
+    -webkit-hyphens: auto;
 }
 
 .page-content p:first-of-type,
@@ -358,6 +362,38 @@ body {
 .page-content h2 + p,
 .page-content .author + p {
     text-indent: 0;
+}
+
+/* Выделение абзацев */
+.page-content p:not(:last-child) {
+    position: relative;
+}
+
+.page-content p:not(:last-child)::after {
+    content: '';
+    display: block;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-border), transparent);
+    margin: 12px 0 8px 0;
+    opacity: 0.3;
+}
+
+/* Улучшенное выделение первого абзаца после заголовка */
+.page-content .author + p {
+    font-size: 1.1em;
+    line-height: 1.8;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.page-content .author + p::before {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 2px;
+    background: var(--color-text-secondary);
+    margin: 0 auto 16px auto;
+    opacity: 0.5;
 }
 
 /* Нижняя панель управления */
