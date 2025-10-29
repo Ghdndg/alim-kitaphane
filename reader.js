@@ -134,137 +134,127 @@ class YandexBooksReader {
     }
 
     /**
-     * ИСПРАВЛЕННОЕ создание страниц с динамическим измерением контента
+     * ИСПРАВЛЕННОЕ создание страниц: подгоняем контент по реальной высоте без прокрутки
      */
     createPages() {
-        console.log('📄 Creating pages with dynamic content measurement...');
+        console.log('📄 Creating pages with measured layout...');
         
-        // Предобработка текста
         const normalizedText = this.preprocessText(this.state.bookContent);
-        console.log(`📝 Normalized text length: ${normalizedText.length}`);
-        
-        // Разбиваем на абзацы для лучшего контроля
-        const paragraphs = this.splitIntoParagraphs(normalizedText);
-        console.log(`📝 Found ${paragraphs.length} paragraphs`);
-        
+        const words = normalizedText.split(/\s+/).filter(Boolean);
         this.state.pages = [];
-        
-        // Создаем временный элемент для измерения контента
-        const measureElement = this.createMeasureElement();
-        
-        let currentPageContent = '';
-        let currentWordCount = 0;
-        let pageIndex = 0;
-        
-        for (let i = 0; i < paragraphs.length; i++) {
-            const paragraph = paragraphs[i];
-            const testContent = currentPageContent + (currentPageContent ? '\n\n' : '') + paragraph;
-            const testFormattedContent = this.formatSimplePage(testContent, pageIndex);
-            
-            // Измеряем высоту контента
-            const contentHeight = this.measureContentHeight(testFormattedContent, measureElement);
-            const maxHeight = this.getMaxContentHeight();
-            
-            // Если контент помещается или это первый абзац
-            if (contentHeight <= maxHeight || currentPageContent === '') {
-                currentPageContent = testContent;
-                currentWordCount += this.countWords(paragraph);
-            } else {
-                // Сохраняем текущую страницу
-                if (currentPageContent.trim()) {
-                    this.state.pages.push({
-                        id: pageIndex,
-                        content: this.formatSimplePage(currentPageContent, pageIndex),
-                        wordCount: currentWordCount
-                    });
-                    console.log(`📄 Created page ${pageIndex + 1}: ${currentWordCount} words, height: ${this.measureContentHeight(this.formatSimplePage(currentPageContent, pageIndex), measureElement)}px`);
-                    pageIndex++;
+
+        // Создаем измерительный элемент с теми же стилями, что и у .page-content
+        const measureEl = this.createMeasureElement();
+        const maxHeight = this.getMaxContentHeight();
+
+        let index = 0;
+        let pageNumber = 0;
+        while (index < words.length) {
+            // Бинарный поиск максимального количества слов, помещающихся по высоте
+            let low = 1;
+            let high = Math.min(words.length - index, 3000); // верхняя граница для ускорения
+            let best = 1;
+
+            while (low <= high) {
+                const mid = Math.floor((low + high) / 2);
+                const sliceText = words.slice(index, index + mid).join(' ');
+                const html = this.formatSimplePage(sliceText, pageNumber === 0 ? 0 : index);
+                measureEl.innerHTML = html;
+                const h = measureEl.scrollHeight;
+
+                if (h <= maxHeight) {
+                    best = mid;
+                    low = mid + 1;
+                } else {
+                    high = mid - 1;
                 }
-                
-                // Начинаем новую страницу с текущего абзаца
-                currentPageContent = paragraph;
-                currentWordCount = this.countWords(paragraph);
+            }
+
+            const pageText = words.slice(index, index + best).join(' ');
+            const formatted = this.formatSimplePage(pageText, pageNumber === 0 ? 0 : index);
+            this.state.pages.push({ id: pageNumber, content: formatted, wordCount: best });
+            console.log(`📄 Created page ${pageNumber + 1}: ${best} words (fit height ${maxHeight}px)`);
+            pageNumber += 1;
+            index += best;
+
+            // Страховка от зацикливания, если вдруг ни одно слово не помещается (очень большой шрифт)
+            if (best === 0) {
+                // Вставим хотя бы слово и продолжим
+                const single = words[index];
+                const fallback = this.formatSimplePage(single, index);
+                this.state.pages.push({ id: pageNumber, content: fallback, wordCount: 1 });
+                index += 1;
+                pageNumber += 1;
             }
         }
-        
-        // Добавляем последнюю страницу
-        if (currentPageContent.trim()) {
-            this.state.pages.push({
-                id: pageIndex,
-                content: this.formatSimplePage(currentPageContent, pageIndex),
-                wordCount: currentWordCount
-            });
-            console.log(`📄 Created final page ${pageIndex + 1}: ${currentWordCount} words`);
-        }
-        
-        // Удаляем временный элемент
-        measureElement.remove();
-        
+
+        measureEl.remove();
         this.state.totalPages = this.state.pages.length;
-        
         console.log(`✅ PAGES CREATED: ${this.state.totalPages} pages total`);
-        
-        // Проверяем что создались страницы
-        if (this.state.totalPages <= 1) {
-            console.error('❌ CRITICAL: Only 1 page created! This will break navigation!');
-            
-            // Принудительно создаем больше страниц
-            this.createMorePages(normalizedText);
+
+        if (this.state.totalPages === 0) {
+            // на всякий случай вставим пустую страницу
+            this.state.pages = [{ id: 0, content: '<p></p>', wordCount: 0 }];
+            this.state.totalPages = 1;
         }
     }
 
-    /**
-     * Разбивает текст на абзацы
-     */
-    splitIntoParagraphs(text) {
-        return text
-            .split(/\n\s*\n/)
-            .filter(p => p.trim().length > 0)
-            .map(p => p.trim());
-    }
-
-    /**
-     * Создает временный элемент для измерения контента
-     */
+    /** Создает скрытый элемент для измерения высоты контента страницы */
     createMeasureElement() {
-        const measureElement = document.createElement('div');
-        measureElement.style.cssText = `
-            position: absolute;
-            top: -9999px;
-            left: -9999px;
-            width: 680px;
-            max-width: 680px;
-            font-family: var(--font-reading);
-            font-size: ${this.state.settings.fontSize}px;
-            line-height: ${this.state.settings.lineHeight};
-            text-align: ${this.state.settings.textAlign};
-            letter-spacing: var(--letter-spacing);
-            visibility: hidden;
-            pointer-events: none;
-            z-index: -1;
-        `;
-        document.body.appendChild(measureElement);
-        return measureElement;
+        const el = document.createElement('div');
+        el.style.position = 'absolute';
+        el.style.top = '-99999px';
+        el.style.left = '-99999px';
+        el.style.visibility = 'hidden';
+        el.style.pointerEvents = 'none';
+        el.style.zIndex = '-1';
+        el.style.width = '100%';
+
+        // Клонируем ключевые стили из .page-content
+        const pageContent = this.elements.pageContent;
+        const computed = pageContent ? getComputedStyle(pageContent) : null;
+        if (computed) {
+            el.style.fontFamily = computed.fontFamily;
+            el.style.fontSize = computed.fontSize;
+            el.style.lineHeight = computed.lineHeight;
+            el.style.letterSpacing = computed.letterSpacing;
+            el.style.textAlign = computed.textAlign;
+            el.style.width = computed.width;
+        } else {
+            el.style.fontFamily = 'Georgia, serif';
+            el.style.fontSize = `${this.state.settings.fontSize}px`;
+            el.style.lineHeight = String(this.state.settings.lineHeight);
+            el.style.textAlign = this.state.settings.textAlign;
+            el.style.width = '680px';
+        }
+
+        // Фиксированная максимальная высота, равная высоте .page-content
+        el.style.maxHeight = `${this.getMaxContentHeight()}px`;
+        document.body.appendChild(el);
+        return el;
     }
 
-    /**
-     * Измеряет высоту контента
-     */
-    measureContentHeight(content, measureElement) {
-        measureElement.innerHTML = content;
-        return measureElement.scrollHeight;
-    }
-
-    /**
-     * Получает максимальную высоту контента для страницы
-     */
+    /** Возвращает расчетную максимальную высоту текстового блока внутри страницы */
     getMaxContentHeight() {
-        const viewportHeight = window.innerHeight;
-        const headerHeight = 56; // var(--header-height)
-        const footerHeight = 80; // var(--footer-height)
-        const padding = 48; // Отступы
-        
-        return viewportHeight - headerHeight - footerHeight - padding;
+        // Берем фактическую высоту из текущего .page-content если доступен
+        const pageContent = this.elements.pageContent;
+        if (pageContent) {
+            const rect = pageContent.getBoundingClientRect();
+            // Если высота еще не задана (на ранней инициализации), вычислим по CSS calc
+            return Math.max(0, Math.floor(rect.height || 0)) || this.computePageContentCssHeight();
+        }
+        return this.computePageContentCssHeight();
+    }
+
+    computePageContentCssHeight() {
+        // Дублируем формулу из CSS
+        const vh = window.innerHeight;
+        const header = 56; // var(--header-height)
+        const footer = 80; // var(--footer-height)
+        const safeTop = 0; // для простоты
+        const safeBottom = 0;
+        const padding = 48;
+        return Math.max(0, Math.floor(vh - header - footer - safeTop - safeBottom - padding));
     }
 
     /**
@@ -356,7 +346,6 @@ class YandexBooksReader {
         this.bindKeyboardEvents();
         this.bindGestureEvents();
         this.bindResizeEvents();
-        
         console.log('✅ Event handlers set up');
     }
 
@@ -501,19 +490,14 @@ class YandexBooksReader {
         console.log('✅ Settings events bound');
     }
 
-    /**
-     * Привязывает события изменения размера окна
-     */
+    /** Привязывает события изменения размера окна для пересоздания страниц */
     bindResizeEvents() {
         let resizeTimeout;
-        
         window.addEventListener('resize', () => {
-            // Дебаунсим событие resize
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
-                console.log('📐 Window resized, recalculating pages...');
-                this.recreatePagesForNewFontSize();
-            }, 300);
+                this.recreatePagesForNewMetrics();
+            }, 150);
         });
     }
 
@@ -616,26 +600,21 @@ class YandexBooksReader {
     }
 
     /**
-     * Выполняет прямое обновление DOM с улучшенными переходами
+     * Выполняет прямое обновление DOM
      */
     performDirectDOMUpdate(content) {
         if (!this.elements.pageContent) return;
         
-        // Плавное исчезновение
-        this.elements.pageContent.style.opacity = '0';
-        this.elements.pageContent.style.transform = 'translateY(10px)';
+        this.elements.pageContent.style.opacity = '0.7';
         
         setTimeout(() => {
-            // Обновляем контент
             this.elements.pageContent.innerHTML = content;
             this.applyTypographySettings();
             
-            // Плавное появление
             setTimeout(() => {
                 this.elements.pageContent.style.opacity = '1';
-                this.elements.pageContent.style.transform = 'translateY(0)';
             }, 50);
-        }, 150);
+        }, 100);
     }
 
     /**
@@ -762,35 +741,35 @@ class YandexBooksReader {
     }
 
     /**
-     * ИСПРАВЛЕННЫЙ метод открытия настроек
-     */
-    openSettings() {
-        console.log('⚙️ Settings opened');
-        
-        this.state.isSettingsOpen = true;
-        
+ * ИСПРАВЛЕННЫЙ метод открытия настроек
+ */
+openSettings() {
+    console.log('⚙️ Settings opened');
+    
+    this.state.isSettingsOpen = true;
+    
         // Показываем существующую панель настроек
-        if (this.elements.settingsDrawer) {
-            this.elements.settingsDrawer.classList.add('visible');
-            console.log('✅ Settings panel shown');
-        } else {
+    if (this.elements.settingsDrawer) {
+        this.elements.settingsDrawer.classList.add('visible');
+        console.log('✅ Settings panel shown');
+    } else {
             console.error('❌ settingsDrawer element not found in DOM');
             return;
-        }
-        
-        // Показываем UI
-        this.showUI();
-        
-        // Обновляем состояние настроек
-        this.updateSettingsInterface();
     }
+    
+    // Показываем UI
+    this.showUI();
+    
+    // Обновляем состояние настроек
+    this.updateSettingsInterface();
+}
 
 
 
 
     /**
-     * Закрытие настроек
-     */
+    * Закрытие настроек
+    */
     closeSettings() {
         console.log('⚙️ Settings closed');
         
@@ -941,58 +920,53 @@ class YandexBooksReader {
             }
         }
 
-        /**
-         * Методы для работы настроек
-         */
-        updateBrightness(brightness) {
-            this.state.settings.brightness = brightness;
-            document.documentElement.style.filter = `brightness(${brightness}%)`;
-            this.saveSettings();
-            console.log(`🔆 Brightness: ${brightness}%`);
-        }
+    /**
+     * Методы для работы настроек
+     */
+    updateBrightness(brightness) {
+        this.state.settings.brightness = brightness;
+        document.documentElement.style.filter = `brightness(${brightness}%)`;
+        this.saveSettings();
+        console.log(`🔆 Brightness: ${brightness}%`);
+    }
 
-        adjustFontSize(delta) {
-            const newSize = Math.max(14, Math.min(24, this.state.settings.fontSize + delta));
-            if (newSize !== this.state.settings.fontSize) {
-                this.state.settings.fontSize = newSize;
-                this.applyTypographySettings();
-                this.saveSettings();
-                
-                // Пересоздаем страницы с новым размером шрифта
-                this.recreatePagesForNewFontSize();
-                
-                console.log(`📏 Font size: ${newSize}px`);
-            }
-        }
-
-        changeTheme(themeName) {
-            this.state.settings.theme = themeName;
-            document.body.setAttribute('data-theme', themeName);
-            this.saveSettings();
-            
-            // Обновляем активную тему
-            document.querySelectorAll('.theme-option').forEach(option => {
-                option.classList.toggle('active', option.dataset.theme === themeName);
-            });
-            
-            console.log(`🎨 Theme: ${themeName}`);
-        }
-
-        changeLineHeight(lineHeight) {
-            this.state.settings.lineHeight = lineHeight;
+    adjustFontSize(delta) {
+        const newSize = Math.max(14, Math.min(24, this.state.settings.fontSize + delta));
+        if (newSize !== this.state.settings.fontSize) {
+            this.state.settings.fontSize = newSize;
             this.applyTypographySettings();
             this.saveSettings();
-            
-            // Пересоздаем страницы с новым межстрочным интервалом
-            this.recreatePagesForNewFontSize();
-            
-            // Обновляем активную кнопку
+                this.recreatePagesForNewMetrics();
+            console.log(`📏 Font size: ${newSize}px`);
+        }
+    }
+
+    changeTheme(themeName) {
+        this.state.settings.theme = themeName;
+        document.body.setAttribute('data-theme', themeName);
+        this.saveSettings();
+        
+        // Обновляем активную тему
+        document.querySelectorAll('.theme-option').forEach(option => {
+            option.classList.toggle('active', option.dataset.theme === themeName);
+        });
+        
+        console.log(`🎨 Theme: ${themeName}`);
+    }
+
+    changeLineHeight(lineHeight) {
+        this.state.settings.lineHeight = lineHeight;
+        this.applyTypographySettings();
+        this.saveSettings();
+        
+        // Обновляем активную кнопку
             document.querySelectorAll('.spacing-option').forEach(btn => {
-                const spacing = parseFloat(btn.dataset.spacing);
-                btn.classList.toggle('active', Math.abs(spacing - lineHeight) < 0.1);
-            });
-            
-            console.log(`📐 Line height: ${lineHeight}`);
+            const spacing = parseFloat(btn.dataset.spacing);
+            btn.classList.toggle('active', Math.abs(spacing - lineHeight) < 0.1);
+        });
+        
+            this.recreatePagesForNewMetrics();
+        console.log(`📐 Line height: ${lineHeight}`);
         }
 
         changeTextAlign(alignment) {
@@ -1005,29 +979,19 @@ class YandexBooksReader {
                 btn.classList.toggle('active', btn.dataset.align === alignment);
             });
             
+            this.recreatePagesForNewMetrics();
             console.log(`📐 Text alignment: ${alignment}`);
         }
 
-        /**
-         * Пересоздает страницы при изменении размера шрифта
-         */
-        recreatePagesForNewFontSize() {
-            console.log('🔄 Recreating pages for new font size...');
-            
-            // Сохраняем текущую позицию
-            const currentPageIndex = this.state.currentPageIndex;
-            
-            // Пересоздаем страницы
-            this.createPages();
-            
-            // Восстанавливаем позицию (с ограничением)
-            this.state.currentPageIndex = Math.min(currentPageIndex, this.state.totalPages - 1);
-            
-            // Перерисовываем текущую страницу
-            this.renderCurrentPage();
-            
-            console.log(`✅ Pages recreated for font size ${this.state.settings.fontSize}px`);
-        }
+/** Пересоздание страниц при изменении шрифта/интервала/ширины */
+    recreatePagesForNewMetrics() {
+        const progressRatio = this.state.totalPages > 1 ? this.state.currentPageIndex / (this.state.totalPages - 1) : 0;
+        this.createPages();
+        // Восстанавливаем близкую позицию чтения
+        const newIndex = Math.round(progressRatio * (this.state.totalPages - 1));
+        this.state.currentPageIndex = Math.max(0, Math.min(newIndex, this.state.totalPages - 1));
+        this.renderCurrentPage();
+    }
 
     }
 
