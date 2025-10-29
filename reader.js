@@ -318,10 +318,8 @@ class YandexBooksReader {
         // Проверяем целостность текста
         const diff = this.validateTextIntegrity(normalizedText, words);
         if (Math.abs(diff) > 0) {
-            console.warn(`⚠️ Integrity diff = ${diff}. Recreating pages in strict mode...`);
-            this.createPagesStrict(words);
-        } else {
-            console.log('✅ Text integrity verified - no words lost');
+            console.warn(`⚠️ Integrity diff = ${diff}. Recreating pages in paragraph mode...`);
+            this.createPagesByParagraphs();
         }
         
         console.log(`✅ PAGES CREATED: ${this.state.totalPages} pages total`);
@@ -341,38 +339,33 @@ class YandexBooksReader {
         let index = 0;
         let pageNumber = 0;
         
-        console.log('🔧 STRICT MODE: Starting precise pagination...');
-        
         while (index < words.length) {
-            // Начинаем с консервативного количества слов
-            let best = Math.min(100, words.length - index);
-            let found = false;
-            
-            // Ищем максимальное количество слов, которое точно помещается
-            while (best > 0) {
-                const sliceText = words.slice(index, index + best).join(' ');
-                const html = this.formatPageWithParagraphs(sliceText, pageNumber === 0 ? 0 : index);
+            // Бинарный поиск верхней границы
+            let low = 1;
+            let high = Math.min(words.length - index, 4000);
+            let best = 1;
+            while (low <= high) {
+                const mid = Math.floor((low + high) / 2);
+                const sliceText = words.slice(index, index + mid).join(' ');
+                const html = this.formatSimplePage(sliceText, pageNumber === 0 ? 0 : index);
                 measureEl.innerHTML = html;
                 measureEl.offsetHeight;
                 const h = measureEl.scrollHeight;
-                
                 if (h <= maxHeight) {
-                    found = true;
-                    break;
+                    best = mid;
+                    low = mid + 1;
+                } else {
+                    high = mid - 1;
                 }
-                
-                // Уменьшаем более консервативно
-                best = Math.max(1, Math.floor(best * 0.8));
             }
             
-            // Дополнительная проверка: пытаемся добавить еще слова по одному
+            // Точная доводка по одному слову
             let finalBest = best;
             while (index + finalBest + 1 <= words.length) {
                 const testSlice = words.slice(index, index + finalBest + 1).join(' ');
-                const testHtml = this.formatPageWithParagraphs(testSlice, pageNumber === 0 ? 0 : index);
+                const testHtml = this.formatSimplePage(testSlice, pageNumber === 0 ? 0 : index);
                 measureEl.innerHTML = testHtml;
                 measureEl.offsetHeight;
-                
                 if (measureEl.scrollHeight <= maxHeight) {
                     finalBest += 1;
                 } else {
@@ -381,29 +374,185 @@ class YandexBooksReader {
             }
             
             const pageText = words.slice(index, index + finalBest).join(' ');
-            const formatted = this.formatPageWithParagraphs(pageText, pageNumber === 0 ? 0 : index);
-            
-            this.state.pages.push({ 
-                id: pageNumber, 
-                content: formatted, 
-                wordCount: finalBest,
-                actualHeight: measureEl.scrollHeight
-            });
-            
-            console.log(`📄 STRICT Page ${pageNumber + 1}: ${finalBest} words, height: ${measureEl.scrollHeight}px/${maxHeight}px`);
-            
+            const formatted = this.formatSimplePage(pageText, pageNumber === 0 ? 0 : index);
+            this.state.pages.push({ id: pageNumber, content: formatted, wordCount: finalBest });
             index += finalBest;
             pageNumber += 1;
             
             if (finalBest === 0) {
-                console.error('❌ CRITICAL: No words fit in strict mode');
-                break;
+                // чрезвычайный случай — помещаем по одному слову
+                const fallback = this.formatSimplePage(words[index], index);
+                this.state.pages.push({ id: pageNumber, content: fallback, wordCount: 1 });
+                index += 1;
+                pageNumber += 1;
             }
         }
         
         measureEl.remove();
         this.state.totalPages = this.state.pages.length;
-        console.log(`✅ STRICT MODE COMPLETE: ${this.state.totalPages} pages`);
+    }
+
+    /** Новый метод: разбиение по абзацам с выделением главных */
+    createPagesByParagraphs() {
+        console.log('📄 Creating pages by paragraphs with main paragraph detection...');
+        
+        const normalizedText = this.preprocessText(this.state.bookContent);
+        const paragraphs = this.splitIntoParagraphs(normalizedText);
+        const mainParagraphs = this.identifyMainParagraphs(paragraphs);
+        
+        console.log(`📊 Found ${paragraphs.length} paragraphs, ${mainParagraphs.length} main paragraphs`);
+        
+        this.state.pages = [];
+        const measureEl = this.createMeasureElement();
+        const maxHeight = this.getMaxContentHeight();
+        
+        let currentPageContent = '';
+        let currentPageWords = 0;
+        let pageNumber = 0;
+        
+        for (let i = 0; i < paragraphs.length; i++) {
+            const paragraph = paragraphs[i];
+            const isMain = mainParagraphs.includes(i);
+            const words = paragraph.split(/\s+/).filter(Boolean);
+            
+            // Форматируем абзац с учетом его важности
+            const formattedParagraph = this.formatParagraph(paragraph, isMain, pageNumber === 0 && i === 0);
+            
+            // Проверяем, поместится ли абзац на текущую страницу
+            const testContent = currentPageContent + (currentPageContent ? '\n\n' : '') + formattedParagraph;
+            const testHtml = this.formatSimplePage(testContent, pageNumber === 0 ? 0 : currentPageWords);
+            measureEl.innerHTML = testHtml;
+            measureEl.offsetHeight;
+            
+            if (measureEl.scrollHeight <= maxHeight) {
+                // Абзац помещается на текущую страницу
+                currentPageContent = testContent;
+                currentPageWords += words.length;
+            } else {
+                // Абзац не помещается, создаем новую страницу
+                if (currentPageContent.trim()) {
+                    this.state.pages.push({
+                        id: pageNumber,
+                        content: this.formatSimplePage(currentPageContent, pageNumber === 0 ? 0 : currentPageWords - words.length),
+                        wordCount: currentPageWords - words.length
+                    });
+                    pageNumber++;
+                }
+                
+                // Пытаемся поместить абзац на новую страницу
+                currentPageContent = formattedParagraph;
+                currentPageWords = words.length;
+                
+                // Если абзац слишком длинный, разбиваем его
+                if (measureEl.scrollHeight > maxHeight) {
+                    const splitResult = this.splitLongParagraph(paragraph, isMain, pageNumber === 0, measureEl, maxHeight);
+                    currentPageContent = splitResult.content;
+                    currentPageWords = splitResult.wordCount;
+                }
+            }
+        }
+        
+        // Добавляем последнюю страницу
+        if (currentPageContent.trim()) {
+            this.state.pages.push({
+                id: pageNumber,
+                content: this.formatSimplePage(currentPageContent, pageNumber === 0 ? 0 : currentPageWords),
+                wordCount: currentPageWords
+            });
+        }
+        
+        measureEl.remove();
+        this.state.totalPages = this.state.pages.length;
+        
+        // Проверяем целостность
+        const diff = this.validateTextIntegrity(normalizedText, normalizedText.split(/\s+/).filter(Boolean));
+        if (Math.abs(diff) > 0) {
+            console.warn(`⚠️ Paragraph mode integrity diff = ${diff}. Falling back to strict mode...`);
+            this.createPagesStrict(normalizedText.split(/\s+/).filter(Boolean));
+        }
+        
+        console.log(`✅ PAGES CREATED BY PARAGRAPHS: ${this.state.totalPages} pages total`);
+    }
+
+    /** Разбивает текст на абзацы */
+    splitIntoParagraphs(text) {
+        return text
+            .split(/\n\s*\n/)
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
+    }
+
+    /** Выявляет главные абзацы по ключевым словам и длине */
+    identifyMainParagraphs(paragraphs) {
+        const mainParagraphs = [];
+        const mainKeywords = [
+            'хаджи', 'гирай', 'крым', 'хан', 'татар', 'история', 'биография',
+            'родился', 'умер', 'правил', 'государство', 'династия', 'основатель'
+        ];
+        
+        for (let i = 0; i < paragraphs.length; i++) {
+            const paragraph = paragraphs[i].toLowerCase();
+            const wordCount = paragraph.split(/\s+/).length;
+            
+            // Главный абзац если:
+            // 1. Содержит ключевые слова
+            // 2. Имеет достаточную длину (не менее 20 слов)
+            // 3. Начинается с заглавной буквы (вероятно начало предложения)
+            const hasKeywords = mainKeywords.some(keyword => paragraph.includes(keyword));
+            const isLongEnough = wordCount >= 20;
+            const startsProperly = paragraphs[i].match(/^[А-ЯЁ]/);
+            
+            if ((hasKeywords || isLongEnough) && startsProperly) {
+                mainParagraphs.push(i);
+            }
+        }
+        
+        return mainParagraphs;
+    }
+
+    /** Форматирует абзац с учетом его важности */
+    formatParagraph(text, isMain, isFirst) {
+        if (isFirst) {
+            return `<h1>Хаджи Гирай</h1><div class="author">Алим Мидат</div><p class="${isMain ? 'main-paragraph' : ''}">${this.escapeHtml(text)}</p>`;
+        }
+        
+        if (isMain) {
+            return `<p class="main-paragraph">${this.escapeHtml(text)}</p>`;
+        }
+        
+        return `<p>${this.escapeHtml(text)}</p>`;
+    }
+
+    /** Разбивает длинный абзац на части */
+    splitLongParagraph(paragraph, isMain, isFirst, measureEl, maxHeight) {
+        const words = paragraph.split(/\s+/).filter(Boolean);
+        let best = 1;
+        
+        // Бинарный поиск максимального количества слов
+        let low = 1;
+        let high = words.length;
+        
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const sliceText = words.slice(0, mid).join(' ');
+            const formatted = this.formatParagraph(sliceText, isMain, isFirst);
+            const testHtml = this.formatSimplePage(formatted, 0);
+            measureEl.innerHTML = testHtml;
+            measureEl.offsetHeight;
+            
+            if (measureEl.scrollHeight <= maxHeight) {
+                best = mid;
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+        
+        const content = words.slice(0, best).join(' ');
+        return {
+            content: this.formatParagraph(content, isMain, isFirst),
+            wordCount: best
+        };
     }
 
     /** Создает скрытый элемент для измерения высоты контента страницы */
@@ -481,6 +630,7 @@ class YandexBooksReader {
     validateTextIntegrity(originalText, originalWords) {
         let totalWordsInPages = 0;
         let allPageText = '';
+        let allPageWords = [];
         
         for (const page of this.state.pages) {
             // Извлекаем текст из HTML контента страницы
@@ -491,6 +641,7 @@ class YandexBooksReader {
             
             totalWordsInPages += pageWords.length;
             allPageText += pageText + ' ';
+            allPageWords = allPageWords.concat(pageWords);
         }
         
         const originalWordCount = originalWords.length;
@@ -502,30 +653,25 @@ class YandexBooksReader {
         const diff = originalWordCount - pageWordCount;
         console.log(`   Difference: ${diff}`);
         
-        if (Math.abs(diff) > 10) {
-            console.warn(`⚠️ WARNING: Significant word count difference detected!`);
-            console.warn(`   This might indicate lost text during pagination.`);
+        // Строгая проверка: сравниваем первые и последние 10 слов
+        const originalStart = originalWords.slice(0, 10).join(' ');
+        const originalEnd = originalWords.slice(-10).join(' ');
+        const pageStart = allPageWords.slice(0, 10).join(' ');
+        const pageEnd = allPageWords.slice(-10).join(' ');
+        
+        console.log(`📖 Original start: "${originalStart}"`);
+        console.log(`📖 Page start: "${pageStart}"`);
+        console.log(`📖 Original end: "${originalEnd}"`);
+        console.log(`📖 Page end: "${pageEnd}"`);
+        
+        if (originalStart !== pageStart || originalEnd !== pageEnd) {
+            console.error(`❌ CRITICAL: Text boundaries don't match!`);
+            console.error(`   This indicates text loss during pagination.`);
         }
         
-        // Проверяем, что первые и последние слова совпадают
-        if (originalWords.length > 0 && this.state.pages.length > 0) {
-            const firstPageText = this.state.pages[0].content;
-            const lastPageText = this.state.pages[this.state.pages.length - 1].content;
-            
-            const firstPageDiv = document.createElement('div');
-            firstPageDiv.innerHTML = firstPageText;
-            const firstPageWords = (firstPageDiv.textContent || '').split(/\s+/).filter(w => w.trim());
-            
-            const lastPageDiv = document.createElement('div');
-            lastPageDiv.innerHTML = lastPageText;
-            const lastPageWords = (lastPageDiv.textContent || '').split(/\s+/).filter(w => w.trim());
-            
-            if (firstPageWords.length > 0 && lastPageWords.length > 0) {
-                console.log(`📖 First page starts with: "${firstPageWords[0]}"`);
-                console.log(`📖 Last page ends with: "${lastPageWords[lastPageWords.length - 1]}"`);
-                console.log(`📖 Original starts with: "${originalWords[0]}"`);
-                console.log(`📖 Original ends with: "${originalWords[originalWords.length - 1]}"`);
-            }
+        if (Math.abs(diff) > 0) {
+            console.warn(`⚠️ WARNING: Word count difference detected: ${diff}`);
+            console.warn(`   This might indicate lost text during pagination.`);
         }
         
         return diff;
@@ -573,59 +719,6 @@ class YandexBooksReader {
         }
         
         return `<p>${this.escapeHtml(text)}</p>`;
-    }
-
-    /**
-     * Форматирует страницу с выделением абзацев
-     */
-    formatPageWithParagraphs(text, startIndex) {
-        // Добавляем заголовок только на первую страницу
-        if (startIndex === 0) {
-            return `
-                <h1>Хаджи Гирай</h1>
-                <div class="author">Алим Мидат</div>
-                ${this.formatTextWithParagraphs(text)}
-            `;
-        }
-        
-        return this.formatTextWithParagraphs(text);
-    }
-
-    /**
-     * Разбивает текст на абзацы и форматирует их
-     */
-    formatTextWithParagraphs(text) {
-        // Разбиваем текст на предложения
-        const sentences = text.split(/([.!?]+)/).filter(s => s.trim().length > 0);
-        
-        let result = '';
-        let currentParagraph = '';
-        
-        for (let i = 0; i < sentences.length; i++) {
-            const sentence = sentences[i].trim();
-            
-            if (sentence.length === 0) continue;
-            
-            // Если это знак препинания, добавляем к предыдущему предложению
-            if (/^[.!?]+$/.test(sentence)) {
-                currentParagraph += sentence;
-            } else {
-                // Если уже есть абзац, закрываем его
-                if (currentParagraph.trim().length > 0) {
-                    result += `<p>${this.escapeHtml(currentParagraph.trim())}</p>`;
-                }
-                
-                // Начинаем новый абзац
-                currentParagraph = sentence;
-            }
-        }
-        
-        // Добавляем последний абзац
-        if (currentParagraph.trim().length > 0) {
-            result += `<p>${this.escapeHtml(currentParagraph.trim())}</p>`;
-        }
-        
-        return result;
     }
 
     /**
