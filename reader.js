@@ -584,9 +584,14 @@ class YandexBooksReader {
         el.style.border = 'none';
         el.style.boxSizing = 'border-box';
 
-        // Фиксированная максимальная высота
-        el.style.maxHeight = `${this.getMaxContentHeight()}px`;
+        // Адаптивная максимальная высота с учетом устройства
+        const maxHeight = this.getMaxContentHeight();
+        el.style.maxHeight = `${maxHeight}px`;
         el.style.overflow = 'hidden';
+        
+        // Добавляем отступы для более точного измерения
+        el.style.paddingTop = '8px';
+        el.style.paddingBottom = '8px';
         
         document.body.appendChild(el);
         return el;
@@ -594,22 +599,49 @@ class YandexBooksReader {
 
     /** Возвращает расчетную максимальную высоту текстового блока внутри страницы */
     getMaxContentHeight() {
-        // Берем фактическую высоту из текущего .page-content если доступен
-        const pageContent = this.elements.pageContent;
-        if (pageContent) {
-            const rect = pageContent.getBoundingClientRect();
-            // Если высота еще не задана (на ранней инициализации), вычислим по CSS calc
-            if (rect.height > 0) {
-                const safe = Math.max(0, Math.floor(rect.height - 4)); // небольшой безопасный отступ
-                console.log(`📏 Using actual page content height: ${rect.height}px -> safe ${safe}px`);
-                return safe;
-            }
-        }
+        // Создаем временный элемент для точного измерения
+        const tempEl = document.createElement('div');
+        tempEl.style.position = 'absolute';
+        tempEl.style.top = '-99999px';
+        tempEl.style.left = '-99999px';
+        tempEl.style.visibility = 'hidden';
+        tempEl.style.width = '680px';
+        tempEl.style.maxWidth = '680px';
+        tempEl.style.fontFamily = 'Charter, Georgia, "Times New Roman", serif';
+        tempEl.style.fontSize = `${this.state.settings.fontSize}px`;
+        tempEl.style.lineHeight = String(this.state.settings.lineHeight);
+        tempEl.style.letterSpacing = '-0.01em';
+        tempEl.style.textAlign = this.state.settings.textAlign;
+        tempEl.style.padding = '0';
+        tempEl.style.margin = '0';
+        tempEl.style.border = 'none';
+        tempEl.style.boxSizing = 'border-box';
+        tempEl.innerHTML = '<p>Тестовый текст для измерения высоты</p>';
         
-        const computed = this.computePageContentCssHeight();
-        const safeComputed = Math.max(0, computed - 4);
-        console.log(`📏 Using computed height: ${computed}px -> safe ${safeComputed}px`);
-        return safeComputed;
+        document.body.appendChild(tempEl);
+        const testHeight = tempEl.scrollHeight;
+        document.body.removeChild(tempEl);
+        
+        // Вычисляем доступную высоту с учетом всех элементов интерфейса
+        const vh = window.innerHeight;
+        const header = 56; // var(--header-height)
+        const footer = 80; // var(--footer-height)
+        const safeTop = 0;
+        const safeBottom = 0;
+        const padding = 48; // 24px сверху + 24px снизу
+        
+        const availableHeight = Math.max(0, Math.floor(vh - header - footer - safeTop - safeBottom - padding));
+        
+        // Берем минимум из доступной высоты и тестовой высоты с запасом
+        const safeHeight = Math.max(200, Math.min(availableHeight, testHeight * 0.95));
+        
+        console.log(`📏 Device height calculation:`);
+        console.log(`   Viewport: ${vh}px`);
+        console.log(`   Available: ${availableHeight}px`);
+        console.log(`   Test height: ${testHeight}px`);
+        console.log(`   Final safe height: ${safeHeight}px`);
+        
+        return safeHeight;
     }
 
     computePageContentCssHeight() {
@@ -916,8 +948,17 @@ class YandexBooksReader {
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
+                console.log('📱 Device resize detected, recreating pages...');
                 this.recreatePagesForNewMetrics();
-            }, 150);
+            }, 300);
+        });
+        
+        // Дополнительная проверка при изменении ориентации
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                console.log('📱 Orientation change detected, recreating pages...');
+                this.recreatePagesForNewMetrics();
+            }, 500);
         });
     }
 
@@ -1405,12 +1446,31 @@ openSettings() {
 
 /** Пересоздание страниц при изменении шрифта/интервала/ширины */
     recreatePagesForNewMetrics() {
+        console.log('🔄 Recreating pages for new device metrics...');
+        
+        // Сохраняем текущую позицию чтения
         const progressRatio = this.state.totalPages > 1 ? this.state.currentPageIndex / (this.state.totalPages - 1) : 0;
+        const currentPageWords = this.state.pages[this.state.currentPageIndex]?.wordCount || 0;
+        
+        // Пересоздаем страницы
         this.createPages();
-        // Восстанавливаем близкую позицию чтения
+        
+        // Восстанавливаем позицию чтения с учетом нового количества страниц
         const newIndex = Math.round(progressRatio * (this.state.totalPages - 1));
         this.state.currentPageIndex = Math.max(0, Math.min(newIndex, this.state.totalPages - 1));
+        
+        console.log(`📊 Recreated pages: ${this.state.totalPages} total, restored to page ${this.state.currentPageIndex + 1}`);
+        
+        // Рендерим текущую страницу
         this.renderCurrentPage();
+        
+        // Дополнительная проверка целостности после пересоздания
+        setTimeout(() => {
+            this.validateTextIntegrity(
+                this.preprocessText(this.state.bookContent), 
+                this.preprocessText(this.state.bookContent).split(/\s+/).filter(Boolean)
+            );
+        }, 100);
     }
 
     }
