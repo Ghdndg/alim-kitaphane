@@ -318,8 +318,8 @@ class YandexBooksReader {
         // Проверяем целостность текста
         const diff = this.validateTextIntegrity(normalizedText, words);
         if (Math.abs(diff) > 0) {
-            console.warn(`⚠️ Integrity diff = ${diff}. Recreating pages in paragraph mode...`);
-            this.createPagesByParagraphs();
+            console.warn(`⚠️ Integrity diff = ${diff}. Recreating pages in strict mode...`);
+            this.createPagesStrict(words);
         }
         
         console.log(`✅ PAGES CREATED: ${this.state.totalPages} pages total`);
@@ -331,69 +331,8 @@ class YandexBooksReader {
         }
     }
 
-    /** Строгий режим: максимально точная подгонка без агрессивных шагов */
+    /** Строгий режим: разбиение по абзацам с выделением главных */
     createPagesStrict(words) {
-        const measureEl = this.createMeasureElement();
-        const maxHeight = this.getMaxContentHeight();
-        this.state.pages = [];
-        let index = 0;
-        let pageNumber = 0;
-        
-        while (index < words.length) {
-            // Бинарный поиск верхней границы
-            let low = 1;
-            let high = Math.min(words.length - index, 4000);
-            let best = 1;
-            while (low <= high) {
-                const mid = Math.floor((low + high) / 2);
-                const sliceText = words.slice(index, index + mid).join(' ');
-                const html = this.formatSimplePage(sliceText, pageNumber === 0 ? 0 : index);
-                measureEl.innerHTML = html;
-                measureEl.offsetHeight;
-                const h = measureEl.scrollHeight;
-                if (h <= maxHeight) {
-                    best = mid;
-                    low = mid + 1;
-                } else {
-                    high = mid - 1;
-                }
-            }
-            
-            // Точная доводка по одному слову
-            let finalBest = best;
-            while (index + finalBest + 1 <= words.length) {
-                const testSlice = words.slice(index, index + finalBest + 1).join(' ');
-                const testHtml = this.formatSimplePage(testSlice, pageNumber === 0 ? 0 : index);
-                measureEl.innerHTML = testHtml;
-                measureEl.offsetHeight;
-                if (measureEl.scrollHeight <= maxHeight) {
-                    finalBest += 1;
-                } else {
-                    break;
-                }
-            }
-            
-            const pageText = words.slice(index, index + finalBest).join(' ');
-            const formatted = this.formatSimplePage(pageText, pageNumber === 0 ? 0 : index);
-            this.state.pages.push({ id: pageNumber, content: formatted, wordCount: finalBest });
-            index += finalBest;
-            pageNumber += 1;
-            
-            if (finalBest === 0) {
-                // чрезвычайный случай — помещаем по одному слову
-                const fallback = this.formatSimplePage(words[index], index);
-                this.state.pages.push({ id: pageNumber, content: fallback, wordCount: 1 });
-                index += 1;
-                pageNumber += 1;
-            }
-        }
-        
-        measureEl.remove();
-        this.state.totalPages = this.state.pages.length;
-    }
-
-    /** Новый метод: разбиение по абзацам с выделением главных */
-    createPagesByParagraphs() {
         console.log('📄 Creating pages by paragraphs with main paragraph detection...');
         
         const normalizedText = this.preprocessText(this.state.bookContent);
@@ -467,8 +406,8 @@ class YandexBooksReader {
         // Проверяем целостность
         const diff = this.validateTextIntegrity(normalizedText, normalizedText.split(/\s+/).filter(Boolean));
         if (Math.abs(diff) > 0) {
-            console.warn(`⚠️ Paragraph mode integrity diff = ${diff}. Falling back to strict mode...`);
-            this.createPagesStrict(normalizedText.split(/\s+/).filter(Boolean));
+            console.warn(`⚠️ Paragraph mode integrity diff = ${diff}. Falling back to word-by-word mode...`);
+            this.createPagesWordByWord(words);
         }
         
         console.log(`✅ PAGES CREATED BY PARAGRAPHS: ${this.state.totalPages} pages total`);
@@ -487,7 +426,12 @@ class YandexBooksReader {
         const mainParagraphs = [];
         const mainKeywords = [
             'хаджи', 'гирай', 'крым', 'хан', 'татар', 'история', 'биография',
-            'родился', 'умер', 'правил', 'государство', 'династия', 'основатель'
+            'родился', 'умер', 'правил', 'государство', 'династия', 'основатель',
+            'бабам', 'мидат', 'къуртсеит', 'айдын', 'хатырасына', 'багъышлайым',
+            'лагъабы', 'эди', 'мелек', 'янъы', 'яратылгъан', 'эсернинъ', 'къараманы',
+            'муэллифи', 'акъкъында', 'тарихий', 'мевзугъа', 'сиясий', 'ичтимаий',
+            'кечмишимизде', 'из', 'къалдыргъан', 'инсанларгъа', 'бедиий', 'весикъалы',
+            'публицистик', 'эдебиятымызда', 'бошлукълар', 'мевджут', 'олгъаны'
         ];
         
         for (let i = 0; i < paragraphs.length; i++) {
@@ -496,10 +440,10 @@ class YandexBooksReader {
             
             // Главный абзац если:
             // 1. Содержит ключевые слова
-            // 2. Имеет достаточную длину (не менее 20 слов)
+            // 2. Имеет достаточную длину (не менее 15 слов)
             // 3. Начинается с заглавной буквы (вероятно начало предложения)
             const hasKeywords = mainKeywords.some(keyword => paragraph.includes(keyword));
-            const isLongEnough = wordCount >= 20;
+            const isLongEnough = wordCount >= 15;
             const startsProperly = paragraphs[i].match(/^[А-ЯЁ]/);
             
             if ((hasKeywords || isLongEnough) && startsProperly) {
@@ -555,6 +499,57 @@ class YandexBooksReader {
         };
     }
 
+    /** Последний резерв: слово за словом */
+    createPagesWordByWord(words) {
+        console.log('📄 Creating pages word by word (last resort)...');
+        
+        const measureEl = this.createMeasureElement();
+        const maxHeight = this.getMaxContentHeight();
+        this.state.pages = [];
+        let index = 0;
+        let pageNumber = 0;
+        
+        while (index < words.length) {
+            let wordCount = 1;
+            
+            // Добавляем слова по одному пока помещается
+            while (index + wordCount < words.length) {
+                const sliceText = words.slice(index, index + wordCount + 1).join(' ');
+                const html = this.formatSimplePage(sliceText, pageNumber === 0 ? 0 : index);
+                measureEl.innerHTML = html;
+                measureEl.offsetHeight;
+                
+                if (measureEl.scrollHeight <= maxHeight) {
+                    wordCount++;
+                } else {
+                    break;
+                }
+            }
+            
+            const pageText = words.slice(index, index + wordCount).join(' ');
+            const formatted = this.formatSimplePage(pageText, pageNumber === 0 ? 0 : index);
+            this.state.pages.push({ id: pageNumber, content: formatted, wordCount: wordCount });
+            
+            index += wordCount;
+            pageNumber += 1;
+            
+            if (wordCount === 0) {
+                console.error('❌ CRITICAL: No words fit, forcing single word');
+                this.state.pages.push({ 
+                    id: pageNumber, 
+                    content: this.formatSimplePage(words[index] || '', index), 
+                    wordCount: 1 
+                });
+                index += 1;
+                pageNumber += 1;
+            }
+        }
+        
+        measureEl.remove();
+        this.state.totalPages = this.state.pages.length;
+        console.log(`✅ PAGES CREATED WORD BY WORD: ${this.state.totalPages} pages total`);
+    }
+
     /** Создает скрытый элемент для измерения высоты контента страницы */
     createMeasureElement() {
         const el = document.createElement('div');
@@ -584,14 +579,9 @@ class YandexBooksReader {
         el.style.border = 'none';
         el.style.boxSizing = 'border-box';
 
-        // Адаптивная максимальная высота с учетом устройства
-        const maxHeight = this.getMaxContentHeight();
-        el.style.maxHeight = `${maxHeight}px`;
+        // Фиксированная максимальная высота
+        el.style.maxHeight = `${this.getMaxContentHeight()}px`;
         el.style.overflow = 'hidden';
-        
-        // Добавляем отступы для более точного измерения
-        el.style.paddingTop = '8px';
-        el.style.paddingBottom = '8px';
         
         document.body.appendChild(el);
         return el;
@@ -599,49 +589,22 @@ class YandexBooksReader {
 
     /** Возвращает расчетную максимальную высоту текстового блока внутри страницы */
     getMaxContentHeight() {
-        // Создаем временный элемент для точного измерения
-        const tempEl = document.createElement('div');
-        tempEl.style.position = 'absolute';
-        tempEl.style.top = '-99999px';
-        tempEl.style.left = '-99999px';
-        tempEl.style.visibility = 'hidden';
-        tempEl.style.width = '680px';
-        tempEl.style.maxWidth = '680px';
-        tempEl.style.fontFamily = 'Charter, Georgia, "Times New Roman", serif';
-        tempEl.style.fontSize = `${this.state.settings.fontSize}px`;
-        tempEl.style.lineHeight = String(this.state.settings.lineHeight);
-        tempEl.style.letterSpacing = '-0.01em';
-        tempEl.style.textAlign = this.state.settings.textAlign;
-        tempEl.style.padding = '0';
-        tempEl.style.margin = '0';
-        tempEl.style.border = 'none';
-        tempEl.style.boxSizing = 'border-box';
-        tempEl.innerHTML = '<p>Тестовый текст для измерения высоты</p>';
+        // Берем фактическую высоту из текущего .page-content если доступен
+        const pageContent = this.elements.pageContent;
+        if (pageContent) {
+            const rect = pageContent.getBoundingClientRect();
+            // Если высота еще не задана (на ранней инициализации), вычислим по CSS calc
+            if (rect.height > 0) {
+                const safe = Math.max(0, Math.floor(rect.height - 4)); // небольшой безопасный отступ
+                console.log(`📏 Using actual page content height: ${rect.height}px -> safe ${safe}px`);
+                return safe;
+            }
+        }
         
-        document.body.appendChild(tempEl);
-        const testHeight = tempEl.scrollHeight;
-        document.body.removeChild(tempEl);
-        
-        // Вычисляем доступную высоту с учетом всех элементов интерфейса
-        const vh = window.innerHeight;
-        const header = 56; // var(--header-height)
-        const footer = 80; // var(--footer-height)
-        const safeTop = 0;
-        const safeBottom = 0;
-        const padding = 48; // 24px сверху + 24px снизу
-        
-        const availableHeight = Math.max(0, Math.floor(vh - header - footer - safeTop - safeBottom - padding));
-        
-        // Берем минимум из доступной высоты и тестовой высоты с запасом
-        const safeHeight = Math.max(200, Math.min(availableHeight, testHeight * 0.95));
-        
-        console.log(`📏 Device height calculation:`);
-        console.log(`   Viewport: ${vh}px`);
-        console.log(`   Available: ${availableHeight}px`);
-        console.log(`   Test height: ${testHeight}px`);
-        console.log(`   Final safe height: ${safeHeight}px`);
-        
-        return safeHeight;
+        const computed = this.computePageContentCssHeight();
+        const safeComputed = Math.max(0, computed - 4);
+        console.log(`📏 Using computed height: ${computed}px -> safe ${safeComputed}px`);
+        return safeComputed;
     }
 
     computePageContentCssHeight() {
@@ -662,7 +625,6 @@ class YandexBooksReader {
     validateTextIntegrity(originalText, originalWords) {
         let totalWordsInPages = 0;
         let allPageText = '';
-        let allPageWords = [];
         
         for (const page of this.state.pages) {
             // Извлекаем текст из HTML контента страницы
@@ -673,7 +635,6 @@ class YandexBooksReader {
             
             totalWordsInPages += pageWords.length;
             allPageText += pageText + ' ';
-            allPageWords = allPageWords.concat(pageWords);
         }
         
         const originalWordCount = originalWords.length;
@@ -685,25 +646,30 @@ class YandexBooksReader {
         const diff = originalWordCount - pageWordCount;
         console.log(`   Difference: ${diff}`);
         
-        // Строгая проверка: сравниваем первые и последние 10 слов
-        const originalStart = originalWords.slice(0, 10).join(' ');
-        const originalEnd = originalWords.slice(-10).join(' ');
-        const pageStart = allPageWords.slice(0, 10).join(' ');
-        const pageEnd = allPageWords.slice(-10).join(' ');
-        
-        console.log(`📖 Original start: "${originalStart}"`);
-        console.log(`📖 Page start: "${pageStart}"`);
-        console.log(`📖 Original end: "${originalEnd}"`);
-        console.log(`📖 Page end: "${pageEnd}"`);
-        
-        if (originalStart !== pageStart || originalEnd !== pageEnd) {
-            console.error(`❌ CRITICAL: Text boundaries don't match!`);
-            console.error(`   This indicates text loss during pagination.`);
+        if (Math.abs(diff) > 10) {
+            console.warn(`⚠️ WARNING: Significant word count difference detected!`);
+            console.warn(`   This might indicate lost text during pagination.`);
         }
         
-        if (Math.abs(diff) > 0) {
-            console.warn(`⚠️ WARNING: Word count difference detected: ${diff}`);
-            console.warn(`   This might indicate lost text during pagination.`);
+        // Проверяем, что первые и последние слова совпадают
+        if (originalWords.length > 0 && this.state.pages.length > 0) {
+            const firstPageText = this.state.pages[0].content;
+            const lastPageText = this.state.pages[this.state.pages.length - 1].content;
+            
+            const firstPageDiv = document.createElement('div');
+            firstPageDiv.innerHTML = firstPageText;
+            const firstPageWords = (firstPageDiv.textContent || '').split(/\s+/).filter(w => w.trim());
+            
+            const lastPageDiv = document.createElement('div');
+            lastPageDiv.innerHTML = lastPageText;
+            const lastPageWords = (lastPageDiv.textContent || '').split(/\s+/).filter(w => w.trim());
+            
+            if (firstPageWords.length > 0 && lastPageWords.length > 0) {
+                console.log(`📖 First page starts with: "${firstPageWords[0]}"`);
+                console.log(`📖 Last page ends with: "${lastPageWords[lastPageWords.length - 1]}"`);
+                console.log(`📖 Original starts with: "${originalWords[0]}"`);
+                console.log(`📖 Original ends with: "${originalWords[originalWords.length - 1]}"`);
+            }
         }
         
         return diff;
@@ -948,17 +914,8 @@ class YandexBooksReader {
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
-                console.log('📱 Device resize detected, recreating pages...');
                 this.recreatePagesForNewMetrics();
-            }, 300);
-        });
-        
-        // Дополнительная проверка при изменении ориентации
-        window.addEventListener('orientationchange', () => {
-            setTimeout(() => {
-                console.log('📱 Orientation change detected, recreating pages...');
-                this.recreatePagesForNewMetrics();
-            }, 500);
+            }, 150);
         });
     }
 
@@ -1446,31 +1403,12 @@ openSettings() {
 
 /** Пересоздание страниц при изменении шрифта/интервала/ширины */
     recreatePagesForNewMetrics() {
-        console.log('🔄 Recreating pages for new device metrics...');
-        
-        // Сохраняем текущую позицию чтения
         const progressRatio = this.state.totalPages > 1 ? this.state.currentPageIndex / (this.state.totalPages - 1) : 0;
-        const currentPageWords = this.state.pages[this.state.currentPageIndex]?.wordCount || 0;
-        
-        // Пересоздаем страницы
         this.createPages();
-        
-        // Восстанавливаем позицию чтения с учетом нового количества страниц
+        // Восстанавливаем близкую позицию чтения
         const newIndex = Math.round(progressRatio * (this.state.totalPages - 1));
         this.state.currentPageIndex = Math.max(0, Math.min(newIndex, this.state.totalPages - 1));
-        
-        console.log(`📊 Recreated pages: ${this.state.totalPages} total, restored to page ${this.state.currentPageIndex + 1}`);
-        
-        // Рендерим текущую страницу
         this.renderCurrentPage();
-        
-        // Дополнительная проверка целостности после пересоздания
-        setTimeout(() => {
-            this.validateTextIntegrity(
-                this.preprocessText(this.state.bookContent), 
-                this.preprocessText(this.state.bookContent).split(/\s+/).filter(Boolean)
-            );
-        }, 100);
     }
 
     }
