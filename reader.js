@@ -173,9 +173,9 @@ class YandexBooksReader {
                 
                 if (actualHeight <= maxHeight) {
                     found = true;
-                    // Если помещается, попробуем добавить еще слов более агрессивно
-                    let nextBest = Math.min(best + 100, words.length - index);
-                    let maxAttempts = 5;
+                    // Если помещается, попробуем добавить еще слов консервативно
+                    let nextBest = Math.min(best + 50, words.length - index);
+                    let maxAttempts = 3;
                     let attempts = 0;
                     
                     while (attempts < maxAttempts && nextBest < words.length - index) {
@@ -188,7 +188,7 @@ class YandexBooksReader {
                         if (nextHeight <= maxHeight) {
                             best = nextBest;
                             console.log(`✅ Can fit more: ${best} words, height ${nextHeight}px (${Math.round(nextHeight/maxHeight * 100)}% filled)`);
-                            nextBest = Math.min(best + 50, words.length - index);
+                            nextBest = Math.min(best + 25, words.length - index);
                         } else {
                             break;
                         }
@@ -220,16 +220,16 @@ class YandexBooksReader {
             let finalHeight = measureEl.scrollHeight;
             let finalBest = best;
             
-            // Дополнительная оптимизация: если на странице есть свободное место, попробуем добавить еще слов
-            if (finalHeight < maxHeight * 0.9 && index + best < words.length) {
+            // Дополнительная оптимизация: если на странице много свободного места, попробуем добавить еще слов
+            if (finalHeight < maxHeight * 0.8 && index + best < words.length) {
                 console.log(`🔧 Page has ${Math.round((1 - finalHeight/maxHeight) * 100)}% free space, trying to add more words...`);
                 
                 let additionalWords = 0;
                 let testBest = best;
                 
-                // Пробуем добавить по 5 слов за раз для более точного заполнения
-                while (testBest < words.length - index && additionalWords < 200) {
-                    testBest += 5;
+                // Пробуем добавить по 10 слов за раз для более консервативного подхода
+                while (testBest < words.length - index && additionalWords < 50) {
+                    testBest += 10;
                     const testSliceText = words.slice(index, index + testBest).join(' ');
                     const testHtml = this.formatSimplePage(testSliceText, pageNumber === 0 ? 0 : index);
                     measureEl.innerHTML = testHtml;
@@ -239,12 +239,12 @@ class YandexBooksReader {
                     if (testHeight <= maxHeight) {
                         finalBest = testBest;
                         finalHeight = testHeight;
-                        additionalWords += 5;
+                        additionalWords += 10;
                         console.log(`✅ Added ${additionalWords} more words, height: ${testHeight}px (${Math.round(testHeight/maxHeight * 100)}% filled)`);
                     } else {
                         // Если не помещается, попробуем добавить по 1 слову
-                        testBest -= 5;
-                        while (testBest < words.length - index && testBest < best + additionalWords + 20) {
+                        testBest -= 10;
+                        while (testBest < words.length - index && testBest < best + additionalWords + 10) {
                             testBest += 1;
                             const singleTestSliceText = words.slice(index, index + testBest).join(' ');
                             const singleTestHtml = this.formatSimplePage(singleTestSliceText, pageNumber === 0 ? 0 : index);
@@ -276,14 +276,14 @@ class YandexBooksReader {
                 actualHeight: finalHeight
             });
             
-            // Финальная проверка: если страница заполнена менее чем на 85%, попробуем добавить еще слов
-            if (finalHeight < maxHeight * 0.85 && index + finalBest < words.length) {
+            // Финальная проверка: если страница заполнена менее чем на 70%, попробуем добавить еще слов
+            if (finalHeight < maxHeight * 0.7 && index + finalBest < words.length) {
                 console.log(`🔧 Final optimization: page only ${Math.round(finalHeight/maxHeight * 100)}% filled, trying to add more...`);
                 
                 let extraWords = 0;
                 let testFinal = finalBest;
                 
-                while (testFinal < words.length - index && extraWords < 50) {
+                while (testFinal < words.length - index && extraWords < 20) {
                     testFinal += 1;
                     const extraSliceText = words.slice(index, index + testFinal).join(' ');
                     const extraHtml = this.formatSimplePage(extraSliceText, pageNumber === 0 ? 0 : index);
