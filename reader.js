@@ -333,15 +333,93 @@ class YandexBooksReader {
      * Привязывает события панели настроек
      */
     bindSettingsEvents() {
+        console.log('🎮 Binding settings events...');
+        
+        // Закрытие панели
         if (this.elements.closeSettingsButton) {
-            this.elements.closeSettingsButton.addEventListener('click', () => this.closeSettings());
+            this.elements.closeSettingsButton.addEventListener('click', (e) => {
+                console.log('🔄 Close settings clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeSettings();
+            });
         }
         
         if (this.elements.settingsBackdrop) {
-            this.elements.settingsBackdrop.addEventListener('click', () => this.closeSettings());
+            this.elements.settingsBackdrop.addEventListener('click', (e) => {
+                console.log('🔄 Settings backdrop clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeSettings();
+            });
         }
         
-        // Остальные настройки...
+        // Яркость
+        if (this.elements.brightnessSlider) {
+            this.elements.brightnessSlider.addEventListener('input', (event) => {
+                console.log('🔄 Brightness changed:', event.target.value);
+                this.updateBrightness(parseInt(event.target.value));
+            });
+        }
+        
+        // Размер шрифта
+        if (this.elements.decreaseFontSize) {
+            this.elements.decreaseFontSize.addEventListener('click', (e) => {
+                console.log('🔄 Decrease font size clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                this.adjustFontSize(-2);
+            });
+        }
+        
+        if (this.elements.increaseFontSize) {
+            this.elements.increaseFontSize.addEventListener('click', (e) => {
+                console.log('🔄 Increase font size clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                this.adjustFontSize(2);
+            });
+        }
+        
+        // Темы
+        document.querySelectorAll('.theme-option').forEach(button => {
+            button.addEventListener('click', (e) => {
+                console.log('🔄 Theme clicked:', button.dataset.theme);
+                e.preventDefault();
+                e.stopPropagation();
+                this.changeTheme(button.dataset.theme);
+            });
+        });
+        
+        // Межстрочный интервал
+        document.querySelectorAll('.spacing-option').forEach(button => {
+            button.addEventListener('click', (e) => {
+                console.log('🔄 Spacing clicked:', button.dataset.spacing);
+                e.preventDefault();
+                e.stopPropagation();
+                this.changeLineHeight(parseFloat(button.dataset.spacing));
+            });
+        });
+        
+        // Выравнивание текста
+        document.querySelectorAll('.align-option').forEach(button => {
+            button.addEventListener('click', (e) => {
+                console.log('🔄 Alignment clicked:', button.dataset.align);
+                e.preventDefault();
+                e.stopPropagation();
+                this.changeTextAlign(button.dataset.align);
+            });
+        });
+        
+        // Режим прокрутки
+        if (this.elements.scrollModeToggle) {
+            this.elements.scrollModeToggle.addEventListener('change', (e) => {
+                console.log('🔄 Scroll mode toggled:', e.target.checked);
+                this.toggleScrollMode(e.target.checked);
+            });
+        }
+        
+        console.log('✅ Settings events bound');
     }
 
     /**
@@ -584,340 +662,35 @@ class YandexBooksReader {
     }
 
     /**
- * ИСПРАВЛЕННЫЙ метод открытия настроек
- */
-openSettings() {
-    console.log('⚙️ Settings opened');
-    
-    this.state.isSettingsOpen = true;
-    
-    // Ищем элемент панели настроек
-    if (this.elements.settingsDrawer) {
-        this.elements.settingsDrawer.classList.add('visible');
-        console.log('✅ Settings panel shown');
-    } else {
-        console.warn('❌ settingsDrawer element not found in DOM');
-        
-        // Создаем панель настроек динамически, если её нет
-        this.createSettingsPanel();
-    }
-    
-    // Показываем UI
-    this.showUI();
-    
-    // Обновляем состояние настроек
-    this.updateSettingsInterface();
-}
-
-/**
- * Создает панель настроек динамически
- */
-    createSettingsPanel() {
-        console.log('🔧 Creating settings panel dynamically...');
-        
-        // Удаляем старую панель, если есть
-        const existingPanel = document.getElementById('settingsDrawer');
-        if (existingPanel) {
-            existingPanel.remove();
-        }
-        
-        const settingsHTML = `
-            <aside class="settings-drawer visible" id="settingsDrawer">
-                <div class="settings-backdrop" id="settingsBackdrop"></div>
-                
-                <div class="settings-panel">
-                    <header class="settings-header">
-                        <h3>Настройки чтения</h3>
-                        <button class="close-button" id="closeSettingsButton">✕</button>
-                    </header>
-                    
-                    <div class="settings-content">
-                        <!-- Яркость -->
-                        <section class="setting-group">
-                            <label>Яркость</label>
-                            <div class="brightness-control">
-                                <input type="range" id="brightnessSlider" min="30" max="100" value="100">
-                            </div>
-                        </section>
-
-                        <!-- Темы -->
-                        <section class="setting-group">
-                            <label>Тема оформления</label>
-                            <div class="theme-options">
-                                <button class="theme-option" data-theme="sepia" id="themeSepia">
-                                    <div class="theme-preview sepia"></div>
-                                    <span>Сепия</span>
-                                </button>
-                                <button class="theme-option" data-theme="gray" id="themeGray">
-                                    <div class="theme-preview gray"></div>
-                                    <span>Серый</span>
-                                </button>
-                                <button class="theme-option active" data-theme="dark" id="themeDark">
-                                    <div class="theme-preview dark"></div>
-                                    <span>Черный</span>
-                                </button>
-                            </div>
-                        </section>
-
-                        <!-- Размер шрифта -->
-                        <section class="setting-group">
-                            <label>Размер шрифта</label>
-                            <div class="font-controls">
-                                <button class="font-btn" id="decreaseFontSize">А-</button>
-                                <button class="font-btn" id="increaseFontSize">А+</button>
-                            </div>
-                        </section>
-
-                        <!-- Межстрочный интервал -->
-                        <section class="setting-group">
-                            <label>Межстрочный интервал</label>
-                            <div class="spacing-controls">
-                                <button class="spacing-btn" id="spacingTight" data-spacing="1.4">Узкий</button>
-                                <button class="spacing-btn active" id="spacingNormal" data-spacing="1.6">Нормальный</button>
-                                <button class="spacing-btn" id="spacingLoose" data-spacing="2.0">Широкий</button>
-                            </div>
-                        </section>
-                    </div>
-                </div>
-            </aside>
-        `;
-
-        
-        // Добавляем CSS для настроек
-        const settingsCSS = `
-            .settings-drawer {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                transform: translateY(100%);
-                transition: transform 0.3s ease;
-                z-index: 200;
-            }
-            
-            .settings-drawer.visible {
-                transform: translateY(0);
-            }
-            
-            .settings-backdrop {
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.5);
-            }
-            
-            .settings-panel {
-                background: rgba(20, 20, 20, 0.95);
-                backdrop-filter: blur(20px);
-                border-radius: 20px 20px 0 0;
-                max-height: 70vh;
-                overflow: hidden;
-                color: #fff;
-            }
-            
-            .settings-header {
-                padding: 20px 24px 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }
-            
-            .close-button {
-                background: none;
-                border: none;
-                color: #fff;
-                font-size: 20px;
-                cursor: pointer;
-                padding: 8px;
-                border-radius: 8px;
-            }
-            
-            .close-button:hover {
-                background: rgba(255, 255, 255, 0.1);
-            }
-            
-            .settings-content {
-                padding: 24px;
-                max-height: 50vh;
-                overflow-y: auto;
-            }
-            
-            .setting-group {
-                margin-bottom: 24px;
-            }
-            
-            .setting-group label {
-                display: block;
-                font-size: 14px;
-                font-weight: 500;
-                margin-bottom: 12px;
-                color: #fff;
-            }
-            
-            .brightness-control input[type="range"] {
-                width: 100%;
-                height: 4px;
-                border-radius: 2px;
-                background: rgba(255, 255, 255, 0.2);
-                outline: none;
-                -webkit-appearance: none;
-            }
-            
-            .brightness-control input[type="range"]::-webkit-slider-thumb {
-                -webkit-appearance: none;
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                background: #007aff;
-                cursor: pointer;
-            }
-            
-            .theme-options, .font-controls, .spacing-controls {
-                display: flex;
-                gap: 12px;
-            }
-            
-            .theme-option, .font-btn, .spacing-btn {
-                flex: 1;
-                padding: 12px 8px;
-                background: none;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                border-radius: 12px;
-                cursor: pointer;
-                transition: all 0.2s;
-                color: #fff;
-                font-size: 14px;
-            }
-            
-            .theme-option {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 8px;
-            }
-            
-            .theme-option.active, .font-btn:hover, .spacing-btn.active {
-                border-color: #007aff;
-                background: rgba(0, 122, 255, 0.1);
-            }
-            
-            .font-btn:hover, .spacing-btn:hover {
-                background: rgba(255, 255, 255, 0.1);
-            }
-            
-            .theme-preview {
-                width: 36px;
-                height: 36px;
-                border-radius: 8px;
-            }
-            
-            .theme-preview.sepia { background: #f7f0e6; }
-            .theme-preview.gray { background: #f5f5f5; }
-            .theme-preview.dark { background: #000; }
-        `;
-        
-        // Добавляем CSS
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = settingsCSS;
-        document.head.appendChild(styleSheet);
-        
-        // Добавляем HTML
-        document.body.insertAdjacentHTML('beforeend', settingsHTML);
-        
-        // Обновляем ссылки на элементы
-        this.elements.settingsDrawer = document.getElementById('settingsDrawer');
-        this.elements.settingsBackdrop = document.getElementById('settingsBackdrop');
-        this.elements.closeSettingsButton = document.getElementById('closeSettingsButton');
-        this.elements.brightnessSlider = document.getElementById('brightnessSlider');
-        this.elements.decreaseFontSize = document.getElementById('decreaseFontSize');
-        this.elements.increaseFontSize = document.getElementById('increaseFontSize');
-        
-        // ПРИВЯЗЫВАЕМ СОБЫТИЯ ДЛЯ ВСЕХ КНОПОК
-        this.bindDynamicSettingsEvents();
-        
-        console.log('✅ Settings panel created and shown');
-    }
-    
-    /**
-     * ИСПРАВЛЕННЫЙ метод привязки событий для настроек
+     * ИСПРАВЛЕННЫЙ метод открытия настроек
      */
-    bindDynamicSettingsEvents() {
-        console.log('🎮 Binding dynamic settings events...');
+    openSettings() {
+        console.log('⚙️ Settings opened');
         
-        // Закрытие панели
-        if (this.elements.closeSettingsButton) {
-            this.elements.closeSettingsButton.addEventListener('click', (e) => {
-                console.log('🔄 Close settings clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                this.closeSettings();
-            });
+        this.state.isSettingsOpen = true;
+        
+        // Показываем существующую панель настроек
+        if (this.elements.settingsDrawer) {
+            this.elements.settingsDrawer.classList.add('visible');
+            console.log('✅ Settings panel shown');
+        } else {
+            console.error('❌ settingsDrawer element not found in DOM');
+            return;
         }
         
-        if (this.elements.settingsBackdrop) {
-            this.elements.settingsBackdrop.addEventListener('click', (e) => {
-                console.log('🔄 Settings backdrop clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                this.closeSettings();
-            });
-        }
+        // Показываем UI
+        this.showUI();
         
-        // Яркость
-        if (this.elements.brightnessSlider) {
-            this.elements.brightnessSlider.addEventListener('input', (event) => {
-                console.log('🔄 Brightness changed:', event.target.value);
-                this.updateBrightness(parseInt(event.target.value));
-            });
-        }
-        
-        // Размер шрифта
-        if (this.elements.decreaseFontSize) {
-            this.elements.decreaseFontSize.addEventListener('click', (e) => {
-                console.log('🔄 Decrease font size clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                this.adjustFontSize(-2);
-            });
-        }
-        
-        if (this.elements.increaseFontSize) {
-            this.elements.increaseFontSize.addEventListener('click', (e) => {
-                console.log('🔄 Increase font size clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                this.adjustFontSize(2);
-            });
-        }
-        
-        // Темы (ИСПРАВЛЕННЫЕ селекторы)
-        document.querySelectorAll('#themeSepia, #themeGray, #themeDark').forEach(button => {
-            button.addEventListener('click', (e) => {
-                console.log('🔄 Theme clicked:', button.dataset.theme);
-                e.preventDefault();
-                e.stopPropagation();
-                this.changeTheme(button.dataset.theme);
-            });
-        });
-        
-        // Межстрочный интервал (ИСПРАВЛЕННЫЕ селекторы)
-        document.querySelectorAll('#spacingTight, #spacingNormal, #spacingLoose').forEach(button => {
-            button.addEventListener('click', (e) => {
-                console.log('🔄 Spacing clicked:', button.dataset.spacing);
-                e.preventDefault();
-                e.stopPropagation();
-                this.changeLineHeight(parseFloat(button.dataset.spacing));
-            });
-        });
-        
-        console.log('✅ Dynamic settings events bound');
+        // Обновляем состояние настроек
+        this.updateSettingsInterface();
     }
 
 
 
+
     /**
-    * Закрытие настроек
-    */
+     * Закрытие настроек
+     */
     closeSettings() {
         console.log('⚙️ Settings closed');
         
@@ -925,14 +698,6 @@ openSettings() {
         
         if (this.elements.settingsDrawer) {
             this.elements.settingsDrawer.classList.remove('visible');
-            
-            // Удаляем панель через секунду
-            setTimeout(() => {
-                if (this.elements.settingsDrawer && !this.state.isSettingsOpen) {
-                    this.elements.settingsDrawer.remove();
-                    this.elements.settingsDrawer = null;
-                }
-            }, 300);
         }
     }
 
@@ -941,7 +706,32 @@ openSettings() {
      */
     updateSettingsInterface() {
         console.log('🔄 Updating settings interface');
-        // Заглушка для обновления настроек
+        
+        // Обновляем яркость
+        if (this.elements.brightnessSlider) {
+            this.elements.brightnessSlider.value = this.state.settings.brightness;
+        }
+        
+        // Обновляем активную тему
+        document.querySelectorAll('.theme-option').forEach(option => {
+            option.classList.toggle('active', option.dataset.theme === this.state.settings.theme);
+        });
+        
+        // Обновляем активный межстрочный интервал
+        document.querySelectorAll('.spacing-option').forEach(btn => {
+            const spacing = parseFloat(btn.dataset.spacing);
+            btn.classList.toggle('active', Math.abs(spacing - this.state.settings.lineHeight) < 0.1);
+        });
+        
+        // Обновляем активное выравнивание
+        document.querySelectorAll('.align-option').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.align === this.state.settings.textAlign);
+        });
+        
+        // Обновляем режим прокрутки
+        if (this.elements.scrollModeToggle) {
+            this.elements.scrollModeToggle.checked = this.state.settings.scrollMode;
+        }
     }
 
 
@@ -1094,12 +884,38 @@ openSettings() {
             this.saveSettings();
             
             // Обновляем активную кнопку
-            document.querySelectorAll('.spacing-btn').forEach(btn => {
+            document.querySelectorAll('.spacing-option').forEach(btn => {
                 const spacing = parseFloat(btn.dataset.spacing);
                 btn.classList.toggle('active', Math.abs(spacing - lineHeight) < 0.1);
             });
             
             console.log(`📐 Line height: ${lineHeight}`);
+        }
+
+        changeTextAlign(alignment) {
+            this.state.settings.textAlign = alignment;
+            this.applyTypographySettings();
+            this.saveSettings();
+            
+            // Обновляем активную кнопку
+            document.querySelectorAll('.align-option').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.align === alignment);
+            });
+            
+            console.log(`📐 Text alignment: ${alignment}`);
+        }
+
+        toggleScrollMode(enabled) {
+            this.state.settings.scrollMode = enabled;
+            this.saveSettings();
+            
+            if (enabled) {
+                document.body.classList.add('scroll-mode');
+            } else {
+                document.body.classList.remove('scroll-mode');
+            }
+            
+            console.log(`📜 Scroll mode: ${enabled ? 'enabled' : 'disabled'}`);
         }
     }
 
