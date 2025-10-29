@@ -349,12 +349,8 @@ body {
 }
 
 .page-content p {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     text-indent: 2em;
-    line-height: 1.7;
-    text-align: justify;
-    hyphens: auto;
-    -webkit-hyphens: auto;
 }
 
 .page-content p:first-of-type,
@@ -364,36 +360,25 @@ body {
     text-indent: 0;
 }
 
-/* Выделение абзацев */
-.page-content p:not(:last-child) {
+/* Выделение главных абзацев */
+.page-content .main-paragraph {
+    font-weight: 500;
+    background: rgba(0, 122, 255, 0.05);
+    border-left: 3px solid #007aff;
+    padding-left: 16px;
+    margin: 20px 0;
+    border-radius: 0 8px 8px 0;
     position: relative;
 }
 
-.page-content p:not(:last-child)::after {
-    content: '';
-    display: block;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--color-border), transparent);
-    margin: 12px 0 8px 0;
-    opacity: 0.3;
-}
-
-/* Улучшенное выделение первого абзаца после заголовка */
-.page-content .author + p {
-    font-size: 1.1em;
-    line-height: 1.8;
-    margin-bottom: 24px;
-    position: relative;
-}
-
-.page-content .author + p::before {
-    content: '';
-    display: block;
-    width: 60px;
-    height: 2px;
-    background: var(--color-text-secondary);
-    margin: 0 auto 16px auto;
-    opacity: 0.5;
+.page-content .main-paragraph::before {
+    content: "★";
+    position: absolute;
+    left: -12px;
+    top: 0;
+    color: #007aff;
+    font-size: 14px;
+    font-weight: bold;
 }
 
 /* Нижняя панель управления */
