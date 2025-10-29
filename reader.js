@@ -149,47 +149,72 @@ class YandexBooksReader {
 
         let index = 0;
         let pageNumber = 0;
+        
+        console.log(`📏 Max content height: ${maxHeight}px`);
+        
         while (index < words.length) {
-            // Бинарный поиск максимального количества слов, помещающихся по высоте
-            let low = 1;
-            let high = Math.min(words.length - index, 3000); // верхняя граница для ускорения
-            let best = 1;
-
-            while (low <= high) {
-                const mid = Math.floor((low + high) / 2);
-                const sliceText = words.slice(index, index + mid).join(' ');
+            // Начинаем с консервативного количества слов
+            let best = Math.min(50, words.length - index); // Начинаем с 50 слов
+            let found = false;
+            
+            // Ищем максимальное количество слов, которое помещается
+            while (best > 0) {
+                const sliceText = words.slice(index, index + best).join(' ');
                 const html = this.formatSimplePage(sliceText, pageNumber === 0 ? 0 : index);
                 measureEl.innerHTML = html;
-                const h = measureEl.scrollHeight;
-
-                if (h <= maxHeight) {
-                    best = mid;
-                    low = mid + 1;
-                } else {
-                    high = mid - 1;
+                
+                // Ждем рендеринга
+                measureEl.offsetHeight;
+                
+                const actualHeight = measureEl.scrollHeight;
+                console.log(`🔍 Testing ${best} words: height ${actualHeight}px vs max ${maxHeight}px`);
+                
+                if (actualHeight <= maxHeight) {
+                    found = true;
+                    break;
                 }
+                
+                // Уменьшаем количество слов на 10% или минимум на 5
+                best = Math.max(1, Math.floor(best * 0.9));
+            }
+            
+            // Если ничего не помещается, берем хотя бы одно слово
+            if (!found) {
+                best = 1;
             }
 
             const pageText = words.slice(index, index + best).join(' ');
             const formatted = this.formatSimplePage(pageText, pageNumber === 0 ? 0 : index);
-            this.state.pages.push({ id: pageNumber, content: formatted, wordCount: best });
-            console.log(`📄 Created page ${pageNumber + 1}: ${best} words (fit height ${maxHeight}px)`);
+            
+            // Финальная проверка высоты
+            measureEl.innerHTML = formatted;
+            measureEl.offsetHeight;
+            const finalHeight = measureEl.scrollHeight;
+            
+            this.state.pages.push({ 
+                id: pageNumber, 
+                content: formatted, 
+                wordCount: best,
+                actualHeight: finalHeight
+            });
+            
+            console.log(`📄 Created page ${pageNumber + 1}: ${best} words, height: ${finalHeight}px/${maxHeight}px`);
             pageNumber += 1;
             index += best;
 
-            // Страховка от зацикливания, если вдруг ни одно слово не помещается (очень большой шрифт)
+            // Защита от бесконечного цикла
             if (best === 0) {
-                // Вставим хотя бы слово и продолжим
-                const single = words[index];
-                const fallback = this.formatSimplePage(single, index);
-                this.state.pages.push({ id: pageNumber, content: fallback, wordCount: 1 });
-                index += 1;
-                pageNumber += 1;
+                console.error('❌ CRITICAL: No words fit on page, breaking loop');
+                break;
             }
         }
 
         measureEl.remove();
         this.state.totalPages = this.state.pages.length;
+        
+        // Проверяем целостность текста
+        this.validateTextIntegrity(normalizedText, words);
+        
         console.log(`✅ PAGES CREATED: ${this.state.totalPages} pages total`);
 
         if (this.state.totalPages === 0) {
@@ -208,28 +233,30 @@ class YandexBooksReader {
         el.style.visibility = 'hidden';
         el.style.pointerEvents = 'none';
         el.style.zIndex = '-1';
-        el.style.width = '100%';
+        el.style.width = '680px'; // Фиксированная ширина как у .page-content
+        el.style.maxWidth = '680px';
 
-        // Клонируем ключевые стили из .page-content
-        const pageContent = this.elements.pageContent;
-        const computed = pageContent ? getComputedStyle(pageContent) : null;
-        if (computed) {
-            el.style.fontFamily = computed.fontFamily;
-            el.style.fontSize = computed.fontSize;
-            el.style.lineHeight = computed.lineHeight;
-            el.style.letterSpacing = computed.letterSpacing;
-            el.style.textAlign = computed.textAlign;
-            el.style.width = computed.width;
-        } else {
-            el.style.fontFamily = 'Georgia, serif';
-            el.style.fontSize = `${this.state.settings.fontSize}px`;
-            el.style.lineHeight = String(this.state.settings.lineHeight);
-            el.style.textAlign = this.state.settings.textAlign;
-            el.style.width = '680px';
-        }
+        // Применяем все стили из .page-content
+        el.style.fontFamily = 'Charter, Georgia, "Times New Roman", serif';
+        el.style.fontSize = `${this.state.settings.fontSize}px`;
+        el.style.lineHeight = String(this.state.settings.lineHeight);
+        el.style.letterSpacing = '-0.01em';
+        el.style.textAlign = this.state.settings.textAlign;
+        el.style.hyphens = 'auto';
+        el.style.webkitHyphens = 'auto';
+        el.style.userSelect = 'text';
+        el.style.webkitUserSelect = 'text';
+        
+        // Важно: применяем все отступы и стили как у реального контента
+        el.style.padding = '0';
+        el.style.margin = '0';
+        el.style.border = 'none';
+        el.style.boxSizing = 'border-box';
 
-        // Фиксированная максимальная высота, равная высоте .page-content
+        // Фиксированная максимальная высота
         el.style.maxHeight = `${this.getMaxContentHeight()}px`;
+        el.style.overflow = 'hidden';
+        
         document.body.appendChild(el);
         return el;
     }
@@ -241,20 +268,80 @@ class YandexBooksReader {
         if (pageContent) {
             const rect = pageContent.getBoundingClientRect();
             // Если высота еще не задана (на ранней инициализации), вычислим по CSS calc
-            return Math.max(0, Math.floor(rect.height || 0)) || this.computePageContentCssHeight();
+            if (rect.height > 0) {
+                console.log(`📏 Using actual page content height: ${rect.height}px`);
+                return Math.floor(rect.height);
+            }
         }
-        return this.computePageContentCssHeight();
+        
+        const computed = this.computePageContentCssHeight();
+        console.log(`📏 Using computed height: ${computed}px`);
+        return computed;
     }
 
     computePageContentCssHeight() {
-        // Дублируем формулу из CSS
+        // Дублируем формулу из CSS с учетом safe-area
         const vh = window.innerHeight;
         const header = 56; // var(--header-height)
         const footer = 80; // var(--footer-height)
         const safeTop = 0; // для простоты
         const safeBottom = 0;
-        const padding = 48;
-        return Math.max(0, Math.floor(vh - header - footer - safeTop - safeBottom - padding));
+        const padding = 48; // 24px сверху + 24px снизу
+        
+        const height = Math.max(0, Math.floor(vh - header - footer - safeTop - safeBottom - padding));
+        console.log(`📏 Computed height: ${vh}vh - ${header}px(header) - ${footer}px(footer) - ${padding}px(padding) = ${height}px`);
+        return height;
+    }
+
+    /** Проверяет целостность текста после пагинации */
+    validateTextIntegrity(originalText, originalWords) {
+        let totalWordsInPages = 0;
+        let allPageText = '';
+        
+        for (const page of this.state.pages) {
+            // Извлекаем текст из HTML контента страницы
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = page.content;
+            const pageText = tempDiv.textContent || tempDiv.innerText || '';
+            const pageWords = pageText.split(/\s+/).filter(word => word.trim().length > 0);
+            
+            totalWordsInPages += pageWords.length;
+            allPageText += pageText + ' ';
+        }
+        
+        const originalWordCount = originalWords.length;
+        const pageWordCount = totalWordsInPages;
+        
+        console.log(`📊 Text integrity check:`);
+        console.log(`   Original words: ${originalWordCount}`);
+        console.log(`   Page words: ${pageWordCount}`);
+        console.log(`   Difference: ${originalWordCount - pageWordCount}`);
+        
+        if (Math.abs(originalWordCount - pageWordCount) > 10) {
+            console.warn(`⚠️ WARNING: Significant word count difference detected!`);
+            console.warn(`   This might indicate lost text during pagination.`);
+        }
+        
+        // Проверяем, что первые и последние слова совпадают
+        if (originalWords.length > 0 && this.state.pages.length > 0) {
+            const firstPageText = this.state.pages[0].content;
+            const lastPageText = this.state.pages[this.state.pages.length - 1].content;
+            
+            const firstPageDiv = document.createElement('div');
+            firstPageDiv.innerHTML = firstPageText;
+            const firstPageWords = (firstPageDiv.textContent || '').split(/\s+/).filter(w => w.trim());
+            
+            const lastPageDiv = document.createElement('div');
+            lastPageDiv.innerHTML = lastPageText;
+            const lastPageWords = (lastPageDiv.textContent || '').split(/\s+/).filter(w => w.trim());
+            
+            if (firstPageWords.length > 0 && lastPageWords.length > 0) {
+                console.log(`📖 First page starts with: "${firstPageWords[0]}"`);
+                console.log(`📖 Last page ends with: "${lastPageWords[lastPageWords.length - 1]}"`);
+                console.log(`📖 Original starts with: "${originalWords[0]}"`);
+                console.log(`📖 Original ends with: "${originalWords[originalWords.length - 1]}"`);
+            }
+        }
     }
 
     /**
