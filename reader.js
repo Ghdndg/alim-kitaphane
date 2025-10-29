@@ -217,8 +217,8 @@ class YandexBooksReader {
         // Добавляем заголовок только на первую страницу
         if (startIndex === 0) {
             return `
-                <h1>Хаджи-Гирай</h1>
-                <div class="author">Алим Къуртсеит</div>
+                <h1>Хаджи Гирай</h1>
+                <div class="author">Алим Мидат</div>
                 <p>${this.escapeHtml(text)}</p>
             `;
         }
