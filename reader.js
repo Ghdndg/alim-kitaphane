@@ -22,7 +22,7 @@ class YandexBooksReader {
         };
 
         this.elements = {};
-        this.wordsPerPage = 150; // Базовое количество слов на страницу
+        this.wordsPerPage = 200; // УМЕНЬШИЛИ для гарантированного создания страниц
         this.storageKey = 'yandex-books-reader';
         
         // Запуск инициализации
@@ -134,135 +134,50 @@ class YandexBooksReader {
     }
 
     /**
-     * ИСПРАВЛЕННОЕ создание страниц с динамическим измерением контента
+     * ИСПРАВЛЕННОЕ создание страниц
      */
     createPages() {
-        console.log('📄 Creating pages with dynamic content measurement...');
+        console.log('📄 Creating pages...');
         
         // Предобработка текста
         const normalizedText = this.preprocessText(this.state.bookContent);
         console.log(`📝 Normalized text length: ${normalizedText.length}`);
         
-        // Разбиваем на абзацы для лучшего контроля
-        const paragraphs = this.splitIntoParagraphs(normalizedText);
-        console.log(`📝 Found ${paragraphs.length} paragraphs`);
+        // Простое разделение на куски по словам
+        const allWords = normalizedText.split(/\s+/).filter(word => word.trim().length > 0);
+        console.log(`📝 Total words in book: ${allWords.length}`);
         
         this.state.pages = [];
         
-        // Создаем временный элемент для измерения контента
-        const measureElement = this.createMeasureElement();
-        
-        let currentPageContent = '';
-        let currentWordCount = 0;
-        let pageIndex = 0;
-        
-        for (let i = 0; i < paragraphs.length; i++) {
-            const paragraph = paragraphs[i];
-            const testContent = currentPageContent + (currentPageContent ? '\n\n' : '') + paragraph;
-            const testFormattedContent = this.formatSimplePage(testContent, pageIndex);
+        // НОВЫЙ АЛГОРИТМ: Разбиваем по фиксированному количеству слов
+        for (let i = 0; i < allWords.length; i += this.wordsPerPage) {
+            const pageWords = allWords.slice(i, i + this.wordsPerPage);
+            const pageText = pageWords.join(' ');
             
-            // Измеряем высоту контента
-            const contentHeight = this.measureContentHeight(testFormattedContent, measureElement);
-            const maxHeight = this.getMaxContentHeight();
+            // Форматируем страницу
+            const formattedContent = this.formatSimplePage(pageText, i);
             
-            // Если контент помещается или это первый абзац
-            if (contentHeight <= maxHeight || currentPageContent === '') {
-                currentPageContent = testContent;
-                currentWordCount += this.countWords(paragraph);
-            } else {
-                // Сохраняем текущую страницу
-                if (currentPageContent.trim()) {
-                    this.state.pages.push({
-                        id: pageIndex,
-                        content: this.formatSimplePage(currentPageContent, pageIndex),
-                        wordCount: currentWordCount
-                    });
-                    console.log(`📄 Created page ${pageIndex + 1}: ${currentWordCount} words, height: ${this.measureContentHeight(this.formatSimplePage(currentPageContent, pageIndex), measureElement)}px`);
-                    pageIndex++;
-                }
-                
-                // Начинаем новую страницу с текущего абзаца
-                currentPageContent = paragraph;
-                currentWordCount = this.countWords(paragraph);
-            }
-        }
-        
-        // Добавляем последнюю страницу
-        if (currentPageContent.trim()) {
             this.state.pages.push({
-                id: pageIndex,
-                content: this.formatSimplePage(currentPageContent, pageIndex),
-                wordCount: currentWordCount
+                id: this.state.pages.length,
+                content: formattedContent,
+                wordCount: pageWords.length
             });
-            console.log(`📄 Created final page ${pageIndex + 1}: ${currentWordCount} words`);
+            
+            console.log(`📄 Created page ${this.state.pages.length}: ${pageWords.length} words`);
         }
-        
-        // Удаляем временный элемент
-        measureElement.remove();
         
         this.state.totalPages = this.state.pages.length;
         
         console.log(`✅ PAGES CREATED: ${this.state.totalPages} pages total`);
+        console.log(`📊 Average words per page: ${this.wordsPerPage}`);
         
         // Проверяем что создались страницы
         if (this.state.totalPages <= 1) {
             console.error('❌ CRITICAL: Only 1 page created! This will break navigation!');
+            
+            // Принудительно создаем больше страниц
             this.createMorePages(normalizedText);
         }
-    }
-
-    /**
-     * Разбивает текст на абзацы
-     */
-    splitIntoParagraphs(text) {
-        return text
-            .split(/\n\s*\n/)
-            .filter(p => p.trim().length > 0)
-            .map(p => p.trim());
-    }
-
-    /**
-     * Создает временный элемент для измерения контента
-     */
-    createMeasureElement() {
-        const measureElement = document.createElement('div');
-        measureElement.style.cssText = `
-            position: absolute;
-            top: -9999px;
-            left: -9999px;
-            width: 680px;
-            max-width: 680px;
-            font-family: var(--font-reading);
-            font-size: ${this.state.settings.fontSize}px;
-            line-height: ${this.state.settings.lineHeight};
-            text-align: ${this.state.settings.textAlign};
-            letter-spacing: var(--letter-spacing);
-            visibility: hidden;
-            pointer-events: none;
-            z-index: -1;
-        `;
-        document.body.appendChild(measureElement);
-        return measureElement;
-    }
-
-    /**
-     * Измеряет высоту контента
-     */
-    measureContentHeight(content, measureElement) {
-        measureElement.innerHTML = content;
-        return measureElement.scrollHeight;
-    }
-
-    /**
-     * Получает максимальную высоту контента для страницы
-     */
-    getMaxContentHeight() {
-        const viewportHeight = window.innerHeight;
-        const headerHeight = 56; // var(--header-height)
-        const footerHeight = 80; // var(--footer-height)
-        const padding = 48; // Отступы
-        
-        return viewportHeight - headerHeight - footerHeight - padding;
     }
 
     /**
@@ -353,7 +268,6 @@ class YandexBooksReader {
         this.bindSettingsEvents();
         this.bindKeyboardEvents();
         this.bindGestureEvents();
-        this.bindResizeEvents();
         
         console.log('✅ Event handlers set up');
     }
@@ -566,22 +480,6 @@ class YandexBooksReader {
                 }
             });
         }
-    }
-
-    /**
-     * Привязывает события изменения размера окна
-     */
-    bindResizeEvents() {
-        let resizeTimeout;
-        
-        window.addEventListener('resize', () => {
-            // Дебаунсим событие resize
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                console.log('📐 Window resized, recalculating pages...');
-                this.recreatePagesForNewFontSize();
-            }, 300);
-        });
     }
 
     /**
@@ -950,33 +848,8 @@ class YandexBooksReader {
                 this.state.settings.fontSize = newSize;
                 this.applyTypographySettings();
                 this.saveSettings();
-                
-                // Пересоздаем страницы с новым размером шрифта
-                this.recreatePagesForNewFontSize();
-                
                 console.log(`📏 Font size: ${newSize}px`);
             }
-        }
-
-        /**
-         * Пересоздает страницы при изменении размера шрифта
-         */
-        recreatePagesForNewFontSize() {
-            console.log('🔄 Recreating pages for new font size...');
-            
-            // Сохраняем текущую позицию
-            const currentPageIndex = this.state.currentPageIndex;
-            
-            // Пересоздаем страницы
-            this.createPages();
-            
-            // Восстанавливаем позицию (с ограничением)
-            this.state.currentPageIndex = Math.min(currentPageIndex, this.state.totalPages - 1);
-            
-            // Перерисовываем текущую страницу
-            this.renderCurrentPage();
-            
-            console.log(`✅ Pages recreated for font size ${this.state.settings.fontSize}px`);
         }
 
         changeTheme(themeName) {
@@ -996,9 +869,6 @@ class YandexBooksReader {
             this.state.settings.lineHeight = lineHeight;
             this.applyTypographySettings();
             this.saveSettings();
-            
-            // Пересоздаем страницы с новым межстрочным интервалом
-            this.recreatePagesForNewFontSize();
             
             // Обновляем активную кнопку
             document.querySelectorAll('.spacing-option').forEach(btn => {
