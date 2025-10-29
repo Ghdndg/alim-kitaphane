@@ -814,7 +814,8 @@ body {
     
     .page-content {
         font-size: 16px;
-        max-height: calc(100vh - 52px - 76px - var(--safe-area-top) - var(--safe-area-bottom) - 40px);
+        height: calc(100vh - 52px - 76px - var(--safe-area-top) - var(--safe-area-bottom) - 40px);
+        min-height: calc(100vh - 52px - 76px - var(--safe-area-top) - var(--safe-area-bottom) - 40px);
     }
     
     .book-title {
@@ -831,20 +832,45 @@ body {
     }
 }
 
+/* Адаптивные стили для очень маленьких экранов */
 @media (max-width: 480px) {
+    :root {
+        --header-height: 48px;
+        --footer-height: 72px;
+        --panel-padding: 16px;
+    }
+    
     .page-wrapper {
         padding: 16px 12px;
     }
     
     .page-content {
         font-size: 15px;
-        max-height: calc(100vh - 52px - 76px - var(--safe-area-top) - var(--safe-area-bottom) - 32px);
+        height: calc(100vh - 48px - 72px - var(--safe-area-top) - var(--safe-area-bottom) - 32px);
+        min-height: calc(100vh - 48px - 72px - var(--safe-area-top) - var(--safe-area-bottom) - 32px);
     }
     
     .settings-content {
         padding: 20px;
     }
 }
+
+/* Адаптивные стили для планшетов */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .page-content {
+        height: calc(100vh - var(--header-height) - var(--footer-height) - var(--safe-area-top) - var(--safe-area-bottom) - 48px);
+        min-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--safe-area-top) - var(--safe-area-bottom) - 48px);
+    }
+}
+
+/* Адаптивные стили для больших экранов */
+@media (min-width: 1025px) {
+    .page-content {
+        height: calc(100vh - var(--header-height) - var(--footer-height) - var(--safe-area-top) - var(--safe-area-bottom) - 48px);
+        min-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--safe-area-top) - var(--safe-area-bottom) - 48px);
+    }
+}
+
 
 
 /* Улучшения для фокуса и доступности */
