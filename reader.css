@@ -289,6 +289,9 @@ body {
     position: relative;
     overflow: auto; /* включаем прокрутку */
     -webkit-overflow-scrolling: touch; /* плавная прокрутка на iOS */
+    /* Настройки кастомной прокрутки для Firefox */
+    scrollbar-width: thin;            /* тонкая полоса */
+    scrollbar-color: rgba(255,255,255,0.35) transparent; /* цвет бегунка/трек */
 }
 
 .page-wrapper {
@@ -316,6 +319,49 @@ body {
     min-height: auto;
     overflow: visible;
     display: block;
+}
+
+/* КАСТОМНАЯ ПОЛОСА ПРОКРУТКИ (WebKit/Blink: Chrome, Edge, Safari) */
+.reading-viewport::-webkit-scrollbar {
+    width: 10px;              /* ширина вертикального скролла */
+    height: 10px;             /* высота горизонтального (на всякий случай) */
+    background: transparent;  /* без фона */
+}
+
+.reading-viewport::-webkit-scrollbar-track {
+    background: transparent;  /* прозрачный трек */
+}
+
+.reading-viewport::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0.18));
+    border-radius: 8px;
+    border: 2px solid transparent;     /* «внутренний отступ» */
+    background-clip: padding-box;      /* не закрашивать бордер */
+}
+
+.reading-viewport:hover::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0.25));
+}
+
+.reading-viewport::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Цвета под разные темы */
+[data-theme="sepia"] .reading-viewport {
+    scrollbar-color: rgba(93, 78, 55, 0.55) transparent;
+}
+
+[data-theme="sepia"] .reading-viewport::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(93,78,55,0.55), rgba(93,78,55,0.35));
+}
+
+[data-theme="gray"] .reading-viewport {
+    scrollbar-color: rgba(44, 44, 44, 0.55) transparent;
+}
+
+[data-theme="gray"] .reading-viewport::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(44,44,44,0.55), rgba(44,44,44,0.35));
 }
 
 .page-content h1 {
