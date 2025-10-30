@@ -12,6 +12,8 @@ class YandexBooksReader {
             totalPages: 0,
             isUIVisible: false,
             isSettingsOpen: false,
+            toc: [], // [{id, title}]
+            bookmarks: [], // [{id, title, ratio, date}]
             settings: {
                 theme: 'dark',
                 fontSize: 18,
@@ -135,27 +137,47 @@ class YandexBooksReader {
 
     /**
      * Простой режим: одна длинная страница с прокруткой (без пагинации)
+     * Дополнительно: парсинг глав и построение содержания
      */
     createPages() {
         console.log('📄 Creating single scrollable page...');
         const normalizedText = this.preprocessText(this.state.bookContent);
-        const paragraphs = normalizedText.split(/\n\s*\n/).filter(Boolean);
-        
-        const parts = [];
-        // Заголовок и автор
-        parts.push('<h1>Хаджи Гирай</h1>');
-        parts.push('<div class="author">Алим Мидат</div>');
-        
-        // Абзацы
-        for (const p of paragraphs) {
-            parts.push(`<p>${this.escapeHtml(p)}</p>`);
-        }
-        
-        const content = parts.join('\n');
-        this.state.pages = [{ id: 0, content, wordCount: this.countWords(normalizedText) }];
+        const { html, toc, wordCount } = this.buildScrollableContentWithChapters(normalizedText);
+        this.state.toc = toc;
+        this.state.pages = [{ id: 0, content: html, wordCount }];
         this.state.totalPages = 1;
         this.state.currentPageIndex = 0;
         console.log('✅ Single page created');
+    }
+
+    /** Строит HTML одной страницы, вставляя заголовки глав и формируя TOC */
+    buildScrollableContentWithChapters(text) {
+        const lines = text.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+        const parts = [];
+        const toc = [];
+        let chapterIdx = 1;
+
+        // Заголовок и автор
+        parts.push('<h1>Хаджи Гирай</h1>');
+        parts.push('<div class="author">Алим Мидат</div>');
+
+        const chapterRegex = /^(глава\s+\d+|часть\s+\d+|chapter\s+\d+|болюм\s+\d+|\d+\.|[ivxlcdm]+\.?|[А-ЯЁ][^.!?]{0,80})$/i;
+
+        for (const block of lines) {
+            const isProbableHeading = chapterRegex.test(block) && block.length <= 90;
+            if (isProbableHeading) {
+                const id = `ch-${chapterIdx++}`;
+                const title = this.escapeHtml(block.replace(/\s+$/,'').trim());
+                parts.push(`<h2 id="${id}">${title}</h2>`);
+                toc.push({ id, title });
+            } else {
+                parts.push(`<p>${this.escapeHtml(block)}</p>`);
+            }
+        }
+
+        const html = parts.join('\n');
+        const wordCount = this.countWords(text);
+        return { html, toc, wordCount };
     }
 
     /** Строгий режим: выделение главных абзацев + точная подгонка без потерь */
@@ -614,6 +636,7 @@ class YandexBooksReader {
         this.bindGestureEvents();
         this.bindResizeEvents();
         this.bindScrollProgressEvents();
+        this.loadBookmarks();
         console.log('✅ Event handlers set up');
     }
 
@@ -669,6 +692,28 @@ class YandexBooksReader {
         
         if (this.elements.backButton) {
             this.elements.backButton.addEventListener('click', () => this.handleBackAction());
+        }
+
+        // Создаем кнопки TOC и Bookmark, если их нет
+        if (this.elements.topNavigation && !document.getElementById('tocButton')) {
+            const btn = document.createElement('button');
+            btn.className = 'nav-button';
+            btn.id = 'tocButton';
+            btn.title = 'Содержание';
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>';
+            this.elements.topNavigation.insertBefore(btn, this.elements.settingsButton || null);
+            btn.addEventListener('click', () => this.openTocModal());
+        }
+
+        if (this.elements.bottomControls && !document.getElementById('bookmarkButton')) {
+            const btn = document.createElement('button');
+            btn.className = 'control-button';
+            btn.id = 'bookmarkButton';
+            btn.title = 'Добавить закладку';
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12a2 2 0 0 1 2 2v18l-8-4-8 4V4a2 2 0 0 1 2-2z"/></svg>';
+            const nav = this.elements.bottomControls.querySelector('.navigation-controls');
+            if (nav) nav.appendChild(btn); else this.elements.bottomControls.appendChild(btn);
+            btn.addEventListener('click', () => this.addBookmarkAtCurrentPosition());
         }
     }
 
@@ -982,6 +1027,51 @@ class YandexBooksReader {
         }
     }
 
+    // ===== Закладки =====
+    addBookmarkAtCurrentPosition() {
+        if (!this.elements.readingViewport) return;
+        const vp = this.elements.readingViewport;
+        const ratio = Math.min(1, Math.max(0, vp.scrollTop / Math.max(1, vp.scrollHeight - vp.clientHeight)));
+        // Заголовок: ближайшая видимая глава, иначе «Позиция чтения»
+        let title = 'Позиция чтения';
+        for (let i = (this.state.toc?.length || 0) - 1; i >= 0; i--) {
+            const h = document.getElementById(this.state.toc[i].id);
+            if (!h) continue;
+            const top = h.getBoundingClientRect().top - vp.getBoundingClientRect().top + vp.scrollTop;
+            if (top <= vp.scrollTop + 20) { title = this.state.toc[i].title; break; }
+        }
+        const bm = { id: `bm-${Date.now()}`, title, ratio, date: Date.now() };
+        this.state.bookmarks.push(bm);
+        this.saveBookmarks();
+        this.showUITemporarily();
+        console.log('🔖 Bookmark added', bm);
+    }
+
+    gotoBookmark(index) {
+        if (!this.elements.readingViewport) return;
+        const bm = this.state.bookmarks[index];
+        if (!bm) return;
+        const vp = this.elements.readingViewport;
+        const top = bm.ratio * Math.max(1, vp.scrollHeight - vp.clientHeight);
+        vp.scrollTo({ top, behavior: 'smooth' });
+    }
+
+    deleteBookmark(index) {
+        if (index < 0 || index >= this.state.bookmarks.length) return;
+        this.state.bookmarks.splice(index, 1);
+        this.saveBookmarks();
+    }
+
+    saveBookmarks() {
+        try { localStorage.setItem(`${this.storageKey}-bookmarks`, JSON.stringify(this.state.bookmarks)); } catch {}
+    }
+    loadBookmarks() {
+        try {
+            const raw = localStorage.getItem(`${this.storageKey}-bookmarks`);
+            if (raw) this.state.bookmarks = JSON.parse(raw);
+        } catch { this.state.bookmarks = []; }
+    }
+
     /**
      * ИСПРАВЛЕННЫЕ методы навигации с подробным логированием
      */
@@ -1089,6 +1179,91 @@ openSettings() {
     // Обновляем состояние настроек
     this.updateSettingsInterface();
 }
+
+    /** Открывает модальное окно содержания/закладок */
+    openTocModal() {
+        let modal = document.getElementById('tocModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'tocModal';
+            modal.style.position = 'fixed';
+            modal.style.inset = '0';
+            modal.style.background = 'rgba(0,0,0,0.5)';
+            modal.style.zIndex = '10000';
+            modal.innerHTML = `
+                <div style="position:absolute; right:16px; top:16px; left:16px; bottom:16px; margin:auto; max-width:520px; height:70vh; background: var(--color-panel-bg); color: var(--color-text-primary); border-radius: 16px; overflow:hidden; display:flex; flex-direction:column; box-shadow: var(--shadow-medium)">
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--color-border);">
+                        <div>
+                            <button id="tocTab" class="toc-tab" style="margin-right:12px">Содержание</button>
+                            <button id="bmTab" class="toc-tab">Закладки</button>
+                        </div>
+                        <button id="tocClose" class="close-button">✕</button>
+                    </div>
+                    <div id="tocBody" style="flex:1; overflow:auto; padding:12px 16px"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+            modal.querySelector('#tocClose').addEventListener('click', () => modal.remove());
+            modal.querySelector('#tocTab').addEventListener('click', () => this.renderTocList());
+            modal.querySelector('#bmTab').addEventListener('click', () => this.renderBookmarksList());
+        }
+        this.renderTocList();
+    }
+
+    renderTocList() {
+        const body = document.querySelector('#tocBody');
+        if (!body) return;
+        const items = this.state.toc || [];
+        if (items.length === 0) {
+            body.innerHTML = '<div style="opacity:0.7; padding:8px 4px">Содержание не найдено</div>';
+            return;
+        }
+        const list = items.map(i => `<div class="toc-item" data-id="${i.id}" style="padding:10px 8px; border-bottom:1px solid var(--color-border); cursor:pointer">${this.escapeHtml(i.title)}</div>`).join('');
+        body.innerHTML = list;
+        body.querySelectorAll('.toc-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const id = el.getAttribute('data-id');
+                const h = document.getElementById(id);
+                if (h && this.elements.readingViewport) {
+                    const top = h.getBoundingClientRect().top - this.elements.readingViewport.getBoundingClientRect().top + this.elements.readingViewport.scrollTop - 12;
+                    this.elements.readingViewport.scrollTo({ top, behavior: 'smooth' });
+                }
+                const modal = document.getElementById('tocModal');
+                if (modal) modal.remove();
+            });
+        });
+    }
+
+    renderBookmarksList() {
+        const body = document.querySelector('#tocBody');
+        if (!body) return;
+        const bms = this.state.bookmarks || [];
+        if (bms.length === 0) {
+            body.innerHTML = '<div style="opacity:0.7; padding:8px 4px">Закладок пока нет</div>';
+            return;
+        }
+        body.innerHTML = bms.map((b, idx) => `
+            <div class="bm-item" data-idx="${idx}" style="display:flex; align-items:center; justify-content:space-between; padding:10px 8px; border-bottom:1px solid var(--color-border)">
+                <div style="cursor:pointer"><div style="font-weight:600">${this.escapeHtml(b.title)}</div><div style="opacity:.7; font-size:12px">${new Date(b.date).toLocaleString()} • ${Math.round(b.ratio*100)}%</div></div>
+                <button class="bm-del" data-idx="${idx}" style="border:none; background:transparent; color:var(--color-text-secondary); cursor:pointer">Удалить</button>
+            </div>
+        `).join('');
+        body.querySelectorAll('.bm-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if ((e.target && e.target.classList.contains('bm-del'))) return;
+                const idx = parseInt(el.getAttribute('data-idx'), 10);
+                this.gotoBookmark(idx);
+                const modal = document.getElementById('tocModal');
+                if (modal) modal.remove();
+            });
+        });
+        body.querySelectorAll('.bm-del').forEach(btn => btn.addEventListener('click', (e) => {
+            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+            this.deleteBookmark(idx);
+            this.renderBookmarksList();
+        }));
+    }
 
 
 
