@@ -385,12 +385,12 @@ body {
     font-size: 1.5rem;
     font-weight: 600;
     line-height: 1.3;
-    margin: 28px 0 16px 0;
+    margin: 32px 0 18px 0; /* больше воздуха вокруг названий глав */
     color: var(--color-text-primary);
 }
 
 .page-content p {
-    margin-bottom: 16px;
+    margin-bottom: 18px; /* отделяем абзацы чуть сильнее */
     text-indent: 2em;
 }
 
@@ -400,6 +400,9 @@ body {
 .page-content .author + p {
     text-indent: 0;
 }
+
+/* Доп. отделение после блоков-заголовков: первый параграф ближе, следующие обычные */
+.page-content h2 + p { margin-top: 2px; }
 
 /* Выделение главных абзацев */
 .page-content .main-paragraph {
