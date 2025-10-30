@@ -288,15 +288,12 @@ body {
     flex: 1;
     position: relative;
     overflow: auto; /* включаем прокрутку */
+    -webkit-overflow-scrolling: touch; /* плавная прокрутка на iOS */
 }
 
 .page-wrapper {
-    height: 100%;
     padding: var(--panel-padding);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    overflow: hidden;
+    display: block; /* больше не центрируем и не фиксируем высоту */
 }
 
 .page-content {
@@ -780,10 +777,9 @@ body {
 .touch-interaction-zones {
     position: absolute;
     inset: 0;
-    display: grid;
+    display: none; /* отключаем перекрытие, чтобы не блокировать прокрутку */
     grid-template-columns: 1fr 1fr 1fr;
     z-index: 50;
-    pointer-events: none;
 }
 
 .touch-zone {
