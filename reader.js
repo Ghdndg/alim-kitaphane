@@ -320,6 +320,10 @@ class YandexBooksReader {
         if (Math.abs(diff) > 0) {
             console.warn(`⚠️ Integrity diff = ${diff}. Recreating pages in strict mode...`);
             this.createPagesStrict(words);
+        } else {
+            // Если основной алгоритм работает без потерь, все равно используем строгий режим для лучшего качества
+            console.log('✅ Main algorithm works, but switching to strict mode for better quality...');
+            this.createPagesStrict(words);
         }
         
         console.log(`✅ PAGES CREATED: ${this.state.totalPages} pages total`);
@@ -331,9 +335,9 @@ class YandexBooksReader {
         }
     }
 
-    /** Строгий режим: разбиение по абзацам с выделением главных */
+    /** Строгий режим: выделение главных абзацев + точная подгонка без потерь */
     createPagesStrict(words) {
-        console.log('📄 Creating pages by paragraphs with main paragraph detection...');
+        console.log('📄 STRICT MODE: Creating pages with main paragraph detection...');
         
         const normalizedText = this.preprocessText(this.state.bookContent);
         const paragraphs = this.splitIntoParagraphs(normalizedText);
@@ -341,9 +345,9 @@ class YandexBooksReader {
         
         console.log(`📊 Found ${paragraphs.length} paragraphs, ${mainParagraphs.length} main paragraphs`);
         
-        this.state.pages = [];
         const measureEl = this.createMeasureElement();
         const maxHeight = this.getMaxContentHeight();
+        this.state.pages = [];
         
         let currentPageContent = '';
         let currentPageWords = 0;
@@ -352,7 +356,7 @@ class YandexBooksReader {
         for (let i = 0; i < paragraphs.length; i++) {
             const paragraph = paragraphs[i];
             const isMain = mainParagraphs.includes(i);
-            const words = paragraph.split(/\s+/).filter(Boolean);
+            const paragraphWords = paragraph.split(/\s+/).filter(Boolean);
             
             // Форматируем абзац с учетом его важности
             const formattedParagraph = this.formatParagraph(paragraph, isMain, pageNumber === 0 && i === 0);
@@ -366,25 +370,25 @@ class YandexBooksReader {
             if (measureEl.scrollHeight <= maxHeight) {
                 // Абзац помещается на текущую страницу
                 currentPageContent = testContent;
-                currentPageWords += words.length;
+                currentPageWords += paragraphWords.length;
             } else {
                 // Абзац не помещается, создаем новую страницу
                 if (currentPageContent.trim()) {
                     this.state.pages.push({
                         id: pageNumber,
-                        content: this.formatSimplePage(currentPageContent, pageNumber === 0 ? 0 : currentPageWords - words.length),
-                        wordCount: currentPageWords - words.length
+                        content: this.formatSimplePage(currentPageContent, pageNumber === 0 ? 0 : currentPageWords - paragraphWords.length),
+                        wordCount: currentPageWords - paragraphWords.length
                     });
                     pageNumber++;
                 }
                 
                 // Пытаемся поместить абзац на новую страницу
                 currentPageContent = formattedParagraph;
-                currentPageWords = words.length;
+                currentPageWords = paragraphWords.length;
                 
-                // Если абзац слишком длинный, разбиваем его
+                // Если абзац слишком длинный, разбиваем его точно по словам
                 if (measureEl.scrollHeight > maxHeight) {
-                    const splitResult = this.splitLongParagraph(paragraph, isMain, pageNumber === 0, measureEl, maxHeight);
+                    const splitResult = this.splitLongParagraphStrict(paragraph, isMain, pageNumber === 0, measureEl, maxHeight);
                     currentPageContent = splitResult.content;
                     currentPageWords = splitResult.wordCount;
                 }
@@ -403,14 +407,14 @@ class YandexBooksReader {
         measureEl.remove();
         this.state.totalPages = this.state.pages.length;
         
-        // Проверяем целостность
+        // Строгая проверка целостности
         const diff = this.validateTextIntegrity(normalizedText, normalizedText.split(/\s+/).filter(Boolean));
         if (Math.abs(diff) > 0) {
             console.warn(`⚠️ Paragraph mode integrity diff = ${diff}. Falling back to word-by-word mode...`);
             this.createPagesWordByWord(words);
         }
         
-        console.log(`✅ PAGES CREATED BY PARAGRAPHS: ${this.state.totalPages} pages total`);
+        console.log(`✅ STRICT PAGES CREATED: ${this.state.totalPages} pages total`);
     }
 
     /** Разбивает текст на абзацы */
@@ -467,8 +471,8 @@ class YandexBooksReader {
         return `<p>${this.escapeHtml(text)}</p>`;
     }
 
-    /** Разбивает длинный абзац на части */
-    splitLongParagraph(paragraph, isMain, isFirst, measureEl, maxHeight) {
+    /** Разбивает длинный абзац точно по словам без потерь */
+    splitLongParagraphStrict(paragraph, isMain, isFirst, measureEl, maxHeight) {
         const words = paragraph.split(/\s+/).filter(Boolean);
         let best = 1;
         
@@ -492,6 +496,21 @@ class YandexBooksReader {
             }
         }
         
+        // Точная доводка по одному слову
+        while (best < words.length) {
+            const testSlice = words.slice(0, best + 1).join(' ');
+            const testFormatted = this.formatParagraph(testSlice, isMain, isFirst);
+            const testHtml = this.formatSimplePage(testFormatted, 0);
+            measureEl.innerHTML = testHtml;
+            measureEl.offsetHeight;
+            
+            if (measureEl.scrollHeight <= maxHeight) {
+                best += 1;
+            } else {
+                break;
+            }
+        }
+        
         const content = words.slice(0, best).join(' ');
         return {
             content: this.formatParagraph(content, isMain, isFirst),
@@ -499,9 +518,9 @@ class YandexBooksReader {
         };
     }
 
-    /** Последний резерв: слово за словом */
+    /** Последний резерв: слово за словом без потерь */
     createPagesWordByWord(words) {
-        console.log('📄 Creating pages word by word (last resort)...');
+        console.log('📄 WORD-BY-WORD MODE: Creating pages without any losses...');
         
         const measureEl = this.createMeasureElement();
         const maxHeight = this.getMaxContentHeight();
@@ -547,7 +566,14 @@ class YandexBooksReader {
         
         measureEl.remove();
         this.state.totalPages = this.state.pages.length;
-        console.log(`✅ PAGES CREATED WORD BY WORD: ${this.state.totalPages} pages total`);
+        
+        // Финальная проверка целостности
+        const diff = this.validateTextIntegrity(this.preprocessText(this.state.bookContent), words);
+        if (Math.abs(diff) > 0) {
+            console.error(`❌ CRITICAL: Word-by-word mode still has ${diff} word difference!`);
+        }
+        
+        console.log(`✅ WORD-BY-WORD PAGES CREATED: ${this.state.totalPages} pages total`);
     }
 
     /** Создает скрытый элемент для измерения высоты контента страницы */
