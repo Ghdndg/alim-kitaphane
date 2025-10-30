@@ -382,15 +382,15 @@ body {
 }
 
 .page-content h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    line-height: 1.3;
-    margin: 28px 0 16px 0;
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 36px 0 18px 0;
     color: var(--color-text-primary);
 }
 
 .page-content p {
-    margin-bottom: 16px;
+    margin-bottom: 18px; /* больше воздуха между абзацами */
     text-indent: 2em;
 }
 
