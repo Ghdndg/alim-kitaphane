@@ -293,7 +293,9 @@ body {
 
 .page-wrapper {
     padding: var(--panel-padding);
-    display: block; /* больше не центрируем и не фиксируем высоту */
+    display: flex; /* центрируем контент */
+    align-items: flex-start;
+    justify-content: center;
 }
 
 .page-content {
