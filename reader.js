@@ -134,205 +134,28 @@ class YandexBooksReader {
     }
 
     /**
-     * ИСПРАВЛЕННОЕ создание страниц: подгоняем контент по реальной высоте без прокрутки
+     * Простой режим: одна длинная страница с прокруткой (без пагинации)
      */
     createPages() {
-        console.log('📄 Creating pages with measured layout...');
-        
+        console.log('📄 Creating single scrollable page...');
         const normalizedText = this.preprocessText(this.state.bookContent);
-        const words = normalizedText.split(/\s+/).filter(Boolean);
-        this.state.pages = [];
-
-        // Создаем измерительный элемент с теми же стилями, что и у .page-content
-        const measureEl = this.createMeasureElement();
-        const maxHeight = this.getMaxContentHeight();
-
-        let index = 0;
-        let pageNumber = 0;
+        const paragraphs = normalizedText.split(/\n\s*\n/).filter(Boolean);
         
-        console.log(`📏 Max content height: ${maxHeight}px`);
+        const parts = [];
+        // Заголовок и автор
+        parts.push('<h1>Хаджи Гирай</h1>');
+        parts.push('<div class="author">Алим Мидат</div>');
         
-        while (index < words.length) {
-            // Начинаем с очень агрессивного количества слов
-            let best = Math.min(500, words.length - index); // Начинаем с 500 слов
-            let found = false;
-            let attempts = 0;
-            const maxAttempts = 25; // Увеличиваем количество попыток
-            
-            // Ищем максимальное количество слов, которое помещается
-            while (best > 0 && attempts < maxAttempts) {
-                const sliceText = words.slice(index, index + best).join(' ');
-                const html = this.formatSimplePage(sliceText, pageNumber === 0 ? 0 : index);
-                measureEl.innerHTML = html;
-                
-                // Ждем рендеринга
-                measureEl.offsetHeight;
-                
-                const actualHeight = measureEl.scrollHeight;
-                console.log(`🔍 Testing ${best} words: height ${actualHeight}px vs max ${maxHeight}px`);
-                
-                if (actualHeight <= maxHeight) {
-                    found = true;
-                    // Если помещается, попробуем добавить еще слов
-                    const nextBest = Math.min(best + 50, words.length - index);
-                    const nextSliceText = words.slice(index, index + nextBest).join(' ');
-                    const nextHtml = this.formatSimplePage(nextSliceText, pageNumber === 0 ? 0 : index);
-                    measureEl.innerHTML = nextHtml;
-                    measureEl.offsetHeight;
-                    const nextHeight = measureEl.scrollHeight;
-                    
-                    if (nextHeight <= maxHeight) {
-                        best = nextBest;
-                        console.log(`✅ Can fit more: ${best} words, height ${nextHeight}px`);
-                    }
-                    break;
-                }
-                
-                // Уменьшаем количество слов более точно
-                if (actualHeight > maxHeight * 2.0) {
-                    best = Math.max(1, Math.floor(best * 0.5)); // Уменьшаем на 50%
-                } else if (actualHeight > maxHeight * 1.5) {
-                    best = Math.max(1, Math.floor(best * 0.7)); // Уменьшаем на 30%
-                } else if (actualHeight > maxHeight * 1.2) {
-                    best = Math.max(1, Math.floor(best * 0.85)); // Уменьшаем на 15%
-                } else {
-                    best = Math.max(1, Math.floor(best * 0.95)); // Уменьшаем на 5%
-                }
-                attempts++;
-            }
-            
-            // Если ничего не помещается, берем хотя бы одно слово
-            if (!found) {
-                best = 1;
-            }
-
-            const pageText = words.slice(index, index + best).join(' ');
-            const formatted = this.formatSimplePage(pageText, pageNumber === 0 ? 0 : index);
-            
-            // Финальная проверка высоты
-            measureEl.innerHTML = formatted;
-            measureEl.offsetHeight;
-            let finalHeight = measureEl.scrollHeight;
-            let finalBest = best;
-            
-            // Дополнительная оптимизация: если на странице есть свободное место, попробуем добавить еще слов
-            if (finalHeight < maxHeight * 0.9 && index + best < words.length) {
-                console.log(`🔧 Page has ${Math.round((1 - finalHeight/maxHeight) * 100)}% free space, trying to add more words...`);
-                
-                let additionalWords = 0;
-                let testBest = best;
-                
-                // Пробуем добавить по 5 слов за раз для более точного заполнения
-                while (testBest < words.length - index && additionalWords < 200) {
-                    testBest += 5;
-                    const testSliceText = words.slice(index, index + testBest).join(' ');
-                    const testHtml = this.formatSimplePage(testSliceText, pageNumber === 0 ? 0 : index);
-                    measureEl.innerHTML = testHtml;
-                    measureEl.offsetHeight;
-                    const testHeight = measureEl.scrollHeight;
-                    
-                    if (testHeight <= maxHeight) {
-                        finalBest = testBest;
-                        finalHeight = testHeight;
-                        additionalWords += 5;
-                        console.log(`✅ Added ${additionalWords} more words, height: ${testHeight}px (${Math.round(testHeight/maxHeight * 100)}% filled)`);
-                    } else {
-                        // Если не помещается, попробуем добавить по 1 слову
-                        testBest -= 5;
-                        while (testBest < words.length - index && testBest < best + additionalWords + 20) {
-                            testBest += 1;
-                            const singleTestSliceText = words.slice(index, index + testBest).join(' ');
-                            const singleTestHtml = this.formatSimplePage(singleTestSliceText, pageNumber === 0 ? 0 : index);
-                            measureEl.innerHTML = singleTestHtml;
-                            measureEl.offsetHeight;
-                            const singleTestHeight = measureEl.scrollHeight;
-                            
-                            if (singleTestHeight <= maxHeight) {
-                                finalBest = testBest;
-                                finalHeight = singleTestHeight;
-                                additionalWords = testBest - best;
-                                console.log(`✅ Added ${additionalWords} more words (1 by 1), height: ${singleTestHeight}px (${Math.round(singleTestHeight/maxHeight * 100)}% filled)`);
-                            } else {
-                                break;
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-            
-            const finalPageText = words.slice(index, index + finalBest).join(' ');
-            const finalFormatted = this.formatSimplePage(finalPageText, pageNumber === 0 ? 0 : index);
-            
-            this.state.pages.push({
-                id: pageNumber, 
-                content: finalFormatted, 
-                wordCount: finalBest,
-                actualHeight: finalHeight
-            });
-            
-            // Финальная проверка: если страница заполнена менее чем на 85%, попробуем добавить еще слов
-            if (finalHeight < maxHeight * 0.85 && index + finalBest < words.length) {
-                console.log(`🔧 Final optimization: page only ${Math.round(finalHeight/maxHeight * 100)}% filled, trying to add more...`);
-                
-                let extraWords = 0;
-                let testFinalBest = finalBest;
-                
-                // Пробуем добавить по 1 слову до достижения 90% заполнения
-                while (testFinalBest < words.length - index && finalHeight < maxHeight * 0.9 && extraWords < 50) {
-                    testFinalBest += 1;
-                    const extraTestSliceText = words.slice(index, index + testFinalBest).join(' ');
-                    const extraTestHtml = this.formatSimplePage(extraTestSliceText, pageNumber === 0 ? 0 : index);
-                    measureEl.innerHTML = extraTestHtml;
-                    measureEl.offsetHeight;
-                    const extraTestHeight = measureEl.scrollHeight;
-                    
-                    if (extraTestHeight <= maxHeight) {
-                        finalBest = testFinalBest;
-                        finalHeight = extraTestHeight;
-                        extraWords += 1;
-                    } else {
-                        break;
-                    }
-                }
-                
-                if (extraWords > 0) {
-                    console.log(`✅ Final optimization added ${extraWords} more words, final height: ${finalHeight}px (${Math.round(finalHeight/maxHeight * 100)}% filled)`);
-                }
-            }
-            
-            console.log(`📄 Created page ${pageNumber + 1}: ${finalBest} words, height: ${finalHeight}px/${maxHeight}px (${Math.round(finalHeight/maxHeight * 100)}% filled)`);
-            pageNumber += 1;
-            index += finalBest;
-
-            // Защита от бесконечного цикла
-            if (best === 0) {
-                console.error('❌ CRITICAL: No words fit on page, breaking loop');
-                break;
-            }
-        }
-
-        measureEl.remove();
-        this.state.totalPages = this.state.pages.length;
-        
-        // Проверяем целостность текста
-        const diff = this.validateTextIntegrity(normalizedText, words);
-        if (Math.abs(diff) > 0) {
-            console.warn(`⚠️ Integrity diff = ${diff}. Recreating pages in strict mode...`);
-            this.createPagesStrict(words);
-        } else {
-            // Если основной алгоритм работает без потерь, все равно используем строгий режим для лучшего качества
-            console.log('✅ Main algorithm works, but switching to strict mode for better quality...');
-            this.createPagesStrict(words);
+        // Абзацы
+        for (const p of paragraphs) {
+            parts.push(`<p>${this.escapeHtml(p)}</p>`);
         }
         
-        console.log(`✅ PAGES CREATED: ${this.state.totalPages} pages total`);
-
-        if (this.state.totalPages === 0) {
-            // на всякий случай вставим пустую страницу
-            this.state.pages = [{ id: 0, content: '<p></p>', wordCount: 0 }];
-            this.state.totalPages = 1;
-        }
+        const content = parts.join('\n');
+        this.state.pages = [{ id: 0, content, wordCount: this.countWords(normalizedText) }];
+        this.state.totalPages = 1;
+        this.state.currentPageIndex = 0;
+        console.log('✅ Single page created');
     }
 
     /** Строгий режим: выделение главных абзацев + точная подгонка без потерь */
