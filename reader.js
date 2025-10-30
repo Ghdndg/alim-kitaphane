@@ -59,14 +59,6 @@ class YandexBooksReader {
             brightnessSlider: 'brightnessSlider',
             decreaseFontSize: 'decreaseFontSize',
             increaseFontSize: 'increaseFontSize',
-            // TOC & bookmarks
-            tocButton: 'tocButton',
-            bookmarkButton: 'bookmarkButton',
-            tocDrawer: 'tocDrawer',
-            tocBackdrop: 'tocBackdrop',
-            closeTocButton: 'closeTocButton',
-            tocList: 'tocList',
-            bookmarksList: 'bookmarksList',
         };
 
         Object.entries(elementSelectors).forEach(([key, id]) => {
@@ -149,24 +141,19 @@ class YandexBooksReader {
         const normalizedText = this.preprocessText(this.state.bookContent);
         const paragraphs = normalizedText.split(/\n\s*\n/).filter(Boolean);
         
-        // Построение оглавления и контента с якорями
-        this.state.toc = [];
         const parts = [];
+        // Заголовок и автор
         parts.push('<h1>Хаджи Гирай</h1>');
         parts.push('<div class="author">Алим Мидат</div>');
         
-        let chapterIndex = 1;
-        for (let i = 0; i < paragraphs.length; i++) {
-            const p = paragraphs[i];
-            const heading = this.detectHeading(p);
-            if (heading) {
-                const id = `ch-${chapterIndex}`;
-                this.state.toc.push({ id, title: heading });
-                parts.push(`<h2 id="${id}">${this.escapeHtml(heading)}</h2>`);
-            } else {
-                parts.push(`<p>${this.escapeHtml(p)}</p>`);
+        // Абзацы
+        for (const p of paragraphs) {
+            const block = p.trim();
+            if (this.isLikelyChapterTitle(block)) {
+                parts.push(`<h2>${this.escapeHtml(block)}</h2>`);
+                continue;
             }
-            if (heading) chapterIndex++;
+            parts.push(`<p>${this.escapeHtml(block)}</p>`);
         }
         
         const content = parts.join('\n');
@@ -174,29 +161,24 @@ class YandexBooksReader {
         this.state.totalPages = 1;
         this.state.currentPageIndex = 0;
         console.log('✅ Single page created');
-        this.renderTOC();
     }
 
-    detectHeading(paragraph) {
-        const trimmed = paragraph.trim();
-        // Явные маркеры глав
-        if (/^(глава|часть|раздел|пролог|эпилог)\b/i.test(trimmed)) return trimmed;
-        // Короткая строка без конечной точки/восклиц/вопроса
-        if (trimmed.length <= 80 && !/[.!?…]$/.test(trimmed)) return trimmed;
-        // ВСЕ ЗАГЛАВНЫЕ (кириллица/латиница/цифры/пробелы/дефис)
-        if (/^[A-ZА-ЯЁ0-9 \-—]+$/.test(trimmed) && trimmed.length <= 100) return trimmed;
-        return null;
-    }
-
-    renderTOC() {
-        if (!this.elements.tocList) return;
-        const toc = this.state.toc || [];
-        if (toc.length === 0) {
-            this.elements.tocList.innerHTML = '<div style="opacity:.6">Главы не найдены</div>';
-            return;
-        }
-        const items = toc.map(({ id, title }) => `<a href="#${id}" data-anchor="${id}" class="toc-item" style="display:block; padding:8px 0; color:inherit; text-decoration:none;">${this.escapeHtml(title)}</a>`);
-        this.elements.tocList.innerHTML = items.join('');
+    /**
+     * Эвристика: определяем, что блок похож на заголовок главы
+     * - начинается с "Глава"/"Часть"/"Раздел" (на кириллице)
+     * - или короткая строка без точек/восклицательных/вопросительных знаков
+     * - или римские/арабские номера
+     */
+    isLikelyChapterTitle(text) {
+        const t = text.trim();
+        if (!t) return false;
+        // явные ключевые слова
+        if (/^(Глава|Часть|Раздел|Бөлүм|Бөлюм|Къысым)\b/i.test(t)) return true;
+        // Римские цифры или арабские номера
+        if (/^(?:[IVXLCDM]+|\d{1,3})(?:\.|\)|\s|$)/i.test(t) && t.length <= 20) return true;
+        // Короткий титул без завершающей пунктуации
+        if (t.length <= 60 && !/[.!?…]$/.test(t) && /^[A-Za-zА-Яа-яЁё0-9\-–:,\s]+$/.test(t)) return true;
+        return false;
     }
 
     /** Строгий режим: выделение главных абзацев + точная подгонка без потерь */
@@ -708,19 +690,6 @@ class YandexBooksReader {
             this.elements.settingsButton.addEventListener('click', () => this.openSettings());
         }
         
-        if (this.elements.tocButton) {
-            this.elements.tocButton.addEventListener('click', () => this.openToc());
-        }
-        if (this.elements.closeTocButton) {
-            this.elements.closeTocButton.addEventListener('click', () => this.closeToc());
-        }
-        if (this.elements.tocBackdrop) {
-            this.elements.tocBackdrop.addEventListener('click', () => this.closeToc());
-        }
-        if (this.elements.bookmarkButton) {
-            this.elements.bookmarkButton.addEventListener('click', () => this.addBookmark());
-        }
-        
         if (this.elements.backButton) {
             this.elements.backButton.addEventListener('click', () => this.handleBackAction());
         }
@@ -1034,96 +1003,6 @@ class YandexBooksReader {
             const minutes = Math.max(1, Math.ceil((totalWords / 200) * remainingRatio));
             this.elements.readingTime.textContent = `${minutes} мин`;
         }
-        // Подсветка текущей главы в оглавлении
-        this.highlightCurrentTocItem();
-    }
-
-    highlightCurrentTocItem() {
-        if (!this.state.toc || !this.elements.tocList) return;
-        const vpRect = this.elements.readingViewport.getBoundingClientRect();
-        let activeId = null;
-        for (const { id } of this.state.toc) {
-            const el = document.getElementById(id);
-            if (!el) continue;
-            const r = el.getBoundingClientRect();
-            if (r.top >= vpRect.top && r.top < vpRect.top + 120) {
-                activeId = id; break;
-            }
-        }
-        Array.from(this.elements.tocList.querySelectorAll('a[data-anchor]')).forEach(a => {
-            a.classList.toggle('active', a.getAttribute('data-anchor') === activeId);
-        });
-    }
-
-    // Закладки
-    addBookmark() {
-        if (!this.elements.readingViewport) return;
-        const vp = this.elements.readingViewport;
-        const position = vp.scrollTop;
-        const nearest = this.findNearestHeading();
-        const ts = Date.now();
-        const bm = { id: `bm-${ts}`, position, title: nearest?.title || 'Место чтения', createdAt: ts };
-        const list = this.loadBookmarks();
-        list.unshift(bm);
-        this.saveBookmarks(list);
-        this.renderBookmarks(list);
-    }
-
-    findNearestHeading() {
-        if (!this.state.toc || this.state.toc.length === 0) return null;
-        let best = null; let bestDelta = Infinity;
-        const vpTop = this.elements.readingViewport.getBoundingClientRect().top;
-        for (const item of this.state.toc) {
-            const el = document.getElementById(item.id);
-            if (!el) continue;
-            const delta = Math.abs(el.getBoundingClientRect().top - vpTop);
-            if (delta < bestDelta) { best = item; bestDelta = delta; }
-        }
-        return best;
-    }
-
-    loadBookmarks() {
-        try {
-            const raw = localStorage.getItem(`${this.storageKey}-bookmarks`);
-            return raw ? JSON.parse(raw) : [];
-        } catch { return []; }
-    }
-
-    saveBookmarks(list) {
-        try { localStorage.setItem(`${this.storageKey}-bookmarks`, JSON.stringify(list)); } catch {}
-    }
-
-    renderBookmarks(list = this.loadBookmarks()) {
-        if (!this.elements.bookmarksList) return;
-        if (!list.length) {
-            this.elements.bookmarksList.innerHTML = '<li style="opacity:.6">Пока нет закладок</li>';
-            return;
-        }
-        this.elements.bookmarksList.innerHTML = list.map(bm => `
-            <li data-id="${bm.id}" style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; gap:8px;">
-                <button data-action="jump" class="bookmark-jump" style="flex:1; text-align:left; background:none; border:none; color:inherit; cursor:pointer;">
-                    ${this.escapeHtml(bm.title)}
-                </button>
-                <button data-action="delete" class="bookmark-delete" title="Удалить" style="background:none; border:1px solid var(--color-border); border-radius:8px; padding:4px 8px; color:inherit; cursor:pointer;">×</button>
-            </li>
-        `).join('');
-        // Делегирование событий
-        this.elements.bookmarksList.onclick = (e) => {
-            const li = e.target.closest('li[data-id]');
-            if (!li) return;
-            const id = li.getAttribute('data-id');
-            const action = e.target.getAttribute('data-action');
-            if (action === 'delete') {
-                const list = this.loadBookmarks().filter(b => b.id !== id);
-                this.saveBookmarks(list);
-                this.renderBookmarks(list);
-            } else if (action === 'jump') {
-                const bm = this.loadBookmarks().find(b => b.id === id);
-                if (!bm) return;
-                this.elements.readingViewport.scrollTo({ top: bm.position, behavior: 'smooth' });
-                this.closeToc();
-            }
-        };
     }
 
     /**
@@ -1247,34 +1126,6 @@ openSettings() {
         
         if (this.elements.settingsDrawer) {
             this.elements.settingsDrawer.classList.remove('visible');
-        }
-    }
-
-    openToc() {
-        if (this.elements.tocDrawer) {
-            this.elements.tocDrawer.classList.add('visible');
-            this.showUI();
-            // Делегирование: клик по пункту содержания
-            if (this.elements.tocList && !this._tocBound) {
-                this.elements.tocList.addEventListener('click', (e) => {
-                    const a = e.target.closest('a[data-anchor]');
-                    if (!a) return;
-                    e.preventDefault();
-                    const id = a.getAttribute('data-anchor');
-                    const target = document.getElementById(id);
-                    if (target && this.elements.readingViewport) {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        this.closeToc();
-                    }
-                });
-                this._tocBound = true;
-            }
-        }
-    }
-
-    closeToc() {
-        if (this.elements.tocDrawer) {
-            this.elements.tocDrawer.classList.remove('visible');
         }
     }
 
