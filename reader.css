@@ -369,20 +369,17 @@ body {
     background: rgba(0, 122, 255, 0.05);
     border-left: 3px solid #007aff;
     border-radius: 0 8px 8px 0;
-    position: relative;
+    text-indent: 0;
 }
 
-.page-content .main-paragraph::before {
-    content: "★";
-    position: absolute;
-    left: -8px;
-    top: 8px;
-    color: #007aff;
-    font-size: 12px;
-    background: var(--color-bg-primary);
-    padding: 2px 4px;
-    border-radius: 50%;
-    line-height: 1;
+[data-theme="sepia"] .page-content .main-paragraph {
+    background: rgba(93, 78, 55, 0.08);
+    border-left-color: #5d4e37;
+}
+
+[data-theme="gray"] .page-content .main-paragraph {
+    background: rgba(44, 44, 44, 0.05);
+    border-left-color: #2c2c2c;
 }
 
 /* Нижняя панель управления */
