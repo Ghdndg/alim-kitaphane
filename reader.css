@@ -287,7 +287,7 @@ body {
 .reading-viewport {
     flex: 1;
     position: relative;
-    overflow: hidden;
+    overflow: auto; /* включаем прокрутку */
 }
 
 .page-wrapper {
@@ -312,15 +312,11 @@ body {
     user-select: text;
     -webkit-user-select: text;
 
-    /* Фиксированная высота страницы, без прокрутки */
-    height: calc(100vh - var(--header-height) - var(--footer-height) - var(--safe-area-top) - var(--safe-area-bottom) - 48px);
-    min-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--safe-area-top) - var(--safe-area-bottom) - 48px);
-    overflow: hidden; /* исключаем вертикальную прокрутку внутри страницы */
-    
-    /* Обеспечиваем правильное заполнение пространства */
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
+    /* Прокручиваемый контент без фиксированной высоты */
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+    display: block;
 }
 
 .page-content h1 {
