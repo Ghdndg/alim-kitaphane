@@ -613,6 +613,7 @@ class YandexBooksReader {
         this.bindKeyboardEvents();
         this.bindGestureEvents();
         this.bindResizeEvents();
+        this.bindScrollProgressEvents();
         console.log('✅ Event handlers set up');
     }
 
@@ -888,38 +889,68 @@ class YandexBooksReader {
      * Обновляет состояние интерфейса
      */
     updateInterfaceState() {
+        if (this.state.totalPages === 1) {
+            // Прогресс по прокрутке
+            this.updateScrollProgressUI();
+            // Скрываем кнопки перелистывания
+            if (this.elements.prevButton) this.elements.prevButton.style.display = 'none';
+            if (this.elements.nextButton) this.elements.nextButton.style.display = 'none';
+            return;
+        }
+        
         const currentIndex = this.state.currentPageIndex;
         const totalPages = this.state.totalPages;
         const progressPercentage = totalPages > 1 ? (currentIndex / (totalPages - 1)) * 100 : 0;
         
-        console.log(`📊 UI Update: Page ${currentIndex + 1}/${totalPages}, Progress: ${Math.round(progressPercentage)}%`);
-        
-        // Обновление индикатора прогресса
         if (this.elements.progressFill) {
             this.elements.progressFill.style.width = `${progressPercentage}%`;
         }
-        
-        // Обновление счетчика страниц
         if (this.elements.currentProgress) {
             this.elements.currentProgress.textContent = Math.round(progressPercentage).toString();
         }
-        
-        // Обновление времени чтения
         if (this.elements.readingTime) {
             const remainingPages = totalPages - currentIndex - 1;
-            const estimatedMinutes = Math.ceil(remainingPages * 0.5); // 30 сек на страницу
+            const estimatedMinutes = Math.ceil(remainingPages * 0.5);
             this.elements.readingTime.textContent = `${estimatedMinutes} мин`;
         }
-        
-        // ИСПРАВЛЕНИЕ: Правильное состояние кнопок навигации
         if (this.elements.prevButton) {
             this.elements.prevButton.disabled = currentIndex === 0;
-            console.log(`🔄 Prev button disabled: ${currentIndex === 0}`);
         }
-        
         if (this.elements.nextButton) {
             this.elements.nextButton.disabled = currentIndex >= totalPages - 1;
-            console.log(`🔄 Next button disabled: ${currentIndex >= totalPages - 1}`);
+        }
+    }
+
+    /** Прогресс прокрутки */
+    bindScrollProgressEvents() {
+        if (!this.elements.readingViewport) return;
+        let rafId = null;
+        const onScroll = () => {
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+                this.updateScrollProgressUI();
+                rafId = null;
+            });
+        };
+        this.elements.readingViewport.addEventListener('scroll', onScroll, { passive: true });
+        // начальное обновление
+        this.updateScrollProgressUI();
+    }
+
+    updateScrollProgressUI() {
+        if (!this.elements.readingViewport) return;
+        const vp = this.elements.readingViewport;
+        const max = Math.max(1, vp.scrollHeight - vp.clientHeight);
+        const ratio = Math.min(1, Math.max(0, vp.scrollTop / max));
+        const pct = Math.round(ratio * 100);
+        if (this.elements.progressFill) this.elements.progressFill.style.width = `${pct}%`;
+        if (this.elements.currentProgress) this.elements.currentProgress.textContent = String(pct);
+        if (this.elements.readingTime) {
+            // Грубая оценка: 200 слов/мин
+            const totalWords = this.state.pages[0]?.wordCount || this.countWords(this.state.bookContent);
+            const remainingRatio = 1 - ratio;
+            const minutes = Math.max(1, Math.ceil((totalWords / 200) * remainingRatio));
+            this.elements.readingTime.textContent = `${minutes} мин`;
         }
     }
 
