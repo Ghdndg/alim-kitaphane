@@ -813,26 +813,54 @@ class YandexBooksReader {
      * Привязывает жестовые события
      */
     bindGestureEvents() {
-        // Простая реализация свайпов
+        // Простая реализация свайпов и тап по центру для показа/скрытия меню
         let touchStartX = 0;
+        let touchStartY = 0;
         
         if (this.elements.readingViewport) {
-            this.elements.readingViewport.addEventListener('touchstart', (event) => {
-                touchStartX = event.touches[0].clientX;
-            });
+            const vp = this.elements.readingViewport;
             
-            this.elements.readingViewport.addEventListener('touchend', (event) => {
+            vp.addEventListener('touchstart', (event) => {
+                touchStartX = event.touches[0].clientX;
+                touchStartY = event.touches[0].clientY;
+            }, { passive: true });
+            
+            vp.addEventListener('touchend', (event) => {
                 const touchEndX = event.changedTouches[0].clientX;
+                const touchEndY = event.changedTouches[0].clientY;
                 const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
                 
-                if (Math.abs(deltaX) > 50) {
+                // Горизонтальный свайп (только если несколько страниц)
+                if (this.state.totalPages > 1 && Math.abs(deltaX) > 50 && Math.abs(deltaY) < 30) {
                     if (deltaX > 0) {
-                        console.log('👆 Swipe: Previous page');
                         this.goToPreviousPage();
                     } else {
-                        console.log('👆 Swipe: Next page');
                         this.goToNextPage();
                     }
+                    return;
+                }
+                
+                // Тап по центру (в пределах средней трети ширины)
+                const rect = vp.getBoundingClientRect();
+                const x = event.changedTouches[0].clientX - rect.left;
+                const ratio = x / Math.max(1, rect.width);
+                if (ratio > 0.33 && ratio < 0.66 && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+                    this.toggleUI();
+                }
+            });
+            
+            // Поддержка клика мышью по центру
+            vp.addEventListener('click', (event) => {
+                // Игнорируем клики по ссылкам/выделениям
+                if ((event.target && (event.target.closest('a') || window.getSelection()?.toString()))){
+                    return;
+                }
+                const rect = vp.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const ratio = x / Math.max(1, rect.width);
+                if (ratio > 0.33 && ratio < 0.66) {
+                    this.toggleUI();
                 }
             });
         }
