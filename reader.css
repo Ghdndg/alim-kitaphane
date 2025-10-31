@@ -394,10 +394,10 @@ body {
     text-indent: 2em;
 }
 
-/* Абзацы с визуальным разделением */
+/* Отделение абзацев */
 .page-content .paragraph {
     margin-bottom: 24px; /* Увеличиваем отступ между абзацами */
-    padding-bottom: 16px;
+    padding-bottom: 12px;
     border-bottom: 1px solid transparent;
     transition: border-color 0.2s ease;
 }
