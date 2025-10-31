@@ -394,7 +394,14 @@ body {
     text-indent: 2em;
 }
 
-/* Отделение абзацев */
+.page-content p:first-of-type,
+.page-content h1 + p,
+.page-content h2 + p,
+.page-content .author + p {
+    text-indent: 0;
+}
+
+/* Разделение абзацев */
 .page-content .paragraph {
     margin-bottom: 24px; /* Увеличиваем отступ между абзацами */
     padding-bottom: 12px;
@@ -407,12 +414,14 @@ body {
     border-bottom-color: var(--color-border);
 }
 
-.page-content p:first-of-type,
-.page-content h1 + p,
-.page-content h2 + p,
-.page-content .author + p {
-    text-indent: 0;
-    border-bottom: none; /* Убираем разделитель у первого абзаца */
+.page-content .paragraph:last-child {
+    border-bottom: none; /* Убираем разделитель у последнего абзаца */
+}
+
+.page-content h1 + .paragraph,
+.page-content h2 + .paragraph,
+.page-content .author + .paragraph {
+    border-bottom: none; /* Убираем разделитель у первого абзаца после заголовка */
 }
 
 /* Заголовки глав */
