@@ -146,16 +146,12 @@ class YandexBooksReader {
         parts.push('<h1>Хаджи Гирай</h1>');
         parts.push('<div class="author">Алим Мидат</div>');
         
-        // Обрабатываем абзацы и определяем главы
+        // Абзацы с определением заголовков глав
         for (const p of paragraphs) {
-            const trimmed = p.trim();
-            if (!trimmed) continue;
-            
-            // Проверяем, является ли абзац заголовком главы
-            if (this.isChapterHeading(trimmed)) {
-                parts.push(`<h2 class="chapter-heading">${this.escapeHtml(trimmed)}</h2>`);
+            if (this.isChapterHeading(p)) {
+                parts.push(`<h2 class="chapter-heading">${this.escapeHtml(p)}</h2>`);
             } else {
-                parts.push(`<p class="paragraph">${this.escapeHtml(trimmed)}</p>`);
+                parts.push(`<p class="paragraph">${this.escapeHtml(p)}</p>`);
             }
         }
         
@@ -166,43 +162,29 @@ class YandexBooksReader {
         console.log('✅ Single page created');
     }
 
-    /**
-     * Определяет, является ли абзац заголовком главы
-     */
+    /** Проверяет, является ли текст заголовком главы */
     isChapterHeading(text) {
-        // Заголовок главы обычно:
-        // 1. Короткий (до 100 символов)
-        // 2. Все слова с заглавной буквы или начинается с числа/римской цифры
-        // 3. Не содержит знаков препинания в середине (кроме дефисов)
-        // 4. Или содержит ключевые слова "глава", "часть" и т.д.
+        const trimmed = text.trim();
         
-        if (text.length > 100) return false;
-        
+        // Заголовок главы если:
+        // 1. Короткий (до 50 символов)
+        // 2. Начинается с заглавной буквы
+        // 3. Содержит ключевые слова заголовков
         const chapterKeywords = [
-            /^глава\s+/i, /^часть\s+/i, /^раздел\s+/i, /^книга\s+/i,
-            /^глава\.?/i, /^часть\.?/i, /^раздел\.?/i,
-            /^\d+[\.\)]\s*/, // Номер главы (1., 2), и т.д.
-            /^[IVX]+[\.\)]\s*/ // Римские цифры
+            'Мукъаддеме', 'баб', 'КЪЫСЫМ', 'Бабам – Мидат Къуртсеитнинъ айдын хатырасына багъышлайым…', 'Онынъ лагъабы эди Мелек…',
+            'Янъы яратылгъан эсернинъ къараманы ве муэллифи акъкъында бир къач сез', 'Хаджи́ I Гира́й (Меле́к) (тахминен 1397 – 1466 сс.) – Къырым ханлыгъы ве Гирай сюлялесининъ эсасчысы.', 'Юкъарыда тасвир этильген адиседен бир кунь эвель:', 'предисловие',
+            'эпилог', 'заключение', 'үзек', 'кыскача'
         ];
         
-        // Проверяем ключевые слова
-        for (const pattern of chapterKeywords) {
-            if (pattern.test(text)) {
-                return true;
-            }
-        }
+        const isShort = trimmed.length <= 50;
+        const startsWithCapital = /^[А-ЯЁA-Z]/.test(trimmed);
+        const hasKeywords = chapterKeywords.some(keyword => 
+            trimmed.toLowerCase().includes(keyword)
+        );
+        const isAllCaps = trimmed === trimmed.toUpperCase() && trimmed.length <= 30;
+        const isNumbered = /^[IVXLCDM\d]+[\.)]/.test(trimmed) || /^Глава\s+\d+/i.test(trimmed);
         
-        // Проверяем, что текст выглядит как заголовок (все слова короткие, без длинных предложений)
-        const words = text.split(/\s+/);
-        if (words.length <= 8 && words.every(w => w.length <= 25)) {
-            // Если короткий и не содержит запятых, точек в середине - вероятно заголовок
-            const hasMiddlePunctuation = /[\.\,\;]/.test(text.slice(1, -1));
-            if (!hasMiddlePunctuation && words.length >= 2) {
-                return true;
-            }
-        }
-        
-        return false;
+        return isShort && startsWithCapital && (hasKeywords || isAllCaps || isNumbered);
     }
 
     /** Строгий режим: выделение главных абзацев + точная подгонка без потерь */
