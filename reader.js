@@ -1,959 +1,1384 @@
-/* Основные CSS переменные для тем */
-:root {
-    /* Цветовые палитры тем */
-    --theme-sepia-bg: #f7f0e6;
-    --theme-sepia-text: #5d4e37;
-    --theme-sepia-secondary: rgba(93, 78, 55, 0.6);
-    --theme-sepia-border: rgba(93, 78, 55, 0.2);
-    --theme-sepia-panel: rgba(247, 240, 230, 0.95);
-    
-    --theme-gray-bg: #f5f5f5;
-    --theme-gray-text: #2c2c2c;
-    --theme-gray-secondary: rgba(44, 44, 44, 0.6);
-    --theme-gray-border: rgba(44, 44, 44, 0.2);
-    --theme-gray-panel: rgba(245, 245, 245, 0.95);
-    
-    --theme-dark-bg: #000000;
-    --theme-dark-text: #ffffff;
-    --theme-dark-secondary: rgba(255, 255, 255, 0.6);
-    --theme-dark-border: rgba(255, 255, 255, 0.1);
-    --theme-dark-panel: rgba(20, 20, 20, 0.95);
-    
-    /* Активная цветовая схема (по умолчанию тёмная) */
-    --color-bg-primary: var(--theme-dark-bg);
-    --color-text-primary: var(--theme-dark-text);
-    --color-text-secondary: var(--theme-dark-secondary);
-    --color-border: var(--theme-dark-border);
-    --color-panel-bg: var(--theme-dark-panel);
-    --color-button-bg: rgba(255, 255, 255, 0.1);
-    
-    /* Типографические переменные */
-    --font-ui: 'SF Pro Text', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    --font-reading: 'Charter', Georgia, 'Times New Roman', serif;
-    --font-size-base: 18px;
-    --line-height-base: 1.6;
-    --letter-spacing: -0.01em;
-    
-    /* Размеры интерфейса */
-    --header-height: 56px;
-    --footer-height: 80px;
-    --panel-padding: 24px;
-    --safe-area-top: env(safe-area-inset-top, 0px);
-    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-area-left: env(safe-area-inset-left, 0px);
-    --safe-area-right: env(safe-area-inset-right, 0px);
-    
-    /* Анимации и переходы */
-    --transition-fast: 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
-    --transition-medium: 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
-    --transition-slow: 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
-    
-    /* Тени и размытие */
-    --shadow-small: 0 2px 8px rgba(0, 0, 0, 0.15);
-    --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.2);
-    --backdrop-blur: 20px;
-}
+/**
+ * Профессиональный ридер в стиле Яндекс.Книг
+ * Исправленная пагинация без потерь текста
+ */
+class YandexBooksReader {
+    constructor() {
+        // Состояние ридера
+        this.state = {
+            bookContent: '',
+            pages: [],
+            currentPageIndex: 0,
+            totalPages: 0,
+            isUIVisible: false,
+            isSettingsOpen: false,
+            settings: {
+                theme: 'dark',
+                fontSize: 18,
+                lineHeight: 1.6,
+                textAlign: 'justify',
+                brightness: 100,
+            }
+        };
 
-/* Применение тем оформления */
-[data-theme="sepia"] {
-    --color-bg-primary: var(--theme-sepia-bg);
-    --color-text-primary: var(--theme-sepia-text);
-    --color-text-secondary: var(--theme-sepia-secondary);
-    --color-border: var(--theme-sepia-border);
-    --color-panel-bg: var(--theme-sepia-panel);
-    --color-button-bg: rgba(93, 78, 55, 0.1);
-}
-
-[data-theme="gray"] {
-    --color-bg-primary: var(--theme-gray-bg);
-    --color-text-primary: var(--theme-gray-text);
-    --color-text-secondary: var(--theme-gray-secondary);
-    --color-border: var(--theme-gray-border);
-    --color-panel-bg: var(--theme-gray-panel);
-    --color-button-bg: rgba(44, 44, 44, 0.1);
-}
-
-[data-theme="dark"] {
-    --color-bg-primary: var(--theme-dark-bg);
-    --color-text-primary: var(--theme-dark-text);
-    --color-text-secondary: var(--theme-dark-secondary);
-    --color-border: var(--theme-dark-border);
-    --color-panel-bg: var(--theme-dark-panel);
-    --color-button-bg: rgba(255, 255, 255, 0.1);
-}
-
-/* Автоматическая тема (следует системным настройкам) */
-[data-theme="auto"] {
-    --color-bg-primary: var(--theme-dark-bg);
-    --color-text-primary: var(--theme-dark-text);
-    --color-text-secondary: var(--theme-dark-secondary);
-    --color-border: var(--theme-dark-border);
-    --color-panel-bg: var(--theme-dark-panel);
-    --color-button-bg: rgba(255, 255, 255, 0.1);
-}
-
-@media (prefers-color-scheme: light) {
-    [data-theme="auto"] {
-        --color-bg-primary: var(--theme-gray-bg);
-        --color-text-primary: var(--theme-gray-text);
-        --color-text-secondary: var(--theme-gray-secondary);
-        --color-border: var(--theme-gray-border);
-        --color-panel-bg: var(--theme-gray-panel);
-        --color-button-bg: rgba(44, 44, 44, 0.1);
+        this.elements = {};
+        this.wordsPerPage = 200; // УМЕНЬШИЛИ для гарантированного создания страниц
+        this.storageKey = 'yandex-books-reader';
+        
+        // Запуск инициализации
+        this.bindDOMElements();
+        this.init();
     }
-}
-
-/* Базовый сброс стилей */
-*,
-*::before,
-*::after {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-html {
-    height: 100%;
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-}
-
-body {
-    height: 100%;
-    font-family: var(--font-ui);
-    background: var(--color-bg-primary);
-    color: var(--color-text-primary);
-    overflow: hidden;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    transition: background-color var(--transition-medium), color var(--transition-medium);
-}
-
-/* Убираем выделение при касании на мобильных */
-* {
-    -webkit-tap-highlight-color: transparent;
-}
-
-/* Индикатор прогресса чтения */
-.reading-progress {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--color-border);
-    z-index: 1000;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #007aff, #5856d6);
-    width: 0%;
-    transition: width var(--transition-medium);
-}
-
-/* Экран загрузки */
-.loading-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--color-bg-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    transition: opacity var(--transition-slow);
-}
-
-.loading-overlay.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.loading-content {
-    text-align: center;
-    max-width: 320px;
-    padding: var(--panel-padding);
-}
-
-.loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--color-border);
-    border-top-color: #007aff;
-    border-radius: 50%;
-    animation: loading-spin 1s linear infinite;
-    margin: 0 auto 24px;
-}
-
-@keyframes loading-spin {
-    to { transform: rotate(360deg); }
-}
-
-.loading-title {
-    font-size: 24px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: var(--color-text-primary);
-}
-
-.loading-status {
-    font-size: 16px;
-    color: var(--color-text-secondary);
-    line-height: 1.4;
-}
-
-/* Основной контейнер читалки */
-.reader-container {
-    height: 100vh;
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-}
-
-/* Верхняя навигационная панель */
-.top-navigation {
-    height: calc(var(--header-height) + var(--safe-area-top));
-    padding-top: var(--safe-area-top);
-    padding-left: calc(16px + var(--safe-area-left));
-    padding-right: calc(16px + var(--safe-area-right));
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--color-panel-bg);
-    backdrop-filter: blur(var(--backdrop-blur));
-    -webkit-backdrop-filter: blur(var(--backdrop-blur));
-    border-bottom: 1px solid var(--color-border);
-    transform: translateY(-100%);
-    transition: transform var(--transition-medium);
-    z-index: 100;
-}
-
-.top-navigation.visible {
-    transform: translateY(0);
-}
-
-.nav-button {
-    width: 44px;
-    height: 44px;
-    border: none;
-    border-radius: 12px;
-    background: var(--color-button-bg);
-    color: var(--color-text-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.nav-button:hover {
-    opacity: 0.7;
-}
-
-.nav-button svg {
-    width: 20px;
-    height: 20px;
-}
-
-.book-metadata {
-    flex: 1;
-    text-align: center;
-    padding: 0 16px;
-    min-width: 0;
-}
-
-.book-title {
-    font-size: 17px;
-    font-weight: 600;
-    line-height: 1.2;
-    margin-bottom: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.book-author {
-    font-size: 13px;
-    color: var(--color-text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Основная область для чтения */
-.reading-viewport {
-    flex: 1;
-    position: relative;
-    overflow: auto; /* включаем прокрутку */
-    -webkit-overflow-scrolling: touch; /* плавная прокрутка на iOS */
-    /* Настройки кастомной прокрутки для Firefox */
-    scrollbar-width: thin;            /* тонкая полоса */
-    scrollbar-color: rgba(255,255,255,0.35) transparent; /* цвет бегунка/трек */
-}
-
-.page-wrapper {
-    padding: var(--panel-padding);
-    display: flex; /* центрируем контент */
-    align-items: flex-start;
-    justify-content: center;
-}
-
-.page-content {
-    width: 100%;
-    max-width: 680px;
-    font-family: var(--font-reading);
-    font-size: var(--font-size-base);
-    line-height: var(--line-height-base);
-    letter-spacing: var(--letter-spacing);
-    text-align: justify;
-    hyphens: auto;
-    -webkit-hyphens: auto;
-    user-select: text;
-    -webkit-user-select: text;
-
-    /* Прокручиваемый контент без фиксированной высоты */
-    height: auto;
-    min-height: auto;
-    overflow: visible;
-    display: block;
-}
-
-/* КАСТОМНАЯ ПОЛОСА ПРОКРУТКИ (WebKit/Blink: Chrome, Edge, Safari) */
-.reading-viewport::-webkit-scrollbar {
-    width: 10px;              /* ширина вертикального скролла */
-    height: 10px;             /* высота горизонтального (на всякий случай) */
-    background: transparent;  /* без фона */
-}
-
-.reading-viewport::-webkit-scrollbar-track {
-    background: transparent;  /* прозрачный трек */
-}
-
-.reading-viewport::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0.18));
-    border-radius: 8px;
-    border: 2px solid transparent;     /* «внутренний отступ» */
-    background-clip: padding-box;      /* не закрашивать бордер */
-}
-
-.reading-viewport:hover::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0.25));
-}
-
-.reading-viewport::-webkit-scrollbar-corner {
-    background: transparent;
-}
-
-/* Цвета под разные темы */
-[data-theme="sepia"] .reading-viewport {
-    scrollbar-color: rgba(93, 78, 55, 0.55) transparent;
-}
-
-[data-theme="sepia"] .reading-viewport::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(93,78,55,0.55), rgba(93,78,55,0.35));
-}
-
-[data-theme="gray"] .reading-viewport {
-    scrollbar-color: rgba(44, 44, 44, 0.55) transparent;
-}
-
-[data-theme="gray"] .reading-viewport::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(44,44,44,0.55), rgba(44,44,44,0.35));
-}
-
-.page-content h1 {
-    font-size: 2.25rem;
-    font-weight: 700;
-    line-height: 1.2;
-    text-align: center;
-    margin: 0 0 24px 0;
-    color: var(--color-text-primary);
-}
-
-.page-content .author {
-    font-size: 1.25rem;
-    font-style: italic;
-    text-align: center;
-    color: var(--color-text-secondary);
-    margin: 16px 0 40px 0;
-}
-
-.page-content h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    line-height: 1.3;
-    margin: 28px 0 16px 0;
-    color: var(--color-text-primary);
-}
-
-.page-content p {
-    margin-bottom: 16px;
-    text-indent: 2em;
-}
-
-.page-content p:first-of-type,
-.page-content h1 + p,
-.page-content h2 + p,
-.page-content .author + p {
-    text-indent: 0;
-}
-
-/* Выделение главных абзацев */
-.page-content .main-paragraph {
-    font-weight: 500;
-    line-height: 1.7;
-    margin-bottom: 20px;
-    padding: 12px 16px;
-    background: rgba(0, 122, 255, 0.05);
-    border-left: 3px solid #007aff;
-    border-radius: 0 8px 8px 0;
-    text-indent: 0;
-}
-/* Заголовки глав и разделов */
-.page-content h2 {
-    margin-top: 32px;
-    margin-bottom: 20px;
-    padding-top: 16px;
-    border-top: 2px solid var(--color-border);
-}
-
-.page-content h2:first-child {
-    margin-top: 0;
-    border-top: none;
-}
-
-/* Улучшенное разделение абзацев */
-.page-content p {
-    margin-bottom: 18px;
-    text-indent: 2em;
-}
-
-.page-content p + p {
-    margin-top: 4px;
-}
-
-/* Первый абзац после заголовка - без отступа */
-.page-content h1 + p,
-.page-content h2 + p,
-.page-content h3 + p,
-.page-content .author + p,
-.page-content p:first-of-type {
-    text-indent: 0;
-    margin-top: 0;
-}
-
-/* Пустая строка перед новым разделом */
-.page-content h2::before {
-    content: "";
-    display: block;
-    height: 12px;
-}
-
-/* Дополнительное пространство между главными абзацами */
-.page-content .main-paragraph + p {
-    margin-top: 16px;
-}
-
-
-
-[data-theme="sepia"] .page-content .main-paragraph {
-    background: rgba(93, 78, 55, 0.08);
-    border-left-color: #5d4e37;
-}
-
-[data-theme="gray"] .page-content .main-paragraph {
-    background: rgba(44, 44, 44, 0.05);
-    border-left-color: #2c2c2c;
-}
-
-/* Нижняя панель управления */
-.bottom-controls {
-    height: calc(var(--footer-height) + var(--safe-area-bottom));
-    padding-bottom: var(--safe-area-bottom);
-    padding-left: calc(var(--panel-padding) + var(--safe-area-left));
-    padding-right: calc(var(--panel-padding) + var(--safe-area-right));
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--color-panel-bg);
-    backdrop-filter: blur(var(--backdrop-blur));
-    -webkit-backdrop-filter: blur(var(--backdrop-blur));
-    border-top: 1px solid var(--color-border);
-    transform: translateY(100%);
-    transition: transform var(--transition-medium);
-    z-index: 100;
-}
-
-.bottom-controls.visible {
-    transform: translateY(0);
-}
-
-.reading-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-}
-
-.page-progress {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--color-text-primary);
-}
-
-.reading-time {
-    font-size: 12px;
-    color: var(--color-text-secondary);
-}
-
-.navigation-controls {
-    display: flex;
-    gap: 16px;
-}
-
-.control-button {
-    width: 48px;
-    height: 48px;
-    border: none;
-    border-radius: 12px;
-    background: var(--color-button-bg);
-    color: var(--color-text-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.control-button:hover:not(:disabled) {
-    opacity: 0.7;
-}
-
-.control-button:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-.control-button svg {
-    width: 20px;
-    height: 20px;
-}
-
-/* Панель настроек */
-.settings-drawer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    transform: translateY(100%);
-    transition: transform var(--transition-medium);
-    z-index: 200;
-}
-
-.settings-drawer.visible {
-    transform: translateY(0);
-}
-
-.settings-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    opacity: 0;
-    transition: opacity var(--transition-medium);
-    pointer-events: none;
-}
-
-.settings-drawer.visible .settings-backdrop {
-    opacity: 1;
-    pointer-events: all;
-}
-
-.settings-panel {
-    background: var(--color-panel-bg);
-    backdrop-filter: blur(var(--backdrop-blur));
-    -webkit-backdrop-filter: blur(var(--backdrop-blur));
-    border-radius: 20px 20px 0 0;
-    box-shadow: var(--shadow-medium);
-    max-height: 80vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.settings-header {
-    padding: 20px var(--panel-padding) 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--color-border);
-    flex-shrink: 0;
-}
-
-.settings-header h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--color-text-primary);
-}
-
-.close-button {
-    width: 32px;
-    height: 32px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.close-button:hover {
-    background: var(--color-button-bg);
-    color: var(--color-text-primary);
-}
-
-.close-button svg {
-    width: 16px;
-    height: 16px;
-}
-
-.settings-content {
-    padding: var(--panel-padding);
-    overflow-y: auto;
-    flex: 1;
-}
-
-.setting-group {
-    margin-bottom: 32px;
-}
-
-.setting-group:last-child {
-    margin-bottom: 0;
-}
-
-.setting-label {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    margin-bottom: 12px;
-}
-
-/* Контроль яркости */
-.brightness-slider-container {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.brightness-icon {
-    width: 18px;
-    height: 18px;
-    color: var(--color-text-secondary);
-    flex-shrink: 0;
-}
-
-.brightness-slider {
-    flex: 1;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--color-border);
-    outline: none;
-    -webkit-appearance: none;
-    appearance: none;
-    cursor: pointer;
-}
-
-.brightness-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 10px;
-    background: #007aff;
-    cursor: pointer;
-    border: 2px solid var(--color-bg-primary);
-    box-shadow: var(--shadow-small);
-}
-
-.brightness-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 10px;
-    background: #007aff;
-    border: 2px solid var(--color-bg-primary);
-    box-shadow: var(--shadow-small);
-    cursor: pointer;
-}
-
-/* Выбор темы оформления */
-.theme-options {
-    display: flex;
-    gap: 12px;
-}
-
-.theme-option {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 8px;
-    border: none;
-    border-radius: 12px;
-    background: transparent;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.theme-option:hover {
-    background: var(--color-button-bg);
-}
-
-.theme-preview {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    border: 2px solid transparent;
-    transition: border-color var(--transition-fast);
-}
-
-.theme-option.active .theme-preview {
-    border-color: #007aff;
-}
-
-.theme-preview.sepia { background: var(--theme-sepia-bg); }
-.theme-preview.gray { background: var(--theme-gray-bg); }
-.theme-preview.dark { background: var(--theme-dark-bg); }
-.theme-preview.auto {
-    background: linear-gradient(45deg, var(--theme-dark-bg) 50%, var(--theme-gray-bg) 50%);
-}
-
-.theme-option span {
-    font-size: 12px;
-    color: var(--color-text-secondary);
-    text-align: center;
-}
-
-/* Настройки типографики */
-.font-family-control {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.font-name {
-    font-size: 16px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-}
-
-.font-size-controls {
-    display: flex;
-    gap: 8px;
-}
-
-.font-size-button {
-    width: 44px;
-    height: 44px;
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background: var(--color-button-bg);
-    color: var(--color-text-primary);
-    font-size: 20px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.font-size-button:hover {
-    border-color: #007aff;
-    background: var(--color-button-bg);
-}
-
-/* Контроль межстрочного интервала */
-.line-spacing-options {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-    justify-content: center;
-}
-
-.spacing-option {
-    width: 60px;
-    height: 44px;
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background: var(--color-button-bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.spacing-option.active,
-.spacing-option:hover {
-    border-color: #007aff;
-}
-
-.lines-preview {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.lines-preview span {
-    width: 20px;
-    height: 1px;
-    background: var(--color-text-primary);
-}
-
-.lines-preview.tight span { margin-bottom: 2px; }
-.lines-preview.normal span { margin-bottom: 3px; }
-.lines-preview.loose span { margin-bottom: 5px; }
-
-.lines-preview span:last-child {
-    margin-bottom: 0;
-}
-
-/* Контроль выравнивания текста */
-.alignment-options {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-}
-
-.align-option {
-    width: 60px;
-    height: 44px;
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background: var(--color-button-bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.align-option.active,
-.align-option:hover {
-    border-color: #007aff;
-}
-
-.align-preview {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    width: 20px;
-}
-
-.align-preview span {
-    height: 1px;
-    background: var(--color-text-primary);
-}
-
-.align-preview.left span:first-child { width: 100%; }
-.align-preview.left span:last-child { width: 60%; }
-
-.align-preview.justify span { width: 100%; }
-
-.align-preview.center span {
-    width: 80%;
-    margin: 0 auto;
-}
-
-
-/* Зоны для жестового управления */
-.touch-interaction-zones {
-    position: absolute;
-    inset: 0;
-    display: none; /* отключаем перекрытие, чтобы не блокировать прокрутку */
-    grid-template-columns: 1fr 1fr 1fr;
-    z-index: 50;
-}
-
-.touch-zone {
-    background: transparent;
-    cursor: pointer;
-    pointer-events: all;
-    transition: background-color var(--transition-fast);
-}
-
-.touch-zone:active {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-/* Адаптивные стили для мобильных устройств */
-@media (max-width: 768px) {
-    :root {
-        --header-height: 52px;
-        --footer-height: 76px;
-        --panel-padding: 20px;
+
+    /**
+     * Привязывает DOM элементы
+     */
+    bindDOMElements() {
+        const elementSelectors = {
+            loadingOverlay: 'loadingOverlay',
+            loadingStatus: 'loadingStatus',
+            readerContainer: 'readerContainer',
+            topNavigation: 'topNavigation',
+            bottomControls: 'bottomControls',
+            readingProgress: 'readingProgress',
+            progressFill: 'progressFill',
+            readingViewport: 'readingViewport',
+            pageContent: 'pageContent',
+            currentProgress: 'currentProgress',
+            readingTime: 'readingTime',
+            prevButton: 'prevButton',
+            nextButton: 'nextButton',
+            settingsButton: 'settingsButton',
+            backButton: 'backButton',
+            leftTouchZone: 'leftTouchZone',
+            centerTouchZone: 'centerTouchZone',
+            rightTouchZone: 'rightTouchZone',
+            settingsDrawer: 'settingsDrawer',
+            settingsBackdrop: 'settingsBackdrop',
+            closeSettingsButton: 'closeSettingsButton',
+            brightnessSlider: 'brightnessSlider',
+            decreaseFontSize: 'decreaseFontSize',
+            increaseFontSize: 'increaseFontSize',
+        };
+
+        Object.entries(elementSelectors).forEach(([key, id]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                this.elements[key] = element;
+                console.log(`✅ Found element: ${id}`);
+            } else {
+                console.warn(`⚠️ Element not found: ${id}`);
+            }
+        });
+
+        console.log(`🔗 DOM elements bound: ${Object.keys(this.elements).length}`);
+    }
+
+    /**
+     * Асинхронная инициализация ридера
+     */
+    async init() {
+        try {
+            console.log('🚀 Initializing Yandex Books Reader...');
+            
+            this.updateLoadingStatus('Загрузка настроек...');
+            this.loadSettings();
+            
+            this.updateLoadingStatus('Загрузка текста книги...');
+            await this.loadBookFile();
+            
+            this.updateLoadingStatus('Создание страниц...');
+            this.createPages();
+            
+            this.updateLoadingStatus('Настройка интерфейса...');
+            this.setupEventHandlers();
+            this.loadProgress();
+            
+            this.renderCurrentPage();
+            this.hideLoading();
+            this.showUITemporarily();
+            
+            console.log('✅ Reader initialized successfully');
+            console.log(`📊 Total pages: ${this.state.totalPages}`);
+            
+        } catch (error) {
+            console.error('❌ Reader initialization failed:', error);
+            this.showError(`Ошибка инициализации: ${error.message}`);
+        }
+    }
+
+    /**
+     * Загружает файл книги
+     */
+    async loadBookFile() {
+        try {
+            console.log('📚 Loading Khadzhi-Girai.txt...');
+            
+            const response = await fetch('Khadzhi-Girai.txt');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: Файл не найден`);
+            }
+            
+            this.state.bookContent = await response.text();
+            
+            if (!this.state.bookContent.trim()) {
+                throw new Error('Файл книги пуст');
+            }
+            
+            console.log(`📚 Book loaded: ${this.state.bookContent.length} characters`);
+            
+        } catch (error) {
+            throw new Error(`Не удалось загрузить книгу: ${error.message}`);
+        }
+    }
+
+    /**
+     * Простой режим: одна длинная страница с прокруткой (без пагинации)
+     */
+    createPages() {
+        console.log('📄 Creating single scrollable page...');
+        const normalizedText = this.preprocessText(this.state.bookContent);
+        const paragraphs = normalizedText.split(/\n\s*\n/).filter(Boolean);
+        
+        const parts = [];
+        // Заголовок и автор
+        parts.push('<h1>Хаджи Гирай</h1>');
+        parts.push('<div class="author">Алим Мидат</div>');
+        
+        // Абзацы
+        for (const p of paragraphs) {
+            parts.push(`<p>${this.escapeHtml(p)}</p>`);
+        }
+        
+        const content = parts.join('\n');
+        this.state.pages = [{ id: 0, content, wordCount: this.countWords(normalizedText) }];
+        this.state.totalPages = 1;
+        this.state.currentPageIndex = 0;
+        console.log('✅ Single page created');
+    }
+
+    /** Строгий режим: выделение главных абзацев + точная подгонка без потерь */
+    createPagesStrict(words) {
+        console.log('📄 STRICT MODE: Creating pages with main paragraph detection...');
+        
+        const normalizedText = this.preprocessText(this.state.bookContent);
+        const paragraphs = this.splitIntoParagraphs(normalizedText);
+        const mainParagraphs = this.identifyMainParagraphs(paragraphs);
+        
+        console.log(`📊 Found ${paragraphs.length} paragraphs, ${mainParagraphs.length} main paragraphs`);
+        
+        const measureEl = this.createMeasureElement();
+        const maxHeight = this.getMaxContentHeight();
+        this.state.pages = [];
+        
+        let currentPageContent = '';
+        let currentPageWords = 0;
+        let pageNumber = 0;
+        
+        for (let i = 0; i < paragraphs.length; i++) {
+            const paragraph = paragraphs[i];
+            const isMain = mainParagraphs.includes(i);
+            const paragraphWords = paragraph.split(/\s+/).filter(Boolean);
+            
+            // Форматируем абзац с учетом его важности
+            const formattedParagraph = this.formatParagraph(paragraph, isMain, pageNumber === 0 && i === 0);
+            
+            // Проверяем, поместится ли абзац на текущую страницу
+            const testContent = currentPageContent + (currentPageContent ? '\n\n' : '') + formattedParagraph;
+            const testHtml = this.formatSimplePage(testContent, pageNumber === 0 ? 0 : currentPageWords);
+            measureEl.innerHTML = testHtml;
+            measureEl.offsetHeight;
+            
+            if (measureEl.scrollHeight <= maxHeight) {
+                // Абзац помещается на текущую страницу
+                currentPageContent = testContent;
+                currentPageWords += paragraphWords.length;
+            } else {
+                // Абзац не помещается, создаем новую страницу
+                if (currentPageContent.trim()) {
+            this.state.pages.push({
+                        id: pageNumber,
+                        content: this.formatSimplePage(currentPageContent, pageNumber === 0 ? 0 : currentPageWords - paragraphWords.length),
+                        wordCount: currentPageWords - paragraphWords.length
+                    });
+                    pageNumber++;
+                }
+                
+                // Пытаемся поместить абзац на новую страницу
+                currentPageContent = formattedParagraph;
+                currentPageWords = paragraphWords.length;
+                
+                // Если абзац слишком длинный, разбиваем его точно по словам
+                if (measureEl.scrollHeight > maxHeight) {
+                    const splitResult = this.splitLongParagraphStrict(paragraph, isMain, pageNumber === 0, measureEl, maxHeight);
+                    currentPageContent = splitResult.content;
+                    currentPageWords = splitResult.wordCount;
+                }
+            }
+        }
+        
+        // Добавляем последнюю страницу
+        if (currentPageContent.trim()) {
+            this.state.pages.push({
+                id: pageNumber,
+                content: this.formatSimplePage(currentPageContent, pageNumber === 0 ? 0 : currentPageWords),
+                wordCount: currentPageWords
+            });
+        }
+        
+        measureEl.remove();
+        this.state.totalPages = this.state.pages.length;
+        
+        // Строгая проверка целостности
+        const diff = this.validateTextIntegrity(normalizedText, normalizedText.split(/\s+/).filter(Boolean));
+        if (Math.abs(diff) > 0) {
+            console.warn(`⚠️ Paragraph mode integrity diff = ${diff}. Falling back to word-by-word mode...`);
+            this.createPagesWordByWord(words);
+        }
+        
+        console.log(`✅ STRICT PAGES CREATED: ${this.state.totalPages} pages total`);
+    }
+
+    /** Разбивает текст на абзацы */
+    splitIntoParagraphs(text) {
+        // Разделяем текст на абзацы по двойным переносам
+        return text
+            .split(/\n\n+/)
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
+    }
+
+    /** Выявляет главные абзацы по ключевым словам и длине */
+    identifyMainParagraphs(paragraphs) {
+        const mainParagraphs = [];
+        const mainKeywords = [
+            'хаджи', 'гирай', 'крым', 'хан', 'татар', 'история', 'биография',
+            'родился', 'умер', 'правил', 'государство', 'династия', 'основатель',
+            'бабам', 'мидат', 'къуртсеит', 'айдын', 'хатырасына', 'багъышлайым',
+            'лагъабы', 'эди', 'мелек', 'янъы', 'яратылгъан', 'эсернинъ', 'къараманы',
+            'муэллифи', 'акъкъында', 'тарихий', 'мевзугъа', 'сиясий', 'ичтимаий',
+            'кечмишимизде', 'из', 'къалдыргъан', 'инсанларгъа', 'бедиий', 'весикъалы',
+            'публицистик', 'эдебиятымызда', 'бошлукълар', 'мевджут', 'олгъаны'
+        ];
+        
+        for (let i = 0; i < paragraphs.length; i++) {
+            const paragraph = paragraphs[i].toLowerCase();
+            const wordCount = paragraph.split(/\s+/).length;
+            
+            // Главный абзац если:
+            // 1. Содержит ключевые слова
+            // 2. Имеет достаточную длину (не менее 15 слов)
+            // 3. Начинается с заглавной буквы (вероятно начало предложения)
+            const hasKeywords = mainKeywords.some(keyword => paragraph.includes(keyword));
+            const isLongEnough = wordCount >= 15;
+            const startsProperly = paragraphs[i].match(/^[А-ЯЁ]/);
+            
+            if ((hasKeywords || isLongEnough) && startsProperly) {
+                mainParagraphs.push(i);
+            }
+        }
+        
+        return mainParagraphs;
+    }
+
+    /** Форматирует абзац с учетом его важности */
+    formatParagraph(text, isMain, isFirst) {
+        const escapedText = this.escapeHtml(text);
+        
+        // Проверяем, является ли текст заголовком раздела
+        // Если текст написан заглавными буквами и достаточно короткий
+        const isSectionTitle = text.trim() === text.trim().toUpperCase() &&
+                              text.trim().length > 0 &&
+                              text.trim().length < 100 &&
+                              text.trim().split(/\\s+/).length <= 6 &&
+                              /[А-ЯЁ]|[A-Z]/.test(text);
+        
+        if (isFirst) {
+            return `<h1>Хаджи Гирай</h1><div class=\"author\">Алим Мидат</div><p class=\"${isMain ? 'main-paragraph' : ''}\">${escapedText}</p>`;
+        }
+        
+        // Если это заголовок раздела, используем h2
+        if (isSectionTitle) {
+            console.log(`📖 Заголовок: \"${text}\"`);
+            return `<h2>${escapedText}</h2>`;
+        }
+        
+        if (isMain) {
+            return `<p class=\"main-paragraph\">${escapedText}</p>`;
+        }
+        
+        return `<p>${escapedText}</p>`;
+    }
+
+    /** Разбивает длинный абзац точно по словам без потерь */
+    splitLongParagraphStrict(paragraph, isMain, isFirst, measureEl, maxHeight) {
+        const words = paragraph.split(/\s+/).filter(Boolean);
+        let best = 1;
+        
+        // Бинарный поиск максимального количества слов
+        let low = 1;
+        let high = words.length;
+        
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const sliceText = words.slice(0, mid).join(' ');
+            const formatted = this.formatParagraph(sliceText, isMain, isFirst);
+            const testHtml = this.formatSimplePage(formatted, 0);
+            measureEl.innerHTML = testHtml;
+            measureEl.offsetHeight;
+            
+            if (measureEl.scrollHeight <= maxHeight) {
+                best = mid;
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+        
+        // Точная доводка по одному слову
+        while (best < words.length) {
+            const testSlice = words.slice(0, best + 1).join(' ');
+            const testFormatted = this.formatParagraph(testSlice, isMain, isFirst);
+            const testHtml = this.formatSimplePage(testFormatted, 0);
+            measureEl.innerHTML = testHtml;
+            measureEl.offsetHeight;
+            
+            if (measureEl.scrollHeight <= maxHeight) {
+                best += 1;
+            } else {
+                break;
+            }
+        }
+        
+        const content = words.slice(0, best).join(' ');
+        return {
+            content: this.formatParagraph(content, isMain, isFirst),
+            wordCount: best
+        };
+    }
+
+    /** Последний резерв: слово за словом без потерь */
+    createPagesWordByWord(words) {
+        console.log('📄 WORD-BY-WORD MODE: Creating pages without any losses...');
+        
+        const measureEl = this.createMeasureElement();
+        const maxHeight = this.getMaxContentHeight();
+        this.state.pages = [];
+        let index = 0;
+        let pageNumber = 0;
+        
+        while (index < words.length) {
+            let wordCount = 1;
+            
+            // Добавляем слова по одному пока помещается
+            while (index + wordCount < words.length) {
+                const sliceText = words.slice(index, index + wordCount + 1).join(' ');
+                const html = this.formatSimplePage(sliceText, pageNumber === 0 ? 0 : index);
+                measureEl.innerHTML = html;
+                measureEl.offsetHeight;
+                
+                if (measureEl.scrollHeight <= maxHeight) {
+                    wordCount++;
+                } else {
+                    break;
+                }
+            }
+            
+            const pageText = words.slice(index, index + wordCount).join(' ');
+            const formatted = this.formatSimplePage(pageText, pageNumber === 0 ? 0 : index);
+            this.state.pages.push({ id: pageNumber, content: formatted, wordCount: wordCount });
+            
+            index += wordCount;
+            pageNumber += 1;
+            
+            if (wordCount === 0) {
+                console.error('❌ CRITICAL: No words fit, forcing single word');
+                this.state.pages.push({ 
+                    id: pageNumber, 
+                    content: this.formatSimplePage(words[index] || '', index), 
+                    wordCount: 1 
+                });
+                index += 1;
+                pageNumber += 1;
+            }
+        }
+        
+        measureEl.remove();
+        this.state.totalPages = this.state.pages.length;
+        
+        // Финальная проверка целостности
+        const diff = this.validateTextIntegrity(this.preprocessText(this.state.bookContent), words);
+        if (Math.abs(diff) > 0) {
+            console.error(`❌ CRITICAL: Word-by-word mode still has ${diff} word difference!`);
+        }
+        
+        console.log(`✅ WORD-BY-WORD PAGES CREATED: ${this.state.totalPages} pages total`);
+    }
+
+    /** Создает скрытый элемент для измерения высоты контента страницы */
+    createMeasureElement() {
+        const el = document.createElement('div');
+        el.style.position = 'absolute';
+        el.style.top = '-99999px';
+        el.style.left = '-99999px';
+        el.style.visibility = 'hidden';
+        el.style.pointerEvents = 'none';
+        el.style.zIndex = '-1';
+        el.style.width = '680px'; // Фиксированная ширина как у .page-content
+        el.style.maxWidth = '680px';
+
+        // Применяем все стили из .page-content
+        el.style.fontFamily = 'Charter, Georgia, "Times New Roman", serif';
+        el.style.fontSize = `${this.state.settings.fontSize}px`;
+        el.style.lineHeight = String(this.state.settings.lineHeight);
+        el.style.letterSpacing = '-0.01em';
+        el.style.textAlign = this.state.settings.textAlign;
+        el.style.hyphens = 'auto';
+        el.style.webkitHyphens = 'auto';
+        el.style.userSelect = 'text';
+        el.style.webkitUserSelect = 'text';
+        
+        // Важно: применяем все отступы и стили как у реального контента
+        el.style.padding = '0';
+        el.style.margin = '0';
+        el.style.border = 'none';
+        el.style.boxSizing = 'border-box';
+
+        // Фиксированная максимальная высота
+        el.style.maxHeight = `${this.getMaxContentHeight()}px`;
+        el.style.overflow = 'hidden';
+        
+        document.body.appendChild(el);
+        return el;
+    }
+
+    /** Возвращает расчетную максимальную высоту текстового блока внутри страницы */
+    getMaxContentHeight() {
+        // Берем фактическую высоту из текущего .page-content если доступен
+        const pageContent = this.elements.pageContent;
+        if (pageContent) {
+            const rect = pageContent.getBoundingClientRect();
+            // Если высота еще не задана (на ранней инициализации), вычислим по CSS calc
+            if (rect.height > 0) {
+                const safe = Math.max(0, Math.floor(rect.height - 4)); // небольшой безопасный отступ
+                console.log(`📏 Using actual page content height: ${rect.height}px -> safe ${safe}px`);
+                return safe;
+            }
+        }
+        
+        const computed = this.computePageContentCssHeight();
+        const safeComputed = Math.max(0, computed - 4);
+        console.log(`📏 Using computed height: ${computed}px -> safe ${safeComputed}px`);
+        return safeComputed;
+    }
+
+    computePageContentCssHeight() {
+        // Дублируем формулу из CSS с учетом safe-area
+        const vh = window.innerHeight;
+        const header = 56; // var(--header-height)
+        const footer = 80; // var(--footer-height)
+        const safeTop = 0; // для простоты
+        const safeBottom = 0;
+        const padding = 48; // 24px сверху + 24px снизу
+        
+        const height = Math.max(0, Math.floor(vh - header - footer - safeTop - safeBottom - padding));
+        console.log(`📏 Computed height: ${vh}vh - ${header}px(header) - ${footer}px(footer) - ${padding}px(padding) = ${height}px`);
+        return height;
+    }
+
+    /** Проверяет целостность текста после пагинации */
+    validateTextIntegrity(originalText, originalWords) {
+        let totalWordsInPages = 0;
+        let allPageText = '';
+        
+        for (const page of this.state.pages) {
+            // Извлекаем текст из HTML контента страницы
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = page.content;
+            const pageText = tempDiv.textContent || tempDiv.innerText || '';
+            const pageWords = pageText.split(/\s+/).filter(word => word.trim().length > 0);
+            
+            totalWordsInPages += pageWords.length;
+            allPageText += pageText + ' ';
+        }
+        
+        const originalWordCount = originalWords.length;
+        const pageWordCount = totalWordsInPages;
+        
+        console.log(`📊 Text integrity check:`);
+        console.log(`   Original words: ${originalWordCount}`);
+        console.log(`   Page words: ${pageWordCount}`);
+        const diff = originalWordCount - pageWordCount;
+        console.log(`   Difference: ${diff}`);
+        
+        if (Math.abs(diff) > 10) {
+            console.warn(`⚠️ WARNING: Significant word count difference detected!`);
+            console.warn(`   This might indicate lost text during pagination.`);
+        }
+        
+        // Проверяем, что первые и последние слова совпадают
+        if (originalWords.length > 0 && this.state.pages.length > 0) {
+            const firstPageText = this.state.pages[0].content;
+            const lastPageText = this.state.pages[this.state.pages.length - 1].content;
+            
+            const firstPageDiv = document.createElement('div');
+            firstPageDiv.innerHTML = firstPageText;
+            const firstPageWords = (firstPageDiv.textContent || '').split(/\s+/).filter(w => w.trim());
+            
+            const lastPageDiv = document.createElement('div');
+            lastPageDiv.innerHTML = lastPageText;
+            const lastPageWords = (lastPageDiv.textContent || '').split(/\s+/).filter(w => w.trim());
+            
+            if (firstPageWords.length > 0 && lastPageWords.length > 0) {
+                console.log(`📖 First page starts with: "${firstPageWords[0]}"`);
+                console.log(`📖 Last page ends with: "${lastPageWords[lastPageWords.length - 1]}"`);
+                console.log(`📖 Original starts with: "${originalWords[0]}"`);
+                console.log(`📖 Original ends with: "${originalWords[originalWords.length - 1]}"`);
+            }
+        }
+        
+        return diff;
+    }
+
+    /**
+     * Принудительное создание дополнительных страниц
+     */
+    createMorePages(text) {
+        console.log('🔧 Force creating more pages...');
+        
+        // Еще более мелкое разделение
+        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+        console.log(`📝 Found ${sentences.length} sentences`);
+        
+        this.state.pages = [];
+        const sentencesPerPage = Math.max(3, Math.floor(sentences.length / 50)); // Минимум 50 страниц
+        
+        for (let i = 0; i < sentences.length; i += sentencesPerPage) {
+            const pageSentences = sentences.slice(i, i + sentencesPerPage);
+            const pageText = pageSentences.join('. ').trim() + '.';
+            
+            this.state.pages.push({
+                id: this.state.pages.length,
+                content: `<p>${this.escapeHtml(pageText)}</p>`,
+                wordCount: this.countWords(pageText)
+            });
+        }
+        
+        this.state.totalPages = this.state.pages.length;
+        console.log(`✅ FORCE CREATED: ${this.state.totalPages} pages`);
+    }
+
+    /**
+     * Форматирует простую страницу
+     */
+    formatSimplePage(text, startIndex) {
+        // Добавляем заголовок только на первую страницу
+        if (startIndex === 0) {
+            return `
+                <h1>Хаджи Гирай</h1>
+                <div class="author">Алим Мидат</div>
+                <p>${this.escapeHtml(text)}</p>
+            `;
+        }
+        
+        return `<p>${this.escapeHtml(text)}</p>`;
+    }
+
+    /**
+     * Предварительно обрабатывает текст
+     */
+    preprocessText(text) {
+        return text
+            .replace(/\r\n/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/\s+/g, ' ') // Заменяем все пробелы на одинарные
+            .trim();
+    }
+
+    /**
+     * Подсчитывает количество слов в тексте
+     */
+    countWords(text) {
+        return text.split(/\s+/).filter(word => word.length > 0).length;
+    }
+
+    /**
+     * ИСПРАВЛЕННОЕ экранирование HTML-символов
+     */
+    escapeHtml(text) {
+        const escapeMap = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        };
+        
+        return text.replace(/[&<>"']/g, match => escapeMap[match]);
+    }
+
+    /**
+     * Настраивает обработчики событий
+     */
+    setupEventHandlers() {
+        console.log('🎮 Setting up event handlers...');
+        
+        this.bindNavigationEvents();
+        this.bindUIControlEvents();
+        this.bindSettingsEvents();
+        this.bindKeyboardEvents();
+        this.bindGestureEvents();
+        this.bindResizeEvents();
+        this.bindScrollProgressEvents();
+        console.log('✅ Event handlers set up');
+    }
+
+    /**
+     * Привязывает события навигации
+     */
+    bindNavigationEvents() {
+        // Кнопки навигации
+        if (this.elements.prevButton) {
+            this.elements.prevButton.addEventListener('click', () => {
+                console.log('🔄 Previous button clicked');
+                this.goToPreviousPage();
+            });
+        }
+        
+        if (this.elements.nextButton) {
+            this.elements.nextButton.addEventListener('click', () => {
+                console.log('🔄 Next button clicked');
+                this.goToNextPage();
+            });
+        }
+        
+        // Зоны касания
+        if (this.elements.leftTouchZone) {
+            this.elements.leftTouchZone.addEventListener('click', () => {
+                console.log('🔄 Left zone clicked');
+                this.goToPreviousPage();
+            });
+        }
+        
+        if (this.elements.rightTouchZone) {
+            this.elements.rightTouchZone.addEventListener('click', () => {
+                console.log('🔄 Right zone clicked');
+                this.goToNextPage();
+            });
+        }
+        
+        if (this.elements.centerTouchZone) {
+            this.elements.centerTouchZone.addEventListener('click', () => {
+                console.log('🔄 Center zone clicked');
+                this.toggleUI();
+            });
+        }
+    }
+
+    /**
+     * Привязывает события управления интерфейсом
+     */
+    bindUIControlEvents() {
+        if (this.elements.settingsButton) {
+            this.elements.settingsButton.addEventListener('click', () => this.openSettings());
+        }
+        
+        if (this.elements.backButton) {
+            this.elements.backButton.addEventListener('click', () => this.handleBackAction());
+        }
+    }
+
+    /**
+     * Привязывает события панели настроек
+     */
+    bindSettingsEvents() {
+        console.log('🎮 Binding settings events...');
+        
+        // Закрытие панели
+        if (this.elements.closeSettingsButton) {
+            this.elements.closeSettingsButton.addEventListener('click', (e) => {
+                console.log('🔄 Close settings clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeSettings();
+            });
+        }
+        
+        if (this.elements.settingsBackdrop) {
+            this.elements.settingsBackdrop.addEventListener('click', (e) => {
+                console.log('🔄 Settings backdrop clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeSettings();
+            });
+        }
+        
+        // Яркость
+        if (this.elements.brightnessSlider) {
+            this.elements.brightnessSlider.addEventListener('input', (event) => {
+                console.log('🔄 Brightness changed:', event.target.value);
+                this.updateBrightness(parseInt(event.target.value));
+            });
+        }
+        
+        // Размер шрифта
+        if (this.elements.decreaseFontSize) {
+            this.elements.decreaseFontSize.addEventListener('click', (e) => {
+                console.log('🔄 Decrease font size clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                this.adjustFontSize(-2);
+            });
+        }
+        
+        if (this.elements.increaseFontSize) {
+            this.elements.increaseFontSize.addEventListener('click', (e) => {
+                console.log('🔄 Increase font size clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                this.adjustFontSize(2);
+            });
+        }
+        
+        // Темы
+        document.querySelectorAll('.theme-option').forEach(button => {
+            button.addEventListener('click', (e) => {
+                console.log('🔄 Theme clicked:', button.dataset.theme);
+                e.preventDefault();
+                e.stopPropagation();
+                this.changeTheme(button.dataset.theme);
+            });
+        });
+        
+        // Межстрочный интервал
+        document.querySelectorAll('.spacing-option').forEach(button => {
+            button.addEventListener('click', (e) => {
+                console.log('🔄 Spacing clicked:', button.dataset.spacing);
+                e.preventDefault();
+                e.stopPropagation();
+                this.changeLineHeight(parseFloat(button.dataset.spacing));
+            });
+        });
+        
+        // Выравнивание текста
+        document.querySelectorAll('.align-option').forEach(button => {
+            button.addEventListener('click', (e) => {
+                console.log('🔄 Alignment clicked:', button.dataset.align);
+                e.preventDefault();
+                e.stopPropagation();
+                this.changeTextAlign(button.dataset.align);
+            });
+        });
+        
+        
+        console.log('✅ Settings events bound');
+    }
+
+    /** Привязывает события изменения размера окна для пересоздания страниц */
+    bindResizeEvents() {
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                this.recreatePagesForNewMetrics();
+            }, 150);
+        });
+    }
+
+    /**
+     * Привязывает клавиатурные события
+     */
+    bindKeyboardEvents() {
+        document.addEventListener('keydown', (event) => {
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            switch (event.key) {
+                case 'ArrowLeft':
+                case 'PageUp':
+                case 'h':
+                    event.preventDefault();
+                    console.log('⌨️ Keyboard: Previous page');
+                    this.goToPreviousPage();
+                    break;
+                    
+                case 'ArrowRight':
+                case 'PageDown':
+                case 'l':
+                case ' ':
+                    event.preventDefault();
+                    console.log('⌨️ Keyboard: Next page');
+                    this.goToNextPage();
+                    break;
+                    
+                case 'Home':
+                    event.preventDefault();
+                    this.goToPage(0);
+                    break;
+                    
+                case 'End':
+                    event.preventDefault();
+                    this.goToPage(this.state.totalPages - 1);
+                    break;
+            }
+        });
+    }
+
+    /**
+     * Привязывает жестовые события
+     */
+    bindGestureEvents() {
+        // Простая реализация свайпов и тап по центру для показа/скрытия меню
+        let touchStartX = 0;
+        let touchStartY = 0;
+        
+        if (this.elements.readingViewport) {
+            const vp = this.elements.readingViewport;
+            
+            vp.addEventListener('touchstart', (event) => {
+                touchStartX = event.touches[0].clientX;
+                touchStartY = event.touches[0].clientY;
+            }, { passive: true });
+            
+            vp.addEventListener('touchend', (event) => {
+                const touchEndX = event.changedTouches[0].clientX;
+                const touchEndY = event.changedTouches[0].clientY;
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                
+                // Горизонтальный свайп (только если несколько страниц)
+                if (this.state.totalPages > 1 && Math.abs(deltaX) > 50 && Math.abs(deltaY) < 30) {
+                    if (deltaX > 0) {
+                        this.goToPreviousPage();
+                    } else {
+                        this.goToNextPage();
+                    }
+                    return;
+                }
+                
+                // Тап по центру (в пределах средней трети ширины)
+                const rect = vp.getBoundingClientRect();
+                const x = event.changedTouches[0].clientX - rect.left;
+                const ratio = x / Math.max(1, rect.width);
+                if (ratio > 0.33 && ratio < 0.66 && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+                    this.toggleUI();
+                }
+            });
+            
+            // Поддержка клика мышью по центру
+            vp.addEventListener('click', (event) => {
+                // Игнорируем клики по ссылкам/выделениям
+                if ((event.target && (event.target.closest('a') || window.getSelection()?.toString()))){
+                    return;
+                }
+                const rect = vp.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const ratio = x / Math.max(1, rect.width);
+                if (ratio > 0.33 && ratio < 0.66) {
+                    this.toggleUI();
+                }
+            });
+        }
+    }
+
+    /**
+     * ИСПРАВЛЕННЫЙ рендеринг текущей страницы
+     */
+    renderCurrentPage() {
+        console.log(`📖 Rendering page ${this.state.currentPageIndex + 1}/${this.state.totalPages}`);
+        
+        const currentPage = this.state.pages[this.state.currentPageIndex];
+        
+        if (!currentPage) {
+            console.error('❌ No page to render at index:', this.state.currentPageIndex);
+            console.error('❌ Available pages:', this.state.pages.length);
+            return;
+        }
+        
+        if (!this.elements.pageContent) {
+            console.error('❌ pageContent element not found');
+            return;
+        }
+        
+        // Прямое обновление DOM
+        this.performDirectDOMUpdate(currentPage.content);
+        
+        // Обновление интерфейса
+        this.updateInterfaceState();
+        
+        // Сохранение прогресса
+        this.saveProgress();
+    }
+
+    /**
+     * Выполняет прямое обновление DOM
+     */
+    performDirectDOMUpdate(content) {
+        if (!this.elements.pageContent) return;
+        
+        this.elements.pageContent.style.opacity = '0.7';
+        
+        setTimeout(() => {
+            this.elements.pageContent.innerHTML = content;
+            this.applyTypographySettings();
+            
+            setTimeout(() => {
+                this.elements.pageContent.style.opacity = '1';
+            }, 50);
+        }, 100);
+    }
+
+    /**
+     * Обновляет состояние интерфейса
+     */
+    updateInterfaceState() {
+        if (this.state.totalPages === 1) {
+            // Прогресс по прокрутке
+            this.updateScrollProgressUI();
+            // Скрываем кнопки перелистывания
+            if (this.elements.prevButton) this.elements.prevButton.style.display = 'none';
+            if (this.elements.nextButton) this.elements.nextButton.style.display = 'none';
+            return;
+        }
+        
+        const currentIndex = this.state.currentPageIndex;
+        const totalPages = this.state.totalPages;
+        const progressPercentage = totalPages > 1 ? (currentIndex / (totalPages - 1)) * 100 : 0;
+        
+        if (this.elements.progressFill) {
+            this.elements.progressFill.style.width = `${progressPercentage}%`;
+        }
+        if (this.elements.currentProgress) {
+            this.elements.currentProgress.textContent = Math.round(progressPercentage).toString();
+        }
+        if (this.elements.readingTime) {
+            const remainingPages = totalPages - currentIndex - 1;
+            const estimatedMinutes = Math.ceil(remainingPages * 0.5);
+            this.elements.readingTime.textContent = `${estimatedMinutes} мин`;
+        }
+        if (this.elements.prevButton) {
+            this.elements.prevButton.disabled = currentIndex === 0;
+        }
+        if (this.elements.nextButton) {
+            this.elements.nextButton.disabled = currentIndex >= totalPages - 1;
+        }
+    }
+
+    /** Прогресс прокрутки */
+    bindScrollProgressEvents() {
+        if (!this.elements.readingViewport) return;
+        let rafId = null;
+        const onScroll = () => {
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+                this.updateScrollProgressUI();
+                rafId = null;
+            });
+        };
+        this.elements.readingViewport.addEventListener('scroll', onScroll, { passive: true });
+        // начальное обновление
+        this.updateScrollProgressUI();
+    }
+
+    updateScrollProgressUI() {
+        if (!this.elements.readingViewport) return;
+        const vp = this.elements.readingViewport;
+        const max = Math.max(1, vp.scrollHeight - vp.clientHeight);
+        const ratio = Math.min(1, Math.max(0, vp.scrollTop / max));
+        const pct = Math.round(ratio * 100);
+        if (this.elements.progressFill) this.elements.progressFill.style.width = `${pct}%`;
+        if (this.elements.currentProgress) this.elements.currentProgress.textContent = String(pct);
+        if (this.elements.readingTime) {
+            // Грубая оценка: 200 слов/мин
+            const totalWords = this.state.pages[0]?.wordCount || this.countWords(this.state.bookContent);
+            const remainingRatio = 1 - ratio;
+            const minutes = Math.max(1, Math.ceil((totalWords / 200) * remainingRatio));
+            this.elements.readingTime.textContent = `${minutes} мин`;
+        }
+    }
+    /**
+     * ИСПРАВЛЕННЫЕ методы навигации с подробным логированием
+     */
+    goToNextPage() {
+        console.log(`📖 NEXT: Current ${this.state.currentPageIndex}, Total: ${this.state.totalPages}`);
+        
+        if (this.state.currentPageIndex < this.state.totalPages - 1) {
+            this.state.currentPageIndex++;
+            this.renderCurrentPage();
+            console.log(`✅ Moved to page ${this.state.currentPageIndex + 1}/${this.state.totalPages}`);
+        } else {
+            console.log('🚫 Already at last page');
+        }
+    }
+
+    goToPreviousPage() {
+        console.log(`📖 PREV: Current ${this.state.currentPageIndex}, Total: ${this.state.totalPages}`);
+        
+        if (this.state.currentPageIndex > 0) {
+            this.state.currentPageIndex--;
+            this.renderCurrentPage();
+            console.log(`✅ Moved to page ${this.state.currentPageIndex + 1}/${this.state.totalPages}`);
+        } else {
+            console.log('🚫 Already at first page');
+        }
+    }
+
+    goToPage(pageIndex) {
+        const clampedIndex = Math.max(0, Math.min(pageIndex, this.state.totalPages - 1));
+        
+        if (clampedIndex !== this.state.currentPageIndex) {
+            this.state.currentPageIndex = clampedIndex;
+            this.renderCurrentPage();
+            console.log(`📖 Jumped to page: ${this.state.currentPageIndex + 1}/${this.state.totalPages}`);
+        }
+    }
+
+    /**
+     * Управление UI
+     */
+    toggleUI() {
+        if (this.state.isUIVisible) {
+            this.hideUI();
+        } else {
+            this.showUI();
+        }
+    }
+
+    showUI() {
+        this.state.isUIVisible = true;
+        
+        if (this.elements.topNavigation) {
+            this.elements.topNavigation.classList.add('visible');
+        }
+        if (this.elements.bottomControls) {
+            this.elements.bottomControls.classList.add('visible');
+        }
+        
+        console.log('👁️ UI shown');
+    }
+
+    hideUI() {
+        this.state.isUIVisible = false;
+        
+        if (this.elements.topNavigation) {
+            this.elements.topNavigation.classList.remove('visible');
+        }
+        if (this.elements.bottomControls) {
+            this.elements.bottomControls.classList.remove('visible');
+        }
+        
+        console.log('🙈 UI hidden');
+    }
+
+    showUITemporarily() {
+        this.showUI();
+        
+        setTimeout(() => {
+            if (!this.state.isSettingsOpen) {
+                this.hideUI();
+            }
+        }, 3000);
+    }
+
+    /**
+ * ИСПРАВЛЕННЫЙ метод открытия настроек
+ */
+openSettings() {
+    console.log('⚙️ Settings opened');
+    
+    this.state.isSettingsOpen = true;
+    
+        // Показываем существующую панель настроек
+    if (this.elements.settingsDrawer) {
+        this.elements.settingsDrawer.classList.add('visible');
+        console.log('✅ Settings panel shown');
+    } else {
+            console.error('❌ settingsDrawer element not found in DOM');
+            return;
     }
     
-    .page-wrapper {
-        padding: 20px 16px;
-    }
+    // Показываем UI
+    this.showUI();
     
-    .page-content {
-        font-size: 16px;
-        max-height: calc(100vh - 52px - 76px - var(--safe-area-top) - var(--safe-area-bottom) - 40px);
-    }
-    
-    .book-title {
-        font-size: 16px;
-    }
-    
-    .theme-options {
-        gap: 8px;
-    }
-    
-    .theme-preview {
-        width: 36px;
-        height: 36px;
-    }
-}
-
-@media (max-width: 480px) {
-    .page-wrapper {
-        padding: 16px 12px;
-    }
-    
-    .page-content {
-        font-size: 15px;
-        max-height: calc(100vh - 52px - 76px - var(--safe-area-top) - var(--safe-area-bottom) - 32px);
-    }
-    
-    .settings-content {
-        padding: 20px;
-    }
+    // Обновляем состояние настроек
+    this.updateSettingsInterface();
 }
 
 
-/* Улучшения для фокуса и доступности */
-button:focus-visible,
-input:focus-visible {
-    outline: 2px solid #007aff;
-    outline-offset: 2px;
-}
 
-/* Анимация появления интерфейса */
-.reader-container.ready .top-navigation,
-.reader-container.ready .bottom-controls {
-    animation: slideInInterface 0.5s ease-out;
-}
 
-@keyframes slideInInterface {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
+    /**
+    * Закрытие настроек
+    */
+    closeSettings() {
+        console.log('⚙️ Settings closed');
+        
+        this.state.isSettingsOpen = false;
+        
+        if (this.elements.settingsDrawer) {
+            this.elements.settingsDrawer.classList.remove('visible');
+        }
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+
+    /**
+     * Обновление интерфейса настроек
+     */
+    updateSettingsInterface() {
+        console.log('🔄 Updating settings interface');
+        
+        // Обновляем яркость
+        if (this.elements.brightnessSlider) {
+            this.elements.brightnessSlider.value = this.state.settings.brightness;
+        }
+        
+        // Обновляем активную тему
+        document.querySelectorAll('.theme-option').forEach(option => {
+            option.classList.toggle('active', option.dataset.theme === this.state.settings.theme);
+        });
+        
+        // Обновляем активный межстрочный интервал
+        document.querySelectorAll('.spacing-option').forEach(btn => {
+            const spacing = parseFloat(btn.dataset.spacing);
+            btn.classList.toggle('active', Math.abs(spacing - this.state.settings.lineHeight) < 0.1);
+        });
+        
+        // Обновляем активное выравнивание
+        document.querySelectorAll('.align-option').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.align === this.state.settings.textAlign);
+        });
+        
     }
-}
+
+
+        handleBackAction() {
+            console.log('⬅️ Back action');
+        }
+
+        /**
+         * Применяет настройки типографики
+         */
+        applyTypographySettings() {
+            if (!this.elements.pageContent) return;
+            
+            const { fontSize, lineHeight, textAlign } = this.state.settings;
+            
+            this.elements.pageContent.style.fontSize = `${fontSize}px`;
+            this.elements.pageContent.style.lineHeight = lineHeight.toString();
+            this.elements.pageContent.style.textAlign = textAlign;
+        }
+
+        /**
+         * Работа с настройками и прогрессом (заглушки)
+         */
+        saveSettings() {
+            try {
+                localStorage.setItem(`${this.storageKey}-settings`, JSON.stringify(this.state.settings));
+            } catch (error) {
+                console.warn('⚠️ Failed to save settings:', error);
+            }
+        }
+
+        loadSettings() {
+            try {
+                const savedSettings = localStorage.getItem(`${this.storageKey}-settings`);
+                if (savedSettings) {
+                    Object.assign(this.state.settings, JSON.parse(savedSettings));
+                }
+            } catch (error) {
+                console.warn('⚠️ Failed to load settings:', error);
+            }
+            this.applySettings();
+        }
+
+        applySettings() {
+            document.body.setAttribute('data-theme', this.state.settings.theme);
+            this.applyTypographySettings();
+        }
+
+        saveProgress() {
+            try {
+                const progressData = {
+                    pageIndex: this.state.currentPageIndex,
+                    totalPages: this.state.totalPages,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(`${this.storageKey}-progress`, JSON.stringify(progressData));
+            } catch (error) {
+                console.warn('⚠️ Failed to save progress:', error);
+            }
+        }
+
+        loadProgress() {
+            try {
+                const savedProgress = localStorage.getItem(`${this.storageKey}-progress`);
+                if (savedProgress) {
+                    const progressData = JSON.parse(savedProgress);
+                    if (progressData.pageIndex < this.state.totalPages) {
+                        this.state.currentPageIndex = progressData.pageIndex;
+                        console.log(`📖 Progress restored: page ${progressData.pageIndex + 1}`);
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Failed to load progress:', error);
+            }
+        }
+
+        /**
+        * Утилиты загрузки
+        */
+        updateLoadingStatus(message) {
+            if (this.elements.loadingStatus) {
+                this.elements.loadingStatus.textContent = message;
+            }
+            console.log(`🔄 ${message}`);
+        }
+
+        hideLoading() {
+            if (this.elements.loadingOverlay) {
+                this.elements.loadingOverlay.classList.add('hidden');
+            }
+            
+            if (this.elements.readerContainer) {
+                this.elements.readerContainer.style.display = 'flex';
+                this.elements.readerContainer.classList.add('ready');
+            }
+            
+            setTimeout(() => {
+                if (this.elements.loadingOverlay) {
+                    this.elements.loadingOverlay.style.display = 'none';
+                }
+            }, 500);
+        }
+
+        showError(message) {
+            this.updateLoadingStatus(message);
+            console.error(`❌ ${message}`);
+            
+            const spinner = document.querySelector('.loading-spinner');
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+        }
+
+    /**
+     * Методы для работы настроек
+     */
+    updateBrightness(brightness) {
+        this.state.settings.brightness = brightness;
+        document.documentElement.style.filter = `brightness(${brightness}%)`;
+        this.saveSettings();
+        console.log(`🔆 Brightness: ${brightness}%`);
+    }
+
+    adjustFontSize(delta) {
+        const newSize = Math.max(14, Math.min(24, this.state.settings.fontSize + delta));
+        if (newSize !== this.state.settings.fontSize) {
+            this.state.settings.fontSize = newSize;
+            this.applyTypographySettings();
+            this.saveSettings();
+                this.recreatePagesForNewMetrics();
+            console.log(`📏 Font size: ${newSize}px`);
+        }
+    }
+
+    changeTheme(themeName) {
+        this.state.settings.theme = themeName;
+        document.body.setAttribute('data-theme', themeName);
+        this.saveSettings();
+        
+        // Обновляем активную тему
+        document.querySelectorAll('.theme-option').forEach(option => {
+            option.classList.toggle('active', option.dataset.theme === themeName);
+        });
+        
+        console.log(`🎨 Theme: ${themeName}`);
+    }
+
+    changeLineHeight(lineHeight) {
+        this.state.settings.lineHeight = lineHeight;
+        this.applyTypographySettings();
+        this.saveSettings();
+        
+        // Обновляем активную кнопку
+            document.querySelectorAll('.spacing-option').forEach(btn => {
+            const spacing = parseFloat(btn.dataset.spacing);
+            btn.classList.toggle('active', Math.abs(spacing - lineHeight) < 0.1);
+        });
+        
+            this.recreatePagesForNewMetrics();
+        console.log(`📐 Line height: ${lineHeight}`);
+        }
+
+        changeTextAlign(alignment) {
+            this.state.settings.textAlign = alignment;
+            this.applyTypographySettings();
+            this.saveSettings();
+            
+            // Обновляем активную кнопку
+            document.querySelectorAll('.align-option').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.align === alignment);
+            });
+            
+            this.recreatePagesForNewMetrics();
+            console.log(`📐 Text alignment: ${alignment}`);
+        }
+
+/** Пересоздание страниц при изменении шрифта/интервала/ширины */
+    recreatePagesForNewMetrics() {
+        const progressRatio = this.state.totalPages > 1 ? this.state.currentPageIndex / (this.state.totalPages - 1) : 0;
+        this.createPages();
+        // Восстанавливаем близкую позицию чтения
+        const newIndex = Math.round(progressRatio * (this.state.totalPages - 1));
+        this.state.currentPageIndex = Math.max(0, Math.min(newIndex, this.state.totalPages - 1));
+        this.renderCurrentPage();
+    }
+
+    }
+
+/**
+ * Инициализация приложения
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🏁 DOM loaded, initializing reader...');
+    
+    try {
+        window.yandexBooksReader = new YandexBooksReader();
+    } catch (error) {
+        console.error('💥 Critical initialization error:', error);
+        
+        document.body.innerHTML = `
+            <div style="
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                height: 100vh; 
+                background: #000; 
+                color: #fff; 
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+                text-align: center;
+                padding: 20px;
+            ">
+                <div>
+                    <h1 style="font-size: 24px; margin-bottom: 16px;">Ошибка инициализации</h1>
+                    <p style="margin-bottom: 24px; opacity: 0.8;">${error.message}</p>
+                    <button 
+                        onclick="location.reload()" 
+                        style="
+                            padding: 12px 24px; 
+                            background: #007aff; 
+                            color: white; 
+                            border: none; 
+                            border-radius: 8px; 
+                            cursor: pointer; 
+                            font-size: 16px;
+                        "
+                    >
+                        Перезагрузить
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+});
