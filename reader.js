@@ -147,13 +147,18 @@ class YandexBooksReader {
         parts.push('<div class="author">Алим Мидат</div>');
         
         // Абзацы с определением заголовков глав
+        let headingCount = 0;
         for (const p of paragraphs) {
-            if (this.isChapterHeading(p)) {
+            const isHeading = this.isChapterHeading(p);
+            if (isHeading) {
                 parts.push(`<h2 class="chapter-heading">${this.escapeHtml(p)}</h2>`);
+                headingCount++;
+                console.log(`✅ Found chapter heading: "${p.substring(0, 50)}..."`);
             } else {
                 parts.push(`<p class="paragraph">${this.escapeHtml(p)}</p>`);
             }
         }
+        console.log(`📊 Total headings found: ${headingCount}`);
         
         const content = parts.join('\n');
         this.state.pages = [{ id: 0, content, wordCount: this.countWords(normalizedText) }];
@@ -165,26 +170,56 @@ class YandexBooksReader {
     /** Проверяет, является ли текст заголовком главы */
     isChapterHeading(text) {
         const trimmed = text.trim();
+        if (!trimmed) return false;
         
-        // Заголовок главы если:
-        // 1. Короткий (до 50 символов)
-        // 2. Начинается с заглавной буквы
-        // 3. Содержит ключевые слова заголовков
+        // Нормализация: убираем лишние пробелы и приводим к единому виду
+        const normalize = (str) => str.toLowerCase().replace(/\s+/g, ' ').trim();
+        
+        // Список заголовков глав (точные совпадения)
         const chapterKeywords = [
             'Мукъаддеме', 'баб', 'КЪЫСЫМ', 'Бабам – Мидат Къуртсеитнинъ айдын хатырасына багъышлайым…', 'Онынъ лагъабы эди Мелек…',
             'Янъы яратылгъан эсернинъ къараманы ве муэллифи акъкъында бир къач сез', 'Хаджи́ I Гира́й (Меле́к) (тахминен 1397 – 1466 сс.) – Къырым ханлыгъы ве Гирай сюлялесининъ эсасчысы.', 'Юкъарыда тасвир этильген адиседен бир кунь эвель:', 'предисловие',
             'эпилог', 'заключение', 'үзек', 'кыскача'
         ];
         
+        const normalizedText = normalize(trimmed);
+        
+        // Проверка 1: Точное совпадение (нормализованное)
+        const exactMatch = chapterKeywords.some(keyword => {
+            const normalizedKeyword = normalize(keyword);
+            
+            // Точное совпадение после нормализации
+            if (normalizedText === normalizedKeyword) {
+                console.log(`🎯 Exact match: "${trimmed.substring(0, 50)}..." === "${keyword.substring(0, 50)}..."`);
+                return true;
+            }
+            
+            // Текст начинается с ключевого слова (нормализованного)
+            if (normalizedText.startsWith(normalizedKeyword)) {
+                console.log(`🎯 Starts with: "${trimmed.substring(0, 50)}..." starts with "${keyword.substring(0, 30)}..."`);
+                return true;
+            }
+            
+            // Ключевое слово содержится в тексте (для длинных заголовков >10 символов)
+            if (normalizedKeyword.length > 10 && normalizedText.includes(normalizedKeyword)) {
+                console.log(`🎯 Contains: "${trimmed.substring(0, 50)}..." contains "${keyword.substring(0, 30)}..."`);
+                return true;
+            }
+            
+            return false;
+        });
+        
+        if (exactMatch) {
+            return true; // Если есть точное совпадение - это заголовок главы
+        }
+        
+        // Проверка 2: Общие критерии для других случаев
         const isShort = trimmed.length <= 50;
         const startsWithCapital = /^[А-ЯЁA-Z]/.test(trimmed);
-        const hasKeywords = chapterKeywords.some(keyword => 
-            trimmed.toLowerCase().includes(keyword)
-        );
         const isAllCaps = trimmed === trimmed.toUpperCase() && trimmed.length <= 30;
         const isNumbered = /^[IVXLCDM\d]+[\.)]/.test(trimmed) || /^Глава\s+\d+/i.test(trimmed);
         
-        return isShort && startsWithCapital && (hasKeywords || isAllCaps || isNumbered);
+        return isShort && startsWithCapital && (isAllCaps || isNumbered);
     }
 
     /** Строгий режим: выделение главных абзацев + точная подгонка без потерь */
