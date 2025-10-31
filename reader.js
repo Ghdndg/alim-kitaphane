@@ -146,14 +146,17 @@ class YandexBooksReader {
         parts.push('<h1>Хаджи Гирай</h1>');
         parts.push('<div class="author">Алим Мидат</div>');
         
-        // Абзацы
+        // Абзацы с определением заголовков глав
         for (const p of paragraphs) {
-            const block = p.trim();
-            if (this.isLikelyChapterTitle(block)) {
-                parts.push(`<h2>${this.escapeHtml(block)}</h2>`);
-                continue;
+            const trimmed = p.trim();
+            
+            // Определяем заголовок главы (короткий текст, весь заглавными или начинается с большой)
+            if (this.isChapterHeading(trimmed)) {
+                parts.push(`<h2 class="chapter-heading">${this.escapeHtml(trimmed)}</h2>`);
+            } else {
+                // Обычный абзац с отступом
+                parts.push(`<p class="paragraph">${this.escapeHtml(trimmed)}</p>`);
             }
-            parts.push(`<p>${this.escapeHtml(block)}</p>`);
         }
         
         const content = parts.join('\n');
@@ -164,21 +167,26 @@ class YandexBooksReader {
     }
 
     /**
-     * Эвристика: определяем, что блок похож на заголовок главы
-     * - начинается с "Глава"/"Часть"/"Раздел" (на кириллице)
-     * - или короткая строка без точек/восклицательных/вопросительных знаков
-     * - или римские/арабские номера
+     * Определяет, является ли текст заголовком главы
      */
-    isLikelyChapterTitle(text) {
-        const t = text.trim();
-        if (!t) return false;
-        // явные ключевые слова
-        if (/^(Глава|Часть|Раздел|Бөлүм|Бөлюм|Къысым)\b/i.test(t)) return true;
-        // Римские цифры или арабские номера
-        if (/^(?:[IVXLCDM]+|\d{1,3})(?:\.|\)|\s|$)/i.test(t) && t.length <= 20) return true;
-        // Короткий титул без завершающей пунктуации
-        if (t.length <= 60 && !/[.!?…]$/.test(t) && /^[A-Za-zА-Яа-яЁё0-9\-–:,\s]+$/.test(t)) return true;
-        return false;
+    isChapterHeading(text) {
+        if (!text || text.length === 0) return false;
+        
+        // Короткие строки (до 50 символов)
+        const isShort = text.length <= 50;
+        
+        // Весь текст заглавными буквами или начинается с большой буквы
+        const isUpperCase = text === text.toUpperCase() && text !== text.toLowerCase();
+        const startsWithCapital = /^[А-ЯЁ]/.test(text);
+        
+        // Нет знаков препинания в середине (кроме тире и пробелов)
+        const hasFewPunctuation = (text.match(/[.!?]/g) || []).length <= 1;
+        
+        // Частые маркеры глав
+        const chapterMarkers = ['баб', 'глава', 'къысым', 'часть', 'раздел', 'къысым'];
+        const hasChapterMarker = chapterMarkers.some(marker => text.toLowerCase().includes(marker));
+        
+        return (isShort && (isUpperCase || startsWithCapital) && hasFewPunctuation) || hasChapterMarker;
     }
 
     /** Строгий режим: выделение главных абзацев + точная подгонка без потерь */
