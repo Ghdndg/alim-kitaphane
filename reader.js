@@ -1,762 +1,959 @@
-/**
- * Профессиональный ридер в стиле Яндекс.Книг
- * Исправленная пагинация без потерь текста
- */
-class YandexBooksReader {
-  constructor() {
-    // Состояние ридера
-    this.state = {
-      bookContent: '',
-      pages: [],
-      currentPageIndex: 0,
-      totalPages: 0,
-      isUIVisible: false,
-      isSettingsOpen: false,
-      settings: {
-        theme: 'dark',
-        fontSize: 18,
-        lineHeight: 1.6,
-        textAlign: 'justify',
-        brightness: 100,
-      }
-    };
-
-    this.elements = {};
-    this.wordsPerPage = 200; // УМЕНЬШИЛИ для гарантированного создания страниц
-    this.storageKey = 'yandex-books-reader';
-
-    // Запуск инициализации
-    this.bindDOMElements();
-    this.init();
-  }
-
-  /** Привязывает DOM элементы */
-  bindDOMElements() {
-    const elementSelectors = {
-      loadingOverlay: 'loadingOverlay',
-      loadingStatus: 'loadingStatus',
-      readerContainer: 'readerContainer',
-      topNavigation: 'topNavigation',
-      bottomControls: 'bottomControls',
-      readingProgress: 'readingProgress',
-      progressFill: 'progressFill',
-      readingViewport: 'readingViewport',
-      pageContent: 'pageContent',
-      currentProgress: 'currentProgress',
-      readProgressText: 'readProgressText',
-      currentPageIndicator: 'currentPageIndicator',
-      totalPagesIndicator: 'totalPagesIndicator',
-      settingsButton: 'settingsButton',
-      themeToggle: 'themeToggle',
-      fontSizeControl: 'fontSizeControl',
-      lineHeightControl: 'lineHeightControl',
-      textAlignControl: 'textAlignControl',
-      brightnessControl: 'brightnessControl',
-      settingsPanel: 'settingsPanel',
-      settingsClose: 'settingsClose',
-      bookTitle: 'bookTitle',
-      chapterSelector: 'chapterSelector',
-      pageJumpInput: 'pageJumpInput',
-      jumpToPageButton: 'jumpToPageButton',
-      prevPageButton: 'prevPageButton',
-      nextPageButton: 'nextPageButton',
-      menuButton: 'menuButton',
-      closeMenuButton: 'closeMenuButton',
-      menuOverlay: 'menuOverlay',
-      searchInput: 'searchInput',
-      searchButton: 'searchButton',
-      searchResults: 'searchResults',
-      clearSearchButton: 'clearSearchButton',
-      bookmarkButton: 'bookmarkButton',
-      bookmarksPanel: 'bookmarksPanel',
-      bookmarksList: 'bookmarksList',
-      addBookmarkButton: 'addBookmarkButton',
-      closeBookmarksButton: 'closeBookmarksButton',
-    };
-
-    // Привязка элементов
-    Object.entries(elementSelectors).forEach(([key, selector]) => {
-      this.elements[key] = document.getElementById(selector);
-    });
-
-    // Проверяем наличие всех обязательных элементов
-    const requiredElements = [
-      'readerContainer', 'pageContent', 'currentPageIndicator',
-      'totalPagesIndicator', 'prevPageButton', 'nextPageButton',
-      'readingProgress', 'progressFill', 'loadingOverlay'
-    ];
-
-    const missingElements = requiredElements.filter(id => !this.elements[id]);
-    if (missingElements.length > 0) {
-      console.error('Отсутствуют обязательные DOM элементы:', missingElements);
-      this.showError('Ошибка загрузки интерфейса');
-      return;
-    }
-  }
-
-  /** Инициализация ридера */
-  async init() {
-    try {
-      this.loadSettings();
-      this.applyTheme();
-      this.updateBrightness();
-
-      // Загружаем книгу из txt файла
-      await this.loadBook();
-      
-      // Создаём страницы с пагинацией
-      this.createPages();
-      
-      // Восстанавливаем позицию чтения
-      this.restoreReadingPosition();
-      
-      // Отображаем первую страницу
-      this.renderCurrentPage();
-      
-      // Инициализируем обработчики событий
-      this.bindEvents();
-      
-      // Скрываем загрузку
-      this.hideLoading();
-      
-      console.log(`Ридер инициализирован. Загружено страниц: ${this.state.totalPages}`);
-    } catch (error) {
-      console.error('Ошибка инициализации:', error);
-      this.showError('Ошибка загрузки книги');
-    }
-  }
-
-  /** Загрузка книги из txt файла */
-  async loadBook() {
-    const bookFile = 'Khadzhi-Girai.txt'; // Имя файла книги
+/* Основные CSS переменные для тем */
+:root {
+    /* Цветовые палитры тем */
+    --theme-sepia-bg: #f7f0e6;
+    --theme-sepia-text: #5d4e37;
+    --theme-sepia-secondary: rgba(93, 78, 55, 0.6);
+    --theme-sepia-border: rgba(93, 78, 55, 0.2);
+    --theme-sepia-panel: rgba(247, 240, 230, 0.95);
     
-    try {
-      this.elements.loadingStatus.textContent = 'Загрузка книги...';
-      
-      // Предобработка текста для корректной работы
-      this.state.bookContent = await this.fetchBookContent(bookFile);
-      this.state.bookContent = this.preprocessText(this.state.bookContent);
-      
-      this.elements.bookTitle.textContent = 'Хаджи Гирей'; // Название книги
-      
-      console.log(`Книга загружена. Символов: ${this.state.bookContent.length}`);
-    } catch (error) {
-      console.error('Ошибка загрузки книги:', error);
-      throw new Error(`Не удалось загрузить книгу: ${error.message}`);
-    }
-  }
-
-  /** Получение содержимого книги */
-  async fetchBookContent(filename) {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', filename, true);
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
-            resolve(xhr.responseText);
-          } else {
-            reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
-          }
-        }
-      };
-      xhr.onerror = () => reject(new Error('Сетевая ошибка'));
-      xhr.send();
-    });
-  }
-
-  /** Предобработка текста */
-  preprocessText(text) {
-    return text
-      .replace(/\r\n/g, '\n') // Нормализуем переносы строк
-      .replace(/\n{3,}/g, '\n\n') // Ограничиваем множественные переносы
-      .replace(/\s+/g, ' ') // Убираем лишние пробелы
-      .trim();
-  }
-
-  /** Разбиение текста на абзацы */
-  splitIntoParagraphs(text) {
-    // Разбиваем по двойным переносам строк, но сохраняем одиночные как часть абзаца
-    return text.split(/\n\s*\n/).map(para => para.trim()).filter(para => para.length > 0);
-  }
-
-  /** Детектирует заголовки глав/разделов */
-  isTitle(paragraph) {
-    const trimmed = paragraph.trim();
-    const length = trimmed.length;
-    const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+    --theme-gray-bg: #f5f5f5;
+    --theme-gray-text: #2c2c2c;
+    --theme-gray-secondary: rgba(44, 44, 44, 0.6);
+    --theme-gray-border: rgba(44, 44, 44, 0.2);
+    --theme-gray-panel: rgba(245, 245, 245, 0.95);
     
-    // Короткий абзац (возможный заголовок)
-    if (length < 60 && wordCount <= 8) {
-      // Начинается с заглавной или цифры/римской цифры
-      if (/^[А-ЯЁ0-9IVX]+/.test(trimmed)) {
-        return true;
-      }
-      // Содержит ключевые слова (адаптировано под книгу)
-      const titleKeywords = ['Хаджи', 'Гирей', 'Хан', 'Государство', 'Династия', '1441', '1427', '1431', 'Hac Geray'];
-      if (titleKeywords.some(keyword => trimmed.toLowerCase().includes(keyword.toLowerCase()))) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /** Форматирует абзац или заголовок в HTML */
-  formatParagraphHtml(paragraph, isMain, isFirst) {
-    const trimmed = paragraph.trim();
-    let tag = 'p'; // По умолчанию абзац
-    let className = '';
+    --theme-dark-bg: #000000;
+    --theme-dark-text: #ffffff;
+    --theme-dark-secondary: rgba(255, 255, 255, 0.6);
+    --theme-dark-border: rgba(255, 255, 255, 0.1);
+    --theme-dark-panel: rgba(20, 20, 20, 0.95);
     
-    if (this.isTitle(trimmed)) {
-      tag = 'h2'; // Заголовок
-      className = 'chapter-title';
-    } else if (isMain) {
-      className = 'main-paragraph';
-    }
+    /* Активная цветовая схема (по умолчанию тёмная) */
+    --color-bg-primary: var(--theme-dark-bg);
+    --color-text-primary: var(--theme-dark-text);
+    --color-text-secondary: var(--theme-dark-secondary);
+    --color-border: var(--theme-dark-border);
+    --color-panel-bg: var(--theme-dark-panel);
+    --color-button-bg: rgba(255, 255, 255, 0.1);
     
-    const escaped = this.escapeHtml(trimmed);
-    const html = `<${tag} class="${className}">${escaped}</${tag}>`;
+    /* Типографические переменные */
+    --font-ui: 'SF Pro Text', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-reading: 'Charter', Georgia, 'Times New Roman', serif;
+    --font-size-base: 18px;
+    --line-height-base: 1.6;
+    --letter-spacing: -0.01em;
     
-    // Для первого абзаца после заголовка убираем отступ (CSS обработает)
-    if (isFirst) {
-      return html;
-    }
+    /* Размеры интерфейса */
+    --header-height: 56px;
+    --footer-height: 80px;
+    --panel-padding: 24px;
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
     
-    return html;
-  }
-
-  /** Экранирование HTML */
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  /** Создание страниц с строгой пагинацией (без потерь текста) */
-  createPages() {
-    const paragraphs = this.splitIntoParagraphs(this.state.bookContent);
-    let pages = [];
-    let pageNumber = 0;
-    let remainingParagraphs = [...paragraphs];
-
-    while (remainingParagraphs.length > 0 && pageNumber < 1000) { // Ограничение для безопасности
-      const pageResult = this.createSinglePage(remainingParagraphs, pageNumber);
-      if (!pageResult || pageResult.content.trim().length === 0) {
-        console.warn(`Не удалось создать страницу ${pageNumber}`);
-        break;
-      }
-      
-      pages.push(pageResult);
-      remainingParagraphs = pageResult.remainingParagraphs;
-      pageNumber++;
-    }
-
-    this.state.pages = pages;
-    this.state.totalPages = pages.length;
-    this.state.currentPageIndex = 0;
-
-    // Обновляем индикаторы
-    this.updatePageIndicators();
-
-    console.log(`Создано страниц: ${this.state.totalPages}`);
-  }
-
-  /** Создание одной страницы */
-  createSinglePage(paragraphs, pageNumber) {
-    if (paragraphs.length === 0) return null;
-
-    // Создаём тестовый элемент для измерения высоты
-    const measureEl = document.createElement('div');
-    measureEl.className = 'page-content measure-temp';
-    measureEl.style.cssText = `
-      position: absolute; visibility: hidden; 
-      font-size: ${this.state.settings.fontSize}px;
-      line-height: ${this.state.settings.lineHeight};
-      width: ${this.getViewportWidth()}px;
-      padding: 20px;
-      box-sizing: border-box;
-    `;
-    document.body.appendChild(measureEl);
-
-    let currentPageContent = '';
-    let wordCount = 0;
-    let usedParagraphs = 0;
-    let isFirstPage = pageNumber === 0;
-    let isFirstParagraph = true;
-
-    // Пытаемся добавить абзацы целиком
-    for (let i = 0; i < paragraphs.length; i++) {
-      const paragraph = paragraphs[i];
-      if (!paragraph || paragraph.trim().length === 0) continue;
-
-      const formattedParagraph = this.formatParagraphHtml(paragraph, true, isFirstParagraph);
-      
-      // Тестируем добавление абзаца
-      const testContent = currentPageContent + (currentPageContent ? '' : '') + formattedParagraph;
-      measureEl.innerHTML = testContent;
-      
-      const testHeight = measureEl.scrollHeight;
-      const maxHeight = this.getMaxPageHeight();
-
-      if (testHeight <= maxHeight) {
-        // Абзац помещается целиком
-        currentPageContent = testContent;
-        wordCount += this.countWords(paragraph);
-        usedParagraphs++;
-        isFirstParagraph = false;
-      } else {
-        // Абзац не помещается - если это первый абзац, разбиваем его
-        if (usedParagraphs === 0) {
-          const splitResult = this.splitLongParagraphStrict(paragraph, pageNumber);
-          if (splitResult) {
-            currentPageContent = splitResult.html;
-            wordCount += splitResult.wordCount;
-            usedParagraphs = 1; // Считаем как один (разбитый)
-          }
-        }
-        // Если всё равно не помещается или это не первый - останавливаемся
-        break;
-      }
-    }
-
-    // Удаляем тестовый элемент
-    document.body.removeChild(measureEl);
-
-    if (currentPageContent.trim().length === 0) {
-      console.warn('Пустая страница создана');
-      return null;
-    }
-
-    return {
-      id: pageNumber,
-      content: this.formatSimplePage(currentPageContent, pageNumber),
-      wordCount: wordCount,
-      remainingParagraphs: paragraphs.slice(usedParagraphs)
-    };
-  }
-
-  /** Разбиение длинного абзаца на части */
-  splitLongParagraphStrict(paragraph, pageNumber) {
-    const words = paragraph.split(/\s+/).filter(Boolean);
-    if (words.length === 0) return null;
-
-    let currentPart = '';
-    let currentPartWords = 0;
-    let htmlParts = [];
-    let isFirst = true;
-
-    for (let i = 0; i < words.length; i++) {
-      const testPart = currentPart + (currentPart ? ' ' : '') + words[i];
-      const formatted = this.formatParagraphHtml(testPart, false, isFirst);
-      
-      // Проверяем высоту (используем упрощённый тест без DOM для скорости)
-      // Примерная оценка: ~50 символов на строку при текущих настройках
-      if (testPart.length > 2000) { // Примерный лимит для одной страницы
-        if (currentPart.trim()) {
-          htmlParts.push(formatted);
-        }
-        currentPart = words[i];
-        currentPartWords = 1;
-        isFirst = false;
-      } else {
-        currentPart = testPart;
-        currentPartWords++;
-      }
-    }
-
-    if (currentPart.trim()) {
-      htmlParts.push(this.formatParagraphHtml(currentPart, false, isFirst));
-    }
-
-    // Берём только первую часть для текущей страницы
-    const pageHtml = htmlParts[0] || '';
-    const wordCount = currentPartWords;
-
-    return { html: pageHtml, wordCount: wordCount };
-  }
-
-  /** Форматирование страницы */
-  formatSimplePage(textHtml, pageNumber) {
-    // textHtml уже содержит теги <p> и <h2>
-    if (pageNumber === 0) {
-      return `<h1>Хаджи Гирей</h1>${textHtml}`;
-    }
-    return textHtml;
-  }
-
-  /** Получение максимальной высоты страницы */
-  getMaxPageHeight() {
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    return viewportHeight * 0.8; // 80% высоты viewport
-  }
-
-  /** Получение ширины viewport */
-  getViewportWidth() {
-    return window.innerWidth || document.documentElement.clientWidth;
-  }
-
-  /** Подсчёт слов в тексте */
-  countWords(text) {
-    return text.split(/\s+/).filter(Boolean).length;
-  }
-
-  /** Отрисовка текущей страницы */
-  renderCurrentPage() {
-    if (this.state.currentPageIndex >= this.state.totalPages) {
-      this.state.currentPageIndex = this.state.totalPages - 1;
-    }
-
-    const currentPage = this.state.pages[this.state.currentPageIndex];
-    if (!currentPage) {
-      this.showError('Страница не найдена');
-      return;
-    }
-
-    // Обновляем содержимое страницы
-    this.elements.pageContent.innerHTML = currentPage.content;
-
-    // Обновляем индикаторы
-    this.updatePageIndicators();
-    this.updateProgress();
-
-    // Сохраняем позицию
-    this.saveReadingPosition();
-
-    // Фокус на контейнер для мобильной прокрутки
-    this.elements.readerContainer.scrollTop = 0;
-  }
-
-  /** Обновление индикаторов страниц */
-  updatePageIndicators() {
-    this.elements.currentPageIndicator.textContent = this.state.currentPageIndex + 1;
-    this.elements.totalPagesIndicator.textContent = this.state.totalPages;
-  }
-
-  /** Обновление прогресса чтения */
-  updateProgress() {
-    const progress = this.state.totalPages > 0 
-      ? ((this.state.currentPageIndex + 1) / this.state.totalPages) * 100 
-      : 0;
+    /* Анимации и переходы */
+    --transition-fast: 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+    --transition-medium: 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+    --transition-slow: 0.35s cubic-bezier(0.4, 0.0, 0.2, 1);
     
-    this.elements.progressFill.style.width = `${progress}%`;
-    this.elements.readProgressText.textContent = `${Math.round(progress)}%`;
-    this.elements.currentProgress.textContent = `${this.state.currentPageIndex + 1} / ${this.state.totalPages}`;
-  }
-
-  /** Привязка событий */
-  bindEvents() {
-    // Навигация по страницам
-    this.elements.prevPageButton.addEventListener('click', () => this.prevPage());
-    this.elements.nextPageButton.addEventListener('click', () => this.nextPage());
-
-    // Переход к странице
-    this.elements.jumpToPageButton.addEventListener('click', () => this.jumpToPage());
-    this.elements.pageJumpInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') this.jumpToPage();
-    });
-
-    // Настройки
-    this.elements.settingsButton.addEventListener('click', () => this.toggleSettings());
-    this.elements.settingsClose.addEventListener('click', () => this.toggleSettings());
-
-    // Темы
-    this.elements.themeToggle.addEventListener('change', (e) => this.changeTheme(e.target.value));
-
-    // Шрифт и интервалы
-    this.elements.fontSizeControl.addEventListener('input', (e) => this.updateFontSize(e.target.value));
-    this.elements.lineHeightControl.addEventListener('input', (e) => this.updateLineHeight(e.target.value));
-    this.elements.textAlignControl.addEventListener('change', (e) => this.updateTextAlign(e.target.value));
-
-    // Яркость
-    this.elements.brightnessControl.addEventListener('input', (e) => this.updateBrightness(e.target.value));
-
-    // Меню и поиск (заготовки)
-    this.elements.menuButton.addEventListener('click', () => this.toggleMenu());
-    this.elements.closeMenuButton.addEventListener('click', () => this.toggleMenu());
-    this.elements.searchButton.addEventListener('click', () => this.performSearch());
-    this.elements.clearSearchButton.addEventListener('click', () => this.clearSearch());
-
-    // Закладки
-    this.elements.bookmarkButton.addEventListener('click', () => this.toggleBookmarks());
-    this.elements.closeBookmarksButton.addEventListener('click', () => this.toggleBookmarks());
-    this.elements.addBookmarkButton.addEventListener('click', () => this.addBookmark());
-
-    // Клавиатурная навигация
-    document.addEventListener('keydown', (e) => this.handleKeyNavigation(e));
-
-    // Обработка изменения размера окна
-    window.addEventListener('resize', () => this.handleResize());
-
-    // Сохранение при выходе
-    window.addEventListener('beforeunload', () => this.saveReadingPosition());
-  }
-
-  /** Предыдущая страница */
-  prevPage() {
-    if (this.state.currentPageIndex > 0) {
-      this.state.currentPageIndex--;
-      this.renderCurrentPage();
-    }
-  }
-
-  /** Следующая страница */
-  nextPage() {
-    if (this.state.currentPageIndex < this.state.totalPages - 1) {
-      this.state.currentPageIndex++;
-      this.renderCurrentPage();
-    }
-  }
-
-  /** Переход к странице */
-  jumpToPage() {
-    const pageNum = parseInt(this.elements.pageJumpInput.value);
-    if (pageNum > 0 && pageNum <= this.state.totalPages) {
-      this.state.currentPageIndex = pageNum - 1;
-      this.renderCurrentPage();
-      this.elements.pageJumpInput.value = '';
-    }
-  }
-
-  /** Переключение настроек */
-  toggleSettings() {
-    this.state.isSettingsOpen = !this.state.isSettingsOpen;
-    this.elements.settingsPanel.style.display = this.state.isSettingsOpen ? 'block' : 'none';
-  }
-
-  /** Смена темы */
-  changeTheme(theme) {
-    this.state.settings.theme = theme;
-    this.applyTheme();
-    this.saveSettings();
-    this.recreatePagesIfNeeded();
-  }
-
-  /** Применение темы */
-  applyTheme() {
-    const root = document.documentElement;
-    root.setAttribute('data-theme', this.state.settings.theme);
-  }
-
-  /** Обновление размера шрифта */
-  updateFontSize(size) {
-    this.state.settings.fontSize = parseInt(size);
-    this.elements.pageContent.style.fontSize = `${this.state.settings.fontSize}px`;
-    this.saveSettings();
-    this.recreatePagesIfNeeded();
-  }
-
-  /** Обновление межстрочного интервала */
-  updateLineHeight(height) {
-    this.state.settings.lineHeight = parseFloat(height);
-    this.elements.pageContent.style.lineHeight = this.state.settings.lineHeight;
-    this.saveSettings();
-    this.recreatePagesIfNeeded();
-  }
-
-  /** Обновление выравнивания текста */
-  updateTextAlign(align) {
-    this.state.settings.textAlign = align;
-    this.elements.pageContent.style.textAlign = align;
-    this.saveSettings();
-  }
-
-  /** Обновление яркости */
-  updateBrightness(value) {
-    this.state.settings.brightness = parseInt(value);
-    const brightness = this.state.settings.brightness / 100;
-    document.body.style.filter = `brightness(${brightness})`;
-    this.saveSettings();
-  }
-
-  /** Пересоздание страниц при изменении настроек */
-  recreatePagesIfNeeded() {
-    // Если изменились параметры, влияющие на пагинацию
-    if (this.state.settings.fontSize !== 18 || this.state.settings.lineHeight !== 1.6) {
-      this.createPages();
-      this.renderCurrentPage();
-    }
-  }
-
-  /** Сохранение настроек */
-  saveSettings() {
-    localStorage.setItem(`${this.storageKey}_settings`, JSON.stringify(this.state.settings));
-  }
-
-  /** Загрузка настроек */
-  loadSettings() {
-    const saved = localStorage.getItem(`${this.storageKey}_settings`);
-    if (saved) {
-      this.state.settings = { ...this.state.settings, ...JSON.parse(saved) };
-      // Применяем загруженные настройки
-      this.applyTheme();
-      this.elements.pageContent.style.fontSize = `${this.state.settings.fontSize}px`;
-      this.elements.pageContent.style.lineHeight = this.state.settings.lineHeight;
-      this.elements.pageContent.style.textAlign = this.state.settings.textAlign;
-      this.updateBrightness(this.state.settings.brightness);
-    }
-  }
-
-  /** Сохранение позиции чтения */
-  saveReadingPosition() {
-    const position = {
-      pageIndex: this.state.currentPageIndex,
-      timestamp: Date.now()
-    };
-    localStorage.setItem(`${this.storageKey}_position`, JSON.stringify(position));
-  }
-
-  /** Восстановление позиции чтения */
-  restoreReadingPosition() {
-    const saved = localStorage.getItem(`${this.storageKey}_position`);
-    if (saved) {
-      const position = JSON.parse(saved);
-      // Проверяем, что позиция актуальна (не старше 7 дней)
-      if (Date.now() - position.timestamp < 7 * 24 * 60 * 60 * 1000) {
-        this.state.currentPageIndex = Math.max(0, Math.min(position.pageIndex, this.state.totalPages - 1));
-        console.log(`Восстановлена позиция: страница ${this.state.currentPageIndex + 1}`);
-      }
-    }
-  }
-
-  // Заготовки для дополнительных функций (меню, поиск, закладки)
-  toggleMenu() {
-    this.elements.menuOverlay.style.display = this.elements.menuOverlay.style.display === 'block' ? 'none' : 'block';
-  }
-
-  performSearch() {
-    const query = this.elements.searchInput.value.trim();
-    if (!query) return;
-    
-    // Простой поиск по всем страницам
-    const results = [];
-    this.state.pages.forEach((page, index) => {
-      if (page.content.toLowerCase().includes(query.toLowerCase())) {
-        results.push({ page: index + 1, snippet: this.getSearchSnippet(page.content, query) });
-      }
-    });
-    
-    this.displaySearchResults(results, query);
-  }
-
-  getSearchSnippet(content, query) {
-    const index = content.toLowerCase().indexOf(query.toLowerCase());
-    if (index === -1) return '';
-    
-    const start = Math.max(0, index - 50);
-    const end = Math.min(content.length, index + query.length + 50);
-    return content.substring(start, end).replace(new RegExp(query, 'gi'), `<mark>${query}</mark>`);
-  }
-
-  clearSearch() {
-    this.elements.searchInput.value = '';
-    this.elements.searchResults.innerHTML = '';
-  }
-
-  displaySearchResults(results, query) {
-    if (results.length === 0) {
-      this.elements.searchResults.innerHTML = '<p>Ничего не найдено</p>';
-      return;
-    }
-    
-    let html = `<h3>Результаты поиска "${query}" (${results.length})</h3>`;
-    results.forEach(result => {
-      html += `<p><button onclick="reader.jumpToPage(${result.page})">Перейти к стр. ${result.page}</button><br>${result.snippet}</p>`;
-    });
-    
-    this.elements.searchResults.innerHTML = html;
-  }
-
-  toggleBookmarks() {
-    this.state.isUIVisible = !this.state.isUIVisible;
-    this.elements.bookmarksPanel.style.display = this.state.isUIVisible ? 'block' : 'none';
-    if (this.state.isUIVisible) this.loadBookmarks();
-  }
-
-  addBookmark() {
-    const bookmark = {
-      page: this.state.currentPageIndex + 1,
-      title: `Закладка ${this.state.currentPageIndex + 1}`,
-      timestamp: Date.now()
-    };
-    let bookmarks = JSON.parse(localStorage.getItem(`${this.storageKey}_bookmarks`) || '[]');
-    bookmarks.push(bookmark);
-    localStorage.setItem(`${this.storageKey}_bookmarks`, JSON.stringify(bookmarks));
-    this.loadBookmarks();
-  }
-
-  loadBookmarks() {
-    const bookmarks = JSON.parse(localStorage.getItem(`${this.storageKey}_bookmarks`) || '[]');
-    let html = '';
-    bookmarks.forEach((bm, index) => {
-      html += `<div class="bookmark-item">
-        <span>${bm.title} (стр. ${bm.page})</span>
-        <button onclick="reader.jumpToPage(${bm.page})">Перейти</button>
-        <button onclick="reader.removeBookmark(${index})">Удалить</button>
-      </div>`;
-    });
-    this.elements.bookmarksList.innerHTML = html || '<p>Закладок нет</p>';
-  }
-
-  removeBookmark(index) {
-    let bookmarks = JSON.parse(localStorage.getItem(`${this.storageKey}_bookmarks`) || '[]');
-    bookmarks.splice(index, 1);
-    localStorage.setItem(`${this.storageKey}_bookmarks`, JSON.stringify(bookmarks));
-    this.loadBookmarks();
-  }
-
-  /** Обработка клавиш */
-  handleKeyNavigation(e) {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    switch(e.key) {
-      case 'ArrowLeft':
-      case 'PageUp':
-        e.preventDefault();
-        this.prevPage();
-        break;
-      case 'ArrowRight':
-      case 'PageDown':
-        e.preventDefault();
-        this.nextPage();
-        break;
-      case 'Home':
-        e.preventDefault();
-        this.jumpToPage(1);
-        break;
-      case 'End':
-        e.preventDefault();
-        this.jumpToPage(this.state.totalPages);
-        break;
-    }
-  }
-
-  /** Обработка изменения размера */
-  handleResize() {
-    // Пересоздаём страницы при значительном изменении размера
-    this.recreatePagesIfNeeded();
-  }
-
-  /** Показ ошибки */
-  showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error-message';
-    errorDiv.textContent = message;
-    this.elements.readerContainer.appendChild(errorDiv);
-    
-    setTimeout(() => {
-      errorDiv.remove();
-    }, 5000);
-  }
-
-  /** Скрытие загрузки */
-  hideLoading() {
-    this.elements.loadingOverlay.style.display = 'none';
-    this.elements.readerContainer.style.display = 'block';
-  }
+    /* Тени и размытие */
+    --shadow-small: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.2);
+    --backdrop-blur: 20px;
 }
 
-// Глобальная переменная для доступа из HTML
-const reader = new YandexBooksReader();
+/* Применение тем оформления */
+[data-theme="sepia"] {
+    --color-bg-primary: var(--theme-sepia-bg);
+    --color-text-primary: var(--theme-sepia-text);
+    --color-text-secondary: var(--theme-sepia-secondary);
+    --color-border: var(--theme-sepia-border);
+    --color-panel-bg: var(--theme-sepia-panel);
+    --color-button-bg: rgba(93, 78, 55, 0.1);
+}
 
-// Утилиты для HTML (для поиска и закладок)
-window.reader = reader;
+[data-theme="gray"] {
+    --color-bg-primary: var(--theme-gray-bg);
+    --color-text-primary: var(--theme-gray-text);
+    --color-text-secondary: var(--theme-gray-secondary);
+    --color-border: var(--theme-gray-border);
+    --color-panel-bg: var(--theme-gray-panel);
+    --color-button-bg: rgba(44, 44, 44, 0.1);
+}
+
+[data-theme="dark"] {
+    --color-bg-primary: var(--theme-dark-bg);
+    --color-text-primary: var(--theme-dark-text);
+    --color-text-secondary: var(--theme-dark-secondary);
+    --color-border: var(--theme-dark-border);
+    --color-panel-bg: var(--theme-dark-panel);
+    --color-button-bg: rgba(255, 255, 255, 0.1);
+}
+
+/* Автоматическая тема (следует системным настройкам) */
+[data-theme="auto"] {
+    --color-bg-primary: var(--theme-dark-bg);
+    --color-text-primary: var(--theme-dark-text);
+    --color-text-secondary: var(--theme-dark-secondary);
+    --color-border: var(--theme-dark-border);
+    --color-panel-bg: var(--theme-dark-panel);
+    --color-button-bg: rgba(255, 255, 255, 0.1);
+}
+
+@media (prefers-color-scheme: light) {
+    [data-theme="auto"] {
+        --color-bg-primary: var(--theme-gray-bg);
+        --color-text-primary: var(--theme-gray-text);
+        --color-text-secondary: var(--theme-gray-secondary);
+        --color-border: var(--theme-gray-border);
+        --color-panel-bg: var(--theme-gray-panel);
+        --color-button-bg: rgba(44, 44, 44, 0.1);
+    }
+}
+
+/* Базовый сброс стилей */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    height: 100%;
+    font-family: var(--font-ui);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color var(--transition-medium), color var(--transition-medium);
+}
+
+/* Убираем выделение при касании на мобильных */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Индикатор прогресса чтения */
+.reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-border);
+    z-index: 1000;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007aff, #5856d6);
+    width: 0%;
+    transition: width var(--transition-medium);
+}
+
+/* Экран загрузки */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--color-bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity var(--transition-slow);
+}
+
+.loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-content {
+    text-align: center;
+    max-width: 320px;
+    padding: var(--panel-padding);
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--color-border);
+    border-top-color: #007aff;
+    border-radius: 50%;
+    animation: loading-spin 1s linear infinite;
+    margin: 0 auto 24px;
+}
+
+@keyframes loading-spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--color-text-primary);
+}
+
+.loading-status {
+    font-size: 16px;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+}
+
+/* Основной контейнер читалки */
+.reader-container {
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* Верхняя навигационная панель */
+.top-navigation {
+    height: calc(var(--header-height) + var(--safe-area-top));
+    padding-top: var(--safe-area-top);
+    padding-left: calc(16px + var(--safe-area-left));
+    padding-right: calc(16px + var(--safe-area-right));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-panel-bg);
+    backdrop-filter: blur(var(--backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--backdrop-blur));
+    border-bottom: 1px solid var(--color-border);
+    transform: translateY(-100%);
+    transition: transform var(--transition-medium);
+    z-index: 100;
+}
+
+.top-navigation.visible {
+    transform: translateY(0);
+}
+
+.nav-button {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: var(--color-button-bg);
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nav-button:hover {
+    opacity: 0.7;
+}
+
+.nav-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+.book-metadata {
+    flex: 1;
+    text-align: center;
+    padding: 0 16px;
+    min-width: 0;
+}
+
+.book-title {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.book-author {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Основная область для чтения */
+.reading-viewport {
+    flex: 1;
+    position: relative;
+    overflow: auto; /* включаем прокрутку */
+    -webkit-overflow-scrolling: touch; /* плавная прокрутка на iOS */
+    /* Настройки кастомной прокрутки для Firefox */
+    scrollbar-width: thin;            /* тонкая полоса */
+    scrollbar-color: rgba(255,255,255,0.35) transparent; /* цвет бегунка/трек */
+}
+
+.page-wrapper {
+    padding: var(--panel-padding);
+    display: flex; /* центрируем контент */
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.page-content {
+    width: 100%;
+    max-width: 680px;
+    font-family: var(--font-reading);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+    letter-spacing: var(--letter-spacing);
+    text-align: justify;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    user-select: text;
+    -webkit-user-select: text;
+
+    /* Прокручиваемый контент без фиксированной высоты */
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+    display: block;
+}
+
+/* КАСТОМНАЯ ПОЛОСА ПРОКРУТКИ (WebKit/Blink: Chrome, Edge, Safari) */
+.reading-viewport::-webkit-scrollbar {
+    width: 10px;              /* ширина вертикального скролла */
+    height: 10px;             /* высота горизонтального (на всякий случай) */
+    background: transparent;  /* без фона */
+}
+
+.reading-viewport::-webkit-scrollbar-track {
+    background: transparent;  /* прозрачный трек */
+}
+
+.reading-viewport::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0.18));
+    border-radius: 8px;
+    border: 2px solid transparent;     /* «внутренний отступ» */
+    background-clip: padding-box;      /* не закрашивать бордер */
+}
+
+.reading-viewport:hover::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0.25));
+}
+
+.reading-viewport::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Цвета под разные темы */
+[data-theme="sepia"] .reading-viewport {
+    scrollbar-color: rgba(93, 78, 55, 0.55) transparent;
+}
+
+[data-theme="sepia"] .reading-viewport::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(93,78,55,0.55), rgba(93,78,55,0.35));
+}
+
+[data-theme="gray"] .reading-viewport {
+    scrollbar-color: rgba(44, 44, 44, 0.55) transparent;
+}
+
+[data-theme="gray"] .reading-viewport::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(44,44,44,0.55), rgba(44,44,44,0.35));
+}
+
+.page-content h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    margin: 0 0 24px 0;
+    color: var(--color-text-primary);
+}
+
+.page-content .author {
+    font-size: 1.25rem;
+    font-style: italic;
+    text-align: center;
+    color: var(--color-text-secondary);
+    margin: 16px 0 40px 0;
+}
+
+.page-content h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 28px 0 16px 0;
+    color: var(--color-text-primary);
+}
+
+.page-content p {
+    margin-bottom: 16px;
+    text-indent: 2em;
+}
+
+.page-content p:first-of-type,
+.page-content h1 + p,
+.page-content h2 + p,
+.page-content .author + p {
+    text-indent: 0;
+}
+
+/* Выделение главных абзацев */
+.page-content .main-paragraph {
+    font-weight: 500;
+    line-height: 1.7;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: rgba(0, 122, 255, 0.05);
+    border-left: 3px solid #007aff;
+    border-radius: 0 8px 8px 0;
+    text-indent: 0;
+}
+/* Заголовки глав и разделов */
+.page-content h2 {
+    margin-top: 32px;
+    margin-bottom: 20px;
+    padding-top: 16px;
+    border-top: 2px solid var(--color-border);
+}
+
+.page-content h2:first-child {
+    margin-top: 0;
+    border-top: none;
+}
+
+/* Улучшенное разделение абзацев */
+.page-content p {
+    margin-bottom: 18px;
+    text-indent: 2em;
+}
+
+.page-content p + p {
+    margin-top: 4px;
+}
+
+/* Первый абзац после заголовка - без отступа */
+.page-content h1 + p,
+.page-content h2 + p,
+.page-content h3 + p,
+.page-content .author + p,
+.page-content p:first-of-type {
+    text-indent: 0;
+    margin-top: 0;
+}
+
+/* Пустая строка перед новым разделом */
+.page-content h2::before {
+    content: "";
+    display: block;
+    height: 12px;
+}
+
+/* Дополнительное пространство между главными абзацами */
+.page-content .main-paragraph + p {
+    margin-top: 16px;
+}
+
+
+
+[data-theme="sepia"] .page-content .main-paragraph {
+    background: rgba(93, 78, 55, 0.08);
+    border-left-color: #5d4e37;
+}
+
+[data-theme="gray"] .page-content .main-paragraph {
+    background: rgba(44, 44, 44, 0.05);
+    border-left-color: #2c2c2c;
+}
+
+/* Нижняя панель управления */
+.bottom-controls {
+    height: calc(var(--footer-height) + var(--safe-area-bottom));
+    padding-bottom: var(--safe-area-bottom);
+    padding-left: calc(var(--panel-padding) + var(--safe-area-left));
+    padding-right: calc(var(--panel-padding) + var(--safe-area-right));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-panel-bg);
+    backdrop-filter: blur(var(--backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--backdrop-blur));
+    border-top: 1px solid var(--color-border);
+    transform: translateY(100%);
+    transition: transform var(--transition-medium);
+    z-index: 100;
+}
+
+.bottom-controls.visible {
+    transform: translateY(0);
+}
+
+.reading-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.page-progress {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.reading-time {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.navigation-controls {
+    display: flex;
+    gap: 16px;
+}
+
+.control-button {
+    width: 48px;
+    height: 48px;
+    border: none;
+    border-radius: 12px;
+    background: var(--color-button-bg);
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.control-button:hover:not(:disabled) {
+    opacity: 0.7;
+}
+
+.control-button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.control-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Панель настроек */
+.settings-drawer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: translateY(100%);
+    transition: transform var(--transition-medium);
+    z-index: 200;
+}
+
+.settings-drawer.visible {
+    transform: translateY(0);
+}
+
+.settings-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: opacity var(--transition-medium);
+    pointer-events: none;
+}
+
+.settings-drawer.visible .settings-backdrop {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.settings-panel {
+    background: var(--color-panel-bg);
+    backdrop-filter: blur(var(--backdrop-blur));
+    -webkit-backdrop-filter: blur(var(--backdrop-blur));
+    border-radius: 20px 20px 0 0;
+    box-shadow: var(--shadow-medium);
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-header {
+    padding: 20px var(--panel-padding) 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.settings-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.close-button {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.close-button:hover {
+    background: var(--color-button-bg);
+    color: var(--color-text-primary);
+}
+
+.close-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+.settings-content {
+    padding: var(--panel-padding);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.setting-group {
+    margin-bottom: 32px;
+}
+
+.setting-group:last-child {
+    margin-bottom: 0;
+}
+
+.setting-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: 12px;
+}
+
+/* Контроль яркости */
+.brightness-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.brightness-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+}
+
+.brightness-slider {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-border);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.brightness-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    background: #007aff;
+    cursor: pointer;
+    border: 2px solid var(--color-bg-primary);
+    box-shadow: var(--shadow-small);
+}
+
+.brightness-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    background: #007aff;
+    border: 2px solid var(--color-bg-primary);
+    box-shadow: var(--shadow-small);
+    cursor: pointer;
+}
+
+/* Выбор темы оформления */
+.theme-options {
+    display: flex;
+    gap: 12px;
+}
+
+.theme-option {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.theme-option:hover {
+    background: var(--color-button-bg);
+}
+
+.theme-preview {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    transition: border-color var(--transition-fast);
+}
+
+.theme-option.active .theme-preview {
+    border-color: #007aff;
+}
+
+.theme-preview.sepia { background: var(--theme-sepia-bg); }
+.theme-preview.gray { background: var(--theme-gray-bg); }
+.theme-preview.dark { background: var(--theme-dark-bg); }
+.theme-preview.auto {
+    background: linear-gradient(45deg, var(--theme-dark-bg) 50%, var(--theme-gray-bg) 50%);
+}
+
+.theme-option span {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+/* Настройки типографики */
+.font-family-control {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.font-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+}
+
+.font-size-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.font-size-button {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-button-bg);
+    color: var(--color-text-primary);
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.font-size-button:hover {
+    border-color: #007aff;
+    background: var(--color-button-bg);
+}
+
+/* Контроль межстрочного интервала */
+.line-spacing-options {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.spacing-option {
+    width: 60px;
+    height: 44px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-button-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.spacing-option.active,
+.spacing-option:hover {
+    border-color: #007aff;
+}
+
+.lines-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.lines-preview span {
+    width: 20px;
+    height: 1px;
+    background: var(--color-text-primary);
+}
+
+.lines-preview.tight span { margin-bottom: 2px; }
+.lines-preview.normal span { margin-bottom: 3px; }
+.lines-preview.loose span { margin-bottom: 5px; }
+
+.lines-preview span:last-child {
+    margin-bottom: 0;
+}
+
+/* Контроль выравнивания текста */
+.alignment-options {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.align-option {
+    width: 60px;
+    height: 44px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-button-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.align-option.active,
+.align-option:hover {
+    border-color: #007aff;
+}
+
+.align-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 20px;
+}
+
+.align-preview span {
+    height: 1px;
+    background: var(--color-text-primary);
+}
+
+.align-preview.left span:first-child { width: 100%; }
+.align-preview.left span:last-child { width: 60%; }
+
+.align-preview.justify span { width: 100%; }
+
+.align-preview.center span {
+    width: 80%;
+    margin: 0 auto;
+}
+
+
+/* Зоны для жестового управления */
+.touch-interaction-zones {
+    position: absolute;
+    inset: 0;
+    display: none; /* отключаем перекрытие, чтобы не блокировать прокрутку */
+    grid-template-columns: 1fr 1fr 1fr;
+    z-index: 50;
+}
+
+.touch-zone {
+    background: transparent;
+    cursor: pointer;
+    pointer-events: all;
+    transition: background-color var(--transition-fast);
+}
+
+.touch-zone:active {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Адаптивные стили для мобильных устройств */
+@media (max-width: 768px) {
+    :root {
+        --header-height: 52px;
+        --footer-height: 76px;
+        --panel-padding: 20px;
+    }
+    
+    .page-wrapper {
+        padding: 20px 16px;
+    }
+    
+    .page-content {
+        font-size: 16px;
+        max-height: calc(100vh - 52px - 76px - var(--safe-area-top) - var(--safe-area-bottom) - 40px);
+    }
+    
+    .book-title {
+        font-size: 16px;
+    }
+    
+    .theme-options {
+        gap: 8px;
+    }
+    
+    .theme-preview {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-wrapper {
+        padding: 16px 12px;
+    }
+    
+    .page-content {
+        font-size: 15px;
+        max-height: calc(100vh - 52px - 76px - var(--safe-area-top) - var(--safe-area-bottom) - 32px);
+    }
+    
+    .settings-content {
+        padding: 20px;
+    }
+}
+
+
+/* Улучшения для фокуса и доступности */
+button:focus-visible,
+input:focus-visible {
+    outline: 2px solid #007aff;
+    outline-offset: 2px;
+}
+
+/* Анимация появления интерфейса */
+.reader-container.ready .top-navigation,
+.reader-container.ready .bottom-controls {
+    animation: slideInInterface 0.5s ease-out;
+}
+
+@keyframes slideInInterface {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
