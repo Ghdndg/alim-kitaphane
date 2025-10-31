@@ -385,13 +385,26 @@ body {
     font-size: 1.5rem;
     font-weight: 600;
     line-height: 1.3;
-    margin: 32px 0 18px 0; /* больше воздуха вокруг названий глав */
+    margin: 28px 0 16px 0;
     color: var(--color-text-primary);
 }
 
 .page-content p {
-    margin-bottom: 18px; /* отделяем абзацы чуть сильнее */
+    margin-bottom: 16px;
     text-indent: 2em;
+}
+
+/* Абзацы с визуальным разделением */
+.page-content .paragraph {
+    margin-bottom: 24px; /* Увеличиваем отступ между абзацами */
+    padding-bottom: 16px;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+/* Показываем разделитель при наведении */
+.page-content .paragraph:hover {
+    border-bottom-color: var(--color-border);
 }
 
 .page-content p:first-of-type,
@@ -399,10 +412,33 @@ body {
 .page-content h2 + p,
 .page-content .author + p {
     text-indent: 0;
+    border-bottom: none; /* Убираем разделитель у первого абзаца */
 }
 
-/* Доп. отделение после блоков-заголовков: первый параграф ближе, следующие обычные */
-.page-content h2 + p { margin-top: 2px; }
+/* Заголовки глав */
+.page-content .chapter-heading {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 48px 0 32px 0;
+    padding: 20px 24px;
+    text-align: center;
+    color: var(--color-text-primary);
+    background: var(--color-button-bg);
+    border-left: 4px solid #007aff;
+    border-radius: 8px;
+    text-indent: 0;
+}
+
+[data-theme="sepia"] .page-content .chapter-heading {
+    border-left-color: #5d4e37;
+    background: rgba(93, 78, 55, 0.1);
+}
+
+[data-theme="gray"] .page-content .chapter-heading {
+    border-left-color: #2c2c2c;
+    background: rgba(44, 44, 44, 0.1);
+}
 
 /* Выделение главных абзацев */
 .page-content .main-paragraph {
