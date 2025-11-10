@@ -79,37 +79,34 @@ class YandexBooksReader {
      */
     async init() {
         try {
-            console.log('Initializing Yandex Books Reader...');
+            console.log('🚀 Initializing Yandex Books Reader...');
             
             this.updateLoadingStatus('Загрузка настроек...');
             this.loadSettings();
             
-            this.updateLoadingStatus('Загрузка книги...');
+            this.updateLoadingStatus('Загрузка текста книги...');
             await this.loadBookFile();
             
             this.updateLoadingStatus('Создание страниц...');
             this.createPages();
             
             this.updateLoadingStatus('Настройка интерфейса...');
-            this.setupEventHandlers();  // ← здесь уже есть обработчик скролла
-            
+            this.setupEventHandlers();
             this.loadProgress();
+            
             this.renderCurrentPage();
             this.hideLoading();
-            
-            // ← ДОБАВЬТЕ ЭТУ СТРОКУ
             this.loadScrollPosition();
-            
             this.showUITemporarily();
             
-            console.log('Reader initialized successfully');
-            console.log(`Total pages: ${this.state.totalPages}`);
+            console.log('✅ Reader initialized successfully');
+            console.log(`📊 Total pages: ${this.state.totalPages}`);
+            
         } catch (error) {
-            console.error('Reader initialization failed', error);
-            this.showError(error.message);
+            console.error('❌ Reader initialization failed:', error);
+            this.showError(`Ошибка инициализации: ${error.message}`);
         }
     }
-    
 
     /**
      * Загружает файл книги
@@ -578,13 +575,10 @@ class YandexBooksReader {
     preprocessText(text) {
         return text
             .replace(/\r\n/g, '\n')
-            .replace(/\n{3,}/g, '\n\n')        // всегда двойной перевод строки для разметки абзацев
-            .replace(/[ \t]+\n/g, '\n')        // убираем лишние пробелы перед переводом строки
-            .replace(/\n[ \t]+/g, '\n')        // убираем лишние пробелы после перевода строки
-            .replace(/[ \t]{2,}/g, ' ')        // двойные и больше пробелы -> 1 пробел
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/\s+/g, ' ') // Заменяем все пробелы на одинарные
             .trim();
     }
-    
 
     /**
      * Подсчитывает количество слов в тексте
@@ -970,6 +964,20 @@ class YandexBooksReader {
         this.elements.readingViewport.addEventListener('scroll', onScroll, { passive: true });
         // начальное обновление
         this.updateScrollProgressUI();
+
+        // Сохранение позиции скролла
+        const viewport = this.elements.readingViewport;
+        if (viewport) {
+            let scrollTimeout;
+            viewport.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    this.saveScrollPosition();
+                }, 500);
+            });
+            console.log('📜 Scroll position tracking enabled');
+        }
+
     }
 
     updateScrollProgressUI() {
@@ -1073,80 +1081,6 @@ class YandexBooksReader {
         }, 3000);
     }
 
-        // Сохраняет позицию прокрутки
-    // Сохраняет позицию прокрутки ВНУТРИ reading-viewport
-    saveScrollPosition() {
-        try {
-            const viewport = this.elements.readingViewport;
-            if (!viewport) return;
-            
-            const scrollData = {
-                scrollTop: viewport.scrollTop,
-                timestamp: Date.now()
-            };
-            localStorage.setItem(`${this.storageKey}-scroll`, JSON.stringify(scrollData));
-            console.log('Saved scroll position:', scrollData.scrollTop);
-        } catch (error) {
-            console.warn('Failed to save scroll position', error);
-        }
-    }
-
-    // Загружает сохранённую позицию прокрутки
-    loadScrollPosition() {
-        try {
-            const savedScroll = localStorage.getItem(`${this.storageKey}-scroll`);
-            if (!savedScroll) return;
-            
-            const scrollData = JSON.parse(savedScroll);
-            const viewport = this.elements.readingViewport;
-            
-            if (!viewport) {
-                console.warn('reading-viewport element not found');
-                return;
-            }
-            
-            // Ждём, пока контент точно загрузится
-            const restoreScroll = () => {
-                if (viewport.scrollHeight > 100) {  // Проверяем, что контент загружен
-                    viewport.scrollTop = scrollData.scrollTop;
-                    console.log('Scroll position restored:', scrollData.scrollTop);
-                } else {
-                    setTimeout(restoreScroll, 100);  // Повторяем через 100ms
-                }
-            };
-            
-            setTimeout(restoreScroll, 200);  // Начинаем через 200ms
-        } catch (error) {
-            console.warn('Failed to load scroll position', error);
-        }
-    }
-    
-
-    setupEventListeners() {
-        console.log('Setting up event listeners...');
-        this.bindNavigationEvents();
-        this.bindUIControlEvents();
-        this.bindSettingsEvents();
-        this.bindKeyboardEvents();
-        this.bindGestureEvents();
-        this.bindResizeEvents();
-        this.bindScrollProgressEvents();
-        
-        // Сохранение позиции скролла для reading-viewport (не window!)
-        const viewport = this.elements.readingViewport;
-        if (viewport) {
-            let scrollTimeout;
-            viewport.addEventListener('scroll', () => {
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(() => {
-                    this.saveScrollPosition();
-                }, 1000);
-            });
-        }
-        
-        console.log('Event handlers set up');
-    }
-    
     /**
  * ИСПРАВЛЕННЫЙ метод открытия настроек
  */
@@ -1399,6 +1333,62 @@ openSettings() {
         this.state.currentPageIndex = Math.max(0, Math.min(newIndex, this.state.totalPages - 1));
         this.renderCurrentPage();
     }
+
+    /**
+     * Сохраняет позицию прокрутки
+     */
+    saveScrollPosition() {
+        try {
+            const viewport = this.elements.readingViewport;
+            if (!viewport) return;
+
+            const scrollData = {
+                scrollTop: viewport.scrollTop,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(`${this.storageKey}-scroll`, JSON.stringify(scrollData));
+            console.log('💾 Saved scroll position:', scrollData.scrollTop);
+        } catch (error) {
+            console.warn('Failed to save scroll position', error);
+        }
+    }
+
+    /**
+     * Загружает сохранённую позицию прокрутки
+     */
+    loadScrollPosition() {
+        try {
+            const savedScroll = localStorage.getItem(`${this.storageKey}-scroll`);
+            if (!savedScroll) {
+                console.log('📜 No saved scroll position found');
+                return;
+            }
+
+            const scrollData = JSON.parse(savedScroll);
+            const viewport = this.elements.readingViewport;
+
+            if (!viewport) {
+                console.warn('⚠️ reading-viewport element not found');
+                return;
+            }
+
+            // Ждём, пока контент загрузится полностью
+            const restoreScroll = () => {
+                if (viewport.scrollHeight > 100) {
+                    viewport.scrollTop = scrollData.scrollTop;
+                    console.log('📍 Scroll position restored:', scrollData.scrollTop);
+                } else {
+                    setTimeout(restoreScroll, 100);
+                }
+            };
+
+            setTimeout(restoreScroll, 300);
+        } catch (error) {
+            console.warn('Failed to load scroll position', error);
+        }
+    }
+
+
 
     }
 
