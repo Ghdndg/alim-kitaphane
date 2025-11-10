@@ -105,6 +105,7 @@ class YandexBooksReader {
             console.error('❌ Reader initialization failed:', error);
             this.showError(`Ошибка инициализации: ${error.message}`);
         }
+        this.loadScrollPosition();
     }
 
     /**
@@ -1068,6 +1069,53 @@ class YandexBooksReader {
             }
         }, 3000);
     }
+
+        // Сохраняет позицию прокрутки
+    saveScrollPosition() {
+        try {
+            const scrollData = {
+                scrollTop: window.scrollY || document.documentElement.scrollTop,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(`${this.storageKey}-scroll`, JSON.stringify(scrollData));
+        } catch (error) {
+            console.warn('Failed to save scroll position', error);
+        }
+    }
+
+    // Загружает сохранённую позицию прокрутки
+    loadScrollPosition() {
+        try {
+            const savedScroll = localStorage.getItem(`${this.storageKey}-scroll`);
+            if (savedScroll) {
+                const scrollData = JSON.parse(savedScroll);
+                // Восстанавливаем позицию с небольшой задержкой (чтобы контент загрузился)
+                setTimeout(() => {
+                    window.scrollTo({
+                        top: scrollData.scrollTop,
+                        behavior: 'smooth'
+                    });
+                    console.log('Scroll position restored:', scrollData.scrollTop);
+                }, 300);
+            }
+        } catch (error) {
+            console.warn('Failed to load scroll position', error);
+        }
+    }
+    setupEventListeners() {
+        // ... существующий код ...
+        
+        // Сохраняем позицию скролла при прокрутке (с небольшой задержкой)
+        let scrollTimeout;
+        window.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                this.saveScrollPosition();
+            }, 500); // сохраняем через 500мс после остановки скролла
+        });
+    }
+    
+
 
     /**
  * ИСПРАВЛЕННЫЙ метод открытия настроек
