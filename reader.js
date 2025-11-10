@@ -1105,18 +1105,22 @@ class YandexBooksReader {
                 return;
             }
             
-            // Восстанавливаем позицию с задержкой (чтобы контент загрузился)
-            setTimeout(() => {
-                viewport.scrollTo({
-                    top: scrollData.scrollTop,
-                    behavior: 'smooth'
-                });
-                console.log('Scroll position restored:', scrollData.scrollTop);
-            }, 500); // увеличили задержку до 500мс
+            // Ждём, пока контент точно загрузится
+            const restoreScroll = () => {
+                if (viewport.scrollHeight > 100) {  // Проверяем, что контент загружен
+                    viewport.scrollTop = scrollData.scrollTop;
+                    console.log('Scroll position restored:', scrollData.scrollTop);
+                } else {
+                    setTimeout(restoreScroll, 100);  // Повторяем через 100ms
+                }
+            };
+            
+            setTimeout(restoreScroll, 200);  // Начинаем через 200ms
         } catch (error) {
             console.warn('Failed to load scroll position', error);
         }
     }
+    
 
     setupEventListeners() {
         console.log('Setting up event listeners...');
@@ -1136,17 +1140,13 @@ class YandexBooksReader {
                 clearTimeout(scrollTimeout);
                 scrollTimeout = setTimeout(() => {
                     this.saveScrollPosition();
-                }, 500);
+                }, 1000);
             });
         }
         
         console.log('Event handlers set up');
     }
     
-    
-    
-
-
     /**
  * ИСПРАВЛЕННЫЙ метод открытия настроек
  */
