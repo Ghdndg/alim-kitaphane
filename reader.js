@@ -79,34 +79,37 @@ class YandexBooksReader {
      */
     async init() {
         try {
-            console.log('🚀 Initializing Yandex Books Reader...');
+            console.log('Initializing Yandex Books Reader...');
             
             this.updateLoadingStatus('Загрузка настроек...');
             this.loadSettings();
             
-            this.updateLoadingStatus('Загрузка текста книги...');
+            this.updateLoadingStatus('Загрузка книги...');
             await this.loadBookFile();
             
             this.updateLoadingStatus('Создание страниц...');
             this.createPages();
             
             this.updateLoadingStatus('Настройка интерфейса...');
-            this.setupEventHandlers();
-            this.loadProgress();
+            this.setupEventHandlers();  // ← здесь уже есть обработчик скролла
             
+            this.loadProgress();
             this.renderCurrentPage();
             this.hideLoading();
+            
+            // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+            this.loadScrollPosition();
+            
             this.showUITemporarily();
             
-            console.log('✅ Reader initialized successfully');
-            console.log(`📊 Total pages: ${this.state.totalPages}`);
-            
+            console.log('Reader initialized successfully');
+            console.log(`Total pages: ${this.state.totalPages}`);
         } catch (error) {
-            console.error('❌ Reader initialization failed:', error);
-            this.showError(`Ошибка инициализации: ${error.message}`);
+            console.error('Reader initialization failed', error);
+            this.showError(error.message);
         }
-        this.loadScrollPosition();
     }
+    
 
     /**
      * Загружает файл книги
@@ -1103,17 +1106,27 @@ class YandexBooksReader {
         }
     }
     setupEventListeners() {
-        // ... существующий код ...
+        console.log('Setting up event listeners...');
+        this.bindNavigationEvents();
+        this.bindUIControlEvents();
+        this.bindSettingsEvents();
+        this.bindKeyboardEvents();
+        this.bindGestureEvents();
+        this.bindResizeEvents();
+        this.bindScrollProgressEvents();
         
-        // Сохраняем позицию скролла при прокрутке (с небольшой задержкой)
+        // Сохранение позиции скролла
         let scrollTimeout;
         window.addEventListener('scroll', () => {
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => {
                 this.saveScrollPosition();
-            }, 500); // сохраняем через 500мс после остановки скролла
+            }, 500);
         });
+        
+        console.log('Event handlers set up');
     }
+    
     
 
 
