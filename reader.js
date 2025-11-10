@@ -1074,13 +1074,18 @@ class YandexBooksReader {
     }
 
         // Сохраняет позицию прокрутки
+    // Сохраняет позицию прокрутки ВНУТРИ reading-viewport
     saveScrollPosition() {
         try {
+            const viewport = this.elements.readingViewport;
+            if (!viewport) return;
+            
             const scrollData = {
-                scrollTop: window.scrollY || document.documentElement.scrollTop,
+                scrollTop: viewport.scrollTop,
                 timestamp: Date.now()
             };
             localStorage.setItem(`${this.storageKey}-scroll`, JSON.stringify(scrollData));
+            console.log('Saved scroll position:', scrollData.scrollTop);
         } catch (error) {
             console.warn('Failed to save scroll position', error);
         }
@@ -1090,21 +1095,29 @@ class YandexBooksReader {
     loadScrollPosition() {
         try {
             const savedScroll = localStorage.getItem(`${this.storageKey}-scroll`);
-            if (savedScroll) {
-                const scrollData = JSON.parse(savedScroll);
-                // Восстанавливаем позицию с небольшой задержкой (чтобы контент загрузился)
-                setTimeout(() => {
-                    window.scrollTo({
-                        top: scrollData.scrollTop,
-                        behavior: 'smooth'
-                    });
-                    console.log('Scroll position restored:', scrollData.scrollTop);
-                }, 300);
+            if (!savedScroll) return;
+            
+            const scrollData = JSON.parse(savedScroll);
+            const viewport = this.elements.readingViewport;
+            
+            if (!viewport) {
+                console.warn('reading-viewport element not found');
+                return;
             }
+            
+            // Восстанавливаем позицию с задержкой (чтобы контент загрузился)
+            setTimeout(() => {
+                viewport.scrollTo({
+                    top: scrollData.scrollTop,
+                    behavior: 'smooth'
+                });
+                console.log('Scroll position restored:', scrollData.scrollTop);
+            }, 500); // увеличили задержку до 500мс
         } catch (error) {
             console.warn('Failed to load scroll position', error);
         }
     }
+
     setupEventListeners() {
         console.log('Setting up event listeners...');
         this.bindNavigationEvents();
@@ -1115,17 +1128,21 @@ class YandexBooksReader {
         this.bindResizeEvents();
         this.bindScrollProgressEvents();
         
-        // Сохранение позиции скролла
-        let scrollTimeout;
-        window.addEventListener('scroll', () => {
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => {
-                this.saveScrollPosition();
-            }, 500);
-        });
+        // Сохранение позиции скролла для reading-viewport (не window!)
+        const viewport = this.elements.readingViewport;
+        if (viewport) {
+            let scrollTimeout;
+            viewport.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    this.saveScrollPosition();
+                }, 500);
+            });
+        }
         
         console.log('Event handlers set up');
     }
+    
     
     
 
