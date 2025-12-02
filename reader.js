@@ -146,6 +146,8 @@ class YandexBooksReader {
         // Заголовок и автор
         parts.push('<h1>Хаджи Гирай</h1>');
         parts.push('<div class="author">Алим Мидат</div>');
+        parts.push('<div class="author1">Бабам – Мидат Къуртсеитнинъ</div>');
+        parts.push('<div class="author1">айдын хатырасына багъышлайым…</div>');
         
         // Абзацы
         for (const p of paragraphs) {
