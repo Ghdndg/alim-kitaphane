@@ -282,14 +282,6 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.book-author1 {
-    font-size: 13px;
-    color: var(--color-text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: right;
-}
 /* Основная область для чтения */
 .reading-viewport {
     flex: 1;
@@ -387,7 +379,13 @@ body {
     color: var(--color-text-secondary);
     margin: 16px 0 40px 0;
 }
-
+.page-content .author1 {
+    font-size: 1.25rem;
+    font-style: italic;
+    text-align: right;
+    color: var(--color-text-secondary);
+    margin: 16px 0 40px 0;
+}
 .page-content h2 {
     font-size: 1.5rem;
     font-weight: 600;
