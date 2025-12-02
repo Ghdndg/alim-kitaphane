@@ -282,7 +282,14 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-
+.book-author1 {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: right;
+}
 /* Основная область для чтения */
 .reading-viewport {
     flex: 1;
