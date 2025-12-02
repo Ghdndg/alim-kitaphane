@@ -384,7 +384,6 @@ body {
     font-style: italic;
     text-align: right;
     color: var(--color-text-secondary);
-    margin: 16px 0 40px 0;
 }
 .page-content h2 {
     font-size: 1.5rem;
