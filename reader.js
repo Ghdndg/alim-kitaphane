@@ -1162,6 +1162,7 @@ openSettings() {
         // Обновляем яркость
         if (this.elements.brightnessSlider) {
             this.elements.brightnessSlider.value = this.state.settings.brightness;
+            this.updateBrightnessSliderFill(this.state.settings.brightness);
         }
         
         // Обновляем размер шрифта - ищем элемент напрямую если не найден
@@ -1280,6 +1281,11 @@ openSettings() {
         applySettings() {
             document.body.setAttribute('data-theme', this.state.settings.theme);
             this.applyTypographySettings();
+            
+            // Применяем яркость
+            if (this.state.settings.brightness !== 100) {
+                document.documentElement.style.filter = `brightness(${this.state.settings.brightness}%)`;
+            }
         }
 
         saveProgress() {
@@ -1353,8 +1359,27 @@ openSettings() {
     updateBrightness(brightness) {
         this.state.settings.brightness = brightness;
         document.documentElement.style.filter = `brightness(${brightness}%)`;
+        
+        // Обновляем визуальное заполнение слайдера
+        this.updateBrightnessSliderFill(brightness);
+        
         this.saveSettings();
         console.log(`🔆 Brightness: ${brightness}%`);
+    }
+    
+    /**
+     * Обновляет визуальное заполнение слайдера яркости
+     */
+    updateBrightnessSliderFill(value) {
+        const slider = this.elements.brightnessSlider || document.getElementById('brightnessSlider');
+        if (!slider) return;
+        
+        const min = parseInt(slider.min) || 30;
+        const max = parseInt(slider.max) || 100;
+        const percentage = ((value - min) / (max - min)) * 100;
+        
+        // Градиент для показа заполненной части
+        slider.style.background = `linear-gradient(to right, #007aff 0%, #5856d6 ${percentage}%, var(--color-border) ${percentage}%, var(--color-border) 100%)`;
     }
 
     adjustFontSize(delta) {
