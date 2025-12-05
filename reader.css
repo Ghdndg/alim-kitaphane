@@ -695,22 +695,71 @@ body {
 }
 
 /* Настройки типографики */
-.font-family-control {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+
+/* Выбор шрифта */
+.font-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
     margin-bottom: 20px;
 }
 
-.font-name {
-    font-size: 16px;
-    font-weight: 500;
-    color: var(--color-text-primary);
+.font-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 4px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-button-bg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
 }
 
-.font-size-controls {
+.font-option:hover {
+    border-color: #007aff;
+}
+
+.font-option.active {
+    border-color: #007aff;
+    background: rgba(0, 122, 255, 0.1);
+}
+
+.font-preview {
+    font-size: 22px;
+    color: var(--color-text-primary);
+    line-height: 1;
+}
+
+.font-label {
+    font-size: 10px;
+    color: var(--color-text-secondary);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* Размер шрифта */
+.font-size-settings {
+    margin-bottom: 20px;
+}
+
+.font-size-control {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.font-size-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    min-width: 40px;
+    text-align: center;
 }
 
 .font-size-button {
@@ -729,6 +778,10 @@ body {
 .font-size-button:hover {
     border-color: #007aff;
     background: var(--color-button-bg);
+}
+
+.font-size-button:active {
+    transform: scale(0.95);
 }
 
 /* Контроль межстрочного интервала */
