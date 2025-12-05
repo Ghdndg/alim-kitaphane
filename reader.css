@@ -603,20 +603,31 @@ body {
 .brightness-slider-container {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+    padding: 8px 0;
 }
 
 .brightness-icon {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     color: var(--color-text-secondary);
     flex-shrink: 0;
 }
 
+.brightness-icon.dim {
+    width: 16px;
+    height: 16px;
+}
+
+.brightness-icon.bright {
+    width: 22px;
+    height: 22px;
+}
+
 .brightness-slider {
     flex: 1;
-    height: 4px;
-    border-radius: 2px;
+    height: 6px;
+    border-radius: 3px;
     background: var(--color-border);
     outline: none;
     -webkit-appearance: none;
@@ -624,25 +635,55 @@ body {
     cursor: pointer;
 }
 
+/* WebKit (Chrome, Safari, Edge) */
+.brightness-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-border);
+}
+
 .brightness-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 10px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
     background: #007aff;
     cursor: pointer;
-    border: 2px solid var(--color-bg-primary);
-    box-shadow: var(--shadow-small);
+    border: 3px solid var(--color-bg-primary);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    margin-top: -8px;
+}
+
+.brightness-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+}
+
+/* Firefox */
+.brightness-slider::-moz-range-track {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-border);
 }
 
 .brightness-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 10px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
     background: #007aff;
-    border: 2px solid var(--color-bg-primary);
-    box-shadow: var(--shadow-small);
+    border: 3px solid var(--color-bg-primary);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     cursor: pointer;
+}
+
+.brightness-slider::-moz-range-thumb:hover {
+    transform: scale(1.1);
+}
+
+/* Цвет заполненной части для Firefox */
+.brightness-slider::-moz-range-progress {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #007aff, #5856d6);
 }
 
 /* Выбор темы оформления */
