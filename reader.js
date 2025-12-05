@@ -110,6 +110,12 @@ class YandexBooksReader {
             this.loadScrollPosition();
             this.showUITemporarily();
             
+            // Обновляем отображение размера шрифта при инициализации
+            const fontSizeEl = document.getElementById('fontSizeValue');
+            if (fontSizeEl) {
+                fontSizeEl.textContent = this.state.settings.fontSize;
+            }
+            
             console.log('✅ Reader initialized successfully');
             console.log(`📊 Total pages: ${this.state.totalPages}`);
             
@@ -1151,15 +1157,20 @@ openSettings() {
      */
     updateSettingsInterface() {
         console.log('🔄 Updating settings interface');
+        console.log('🔄 Current settings:', this.state.settings);
         
         // Обновляем яркость
         if (this.elements.brightnessSlider) {
             this.elements.brightnessSlider.value = this.state.settings.brightness;
         }
         
-        // Обновляем размер шрифта
-        if (this.elements.fontSizeValue) {
-            this.elements.fontSizeValue.textContent = this.state.settings.fontSize;
+        // Обновляем размер шрифта - ищем элемент напрямую если не найден
+        const fontSizeEl = this.elements.fontSizeValue || document.getElementById('fontSizeValue');
+        if (fontSizeEl) {
+            fontSizeEl.textContent = this.state.settings.fontSize;
+            console.log('✅ Font size display updated:', this.state.settings.fontSize);
+        } else {
+            console.warn('⚠️ fontSizeValue element not found');
         }
         
         // Обновляем активную тему
@@ -1169,7 +1180,11 @@ openSettings() {
         
         // Обновляем активный шрифт
         document.querySelectorAll('.font-option').forEach(option => {
-            option.classList.toggle('active', option.dataset.font === this.state.settings.fontFamily);
+            const isActive = option.dataset.font === this.state.settings.fontFamily;
+            option.classList.toggle('active', isActive);
+            if (isActive) {
+                console.log('✅ Active font:', option.dataset.font);
+            }
         });
         
         // Обновляем активный межстрочный интервал
@@ -1202,6 +1217,41 @@ openSettings() {
             this.elements.pageContent.style.fontFamily = this.fontFamilies[fontFamily] || this.fontFamilies['Charter'];
             this.elements.pageContent.style.lineHeight = lineHeight.toString();
             this.elements.pageContent.style.textAlign = textAlign;
+            
+            console.log(`📝 Typography applied: ${fontSize}px, ${fontFamily}, ${lineHeight}, ${textAlign}`);
+        }
+        
+        /**
+         * Применяет настройки типографики немедленно без пересоздания страниц
+         * Сохраняет позицию прокрутки
+         */
+        applyTypographySettingsImmediate() {
+            const viewport = this.elements.readingViewport;
+            if (!viewport || !this.elements.pageContent) {
+                this.applyTypographySettings();
+                return;
+            }
+            
+            // Сохраняем позицию как процент
+            const scrollHeight = viewport.scrollHeight;
+            const scrollTop = viewport.scrollTop;
+            const scrollRatio = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+            
+            // Применяем стили
+            const { fontSize, fontFamily, lineHeight, textAlign } = this.state.settings;
+            
+            this.elements.pageContent.style.fontSize = `${fontSize}px`;
+            this.elements.pageContent.style.fontFamily = this.fontFamilies[fontFamily] || this.fontFamilies['Charter'];
+            this.elements.pageContent.style.lineHeight = lineHeight.toString();
+            this.elements.pageContent.style.textAlign = textAlign;
+            
+            // Восстанавливаем позицию после применения стилей
+            requestAnimationFrame(() => {
+                const newScrollHeight = viewport.scrollHeight;
+                const newScrollTop = Math.round(scrollRatio * newScrollHeight);
+                viewport.scrollTop = newScrollTop;
+                console.log(`📍 Position preserved: ${Math.round(scrollRatio * 100)}%`);
+            });
         }
 
         /**
@@ -1312,14 +1362,14 @@ openSettings() {
         if (newSize !== this.state.settings.fontSize) {
             this.state.settings.fontSize = newSize;
             
-            // Обновляем отображение размера шрифта
-            if (this.elements.fontSizeValue) {
-                this.elements.fontSizeValue.textContent = newSize;
+            // Обновляем отображение размера шрифта - ищем напрямую
+            const fontSizeEl = this.elements.fontSizeValue || document.getElementById('fontSizeValue');
+            if (fontSizeEl) {
+                fontSizeEl.textContent = newSize;
             }
             
-            this.applyTypographySettings();
+            this.applyTypographySettingsImmediate();
             this.saveSettings();
-            this.recreatePagesPreservingPosition();
             console.log(`📏 Font size: ${newSize}px`);
         }
     }
@@ -1339,7 +1389,6 @@ openSettings() {
 
     changeLineHeight(lineHeight) {
         this.state.settings.lineHeight = lineHeight;
-        this.applyTypographySettings();
         this.saveSettings();
         
         // Обновляем активную кнопку
@@ -1348,13 +1397,13 @@ openSettings() {
             btn.classList.toggle('active', Math.abs(spacing - lineHeight) < 0.1);
         });
         
-        this.recreatePagesPreservingPosition();
+        // Применяем с сохранением позиции
+        this.applyTypographySettingsImmediate();
         console.log(`📐 Line height: ${lineHeight}`);
     }
 
         changeTextAlign(alignment) {
             this.state.settings.textAlign = alignment;
-            this.applyTypographySettings();
             this.saveSettings();
             
             // Обновляем активную кнопку
@@ -1362,7 +1411,8 @@ openSettings() {
                 btn.classList.toggle('active', btn.dataset.align === alignment);
             });
             
-            this.recreatePagesPreservingPosition();
+            // Применяем с сохранением позиции
+            this.applyTypographySettingsImmediate();
             console.log(`📐 Text alignment: ${alignment}`);
         }
         
@@ -1376,7 +1426,6 @@ openSettings() {
             }
             
             this.state.settings.fontFamily = fontFamily;
-            this.applyTypographySettings();
             this.saveSettings();
             
             // Обновляем активную кнопку
@@ -1384,7 +1433,8 @@ openSettings() {
                 option.classList.toggle('active', option.dataset.font === fontFamily);
             });
             
-            this.recreatePagesPreservingPosition();
+            // Применяем шрифт с сохранением позиции
+            this.applyTypographySettingsImmediate();
             console.log(`🔤 Font family: ${fontFamily}`);
         }
 
@@ -1417,7 +1467,15 @@ openSettings() {
         
         // Пересоздаём страницы
         this.createPages();
-        this.renderCurrentPage();
+        
+        // Обновляем контент напрямую без анимации
+        if (this.elements.pageContent && this.state.pages[0]) {
+            this.elements.pageContent.innerHTML = this.state.pages[0].content;
+            this.applyTypographySettings();
+        }
+        
+        // Обновляем UI
+        this.updateInterfaceState();
         
         // Восстанавливаем позицию после рендеринга
         requestAnimationFrame(() => {
@@ -1427,7 +1485,7 @@ openSettings() {
                 const newScrollTop = Math.round(scrollRatio * newScrollHeight);
                 viewport.scrollTop = newScrollTop;
                 console.log(`📍 Restored scroll position: ${newScrollTop}px`);
-            }, 150);
+            }, 200);
         });
     }
 
