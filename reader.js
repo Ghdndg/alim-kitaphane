@@ -1204,6 +1204,17 @@ openSettings() {
 
         handleBackAction() {
             console.log('⬅️ Back action');
+            
+            // Сохраняем позицию прокрутки перед выходом
+            this.saveScrollPosition();
+            
+            // Переходим на главную страницу или назад в истории браузера
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                // Если истории нет, переходим на главную
+                window.location.href = 'index.html';
+            }
         }
 
         /**
