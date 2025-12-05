@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="reader.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Text:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 </head>
 <body data-theme="dark">
     <!-- Индикатор прогресса чтения -->
@@ -143,14 +143,36 @@
 
                     <!-- Настройки шрифта и текста -->
                     <section class="setting-group typography-controls">
+                        <!-- Выбор шрифта -->
                         <div class="font-settings">
-                            <label class="setting-label">Семейство шрифтов</label>
-                            <div class="font-family-control">
-                                <span class="font-name">Kazimir</span>
-                                <div class="font-size-controls">
-                                    <button class="font-size-button decrease" id="decreaseFontSize" aria-label="Уменьшить шрифт">−</button>
-                                    <button class="font-size-button increase" id="increaseFontSize" aria-label="Увеличить шрифт">+</button>
-                                </div>
+                            <label class="setting-label">Шрифт</label>
+                            <div class="font-options" id="fontOptions">
+                                <button class="font-option active" data-font="Charter" aria-label="Шрифт Charter">
+                                    <span class="font-preview" style="font-family: Charter, Georgia, serif;">Аа</span>
+                                    <span class="font-label">Charter</span>
+                                </button>
+                                <button class="font-option" data-font="Georgia" aria-label="Шрифт Georgia">
+                                    <span class="font-preview" style="font-family: Georgia, serif;">Аа</span>
+                                    <span class="font-label">Georgia</span>
+                                </button>
+                                <button class="font-option" data-font="PT Serif" aria-label="Шрифт PT Serif">
+                                    <span class="font-preview" style="font-family: 'PT Serif', serif;">Аа</span>
+                                    <span class="font-label">PT Serif</span>
+                                </button>
+                                <button class="font-option" data-font="System" aria-label="Системный шрифт">
+                                    <span class="font-preview" style="font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Аа</span>
+                                    <span class="font-label">Системный</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Размер шрифта -->
+                        <div class="font-size-settings">
+                            <label class="setting-label">Размер шрифта</label>
+                            <div class="font-size-control">
+                                <button class="font-size-button decrease" id="decreaseFontSize" aria-label="Уменьшить шрифт">−</button>
+                                <span class="font-size-value" id="fontSizeValue">18</span>
+                                <button class="font-size-button increase" id="increaseFontSize" aria-label="Увеличить шрифт">+</button>
                             </div>
                         </div>
 
