@@ -15,10 +15,19 @@ class YandexBooksReader {
             settings: {
                 theme: 'dark',
                 fontSize: 18,
+                fontFamily: 'Charter',
                 lineHeight: 1.6,
                 textAlign: 'justify',
                 brightness: 100,
             }
+        };
+        
+        // Карта шрифтов
+        this.fontFamilies = {
+            'Charter': 'Charter, Georgia, "Times New Roman", serif',
+            'Georgia': 'Georgia, "Times New Roman", serif',
+            'PT Serif': '"PT Serif", Georgia, serif',
+            'System': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         };
 
         this.elements = {};
@@ -59,6 +68,8 @@ class YandexBooksReader {
             brightnessSlider: 'brightnessSlider',
             decreaseFontSize: 'decreaseFontSize',
             increaseFontSize: 'increaseFontSize',
+            fontSizeValue: 'fontSizeValue',
+            fontOptions: 'fontOptions',
         };
 
         Object.entries(elementSelectors).forEach(([key, id]) => {
@@ -760,6 +771,15 @@ class YandexBooksReader {
             });
         });
         
+        // Выбор шрифта
+        document.querySelectorAll('.font-option').forEach(button => {
+            button.addEventListener('click', (e) => {
+                console.log('🔄 Font clicked:', button.dataset.font);
+                e.preventDefault();
+                e.stopPropagation();
+                this.changeFontFamily(button.dataset.font);
+            });
+        });
         
         console.log('✅ Settings events bound');
     }
@@ -770,7 +790,7 @@ class YandexBooksReader {
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
-                this.recreatePagesForNewMetrics();
+                this.recreatePagesPreservingPosition();
             }, 150);
         });
     }
@@ -1137,9 +1157,19 @@ openSettings() {
             this.elements.brightnessSlider.value = this.state.settings.brightness;
         }
         
+        // Обновляем размер шрифта
+        if (this.elements.fontSizeValue) {
+            this.elements.fontSizeValue.textContent = this.state.settings.fontSize;
+        }
+        
         // Обновляем активную тему
         document.querySelectorAll('.theme-option').forEach(option => {
             option.classList.toggle('active', option.dataset.theme === this.state.settings.theme);
+        });
+        
+        // Обновляем активный шрифт
+        document.querySelectorAll('.font-option').forEach(option => {
+            option.classList.toggle('active', option.dataset.font === this.state.settings.fontFamily);
         });
         
         // Обновляем активный межстрочный интервал
@@ -1166,9 +1196,10 @@ openSettings() {
         applyTypographySettings() {
             if (!this.elements.pageContent) return;
             
-            const { fontSize, lineHeight, textAlign } = this.state.settings;
+            const { fontSize, fontFamily, lineHeight, textAlign } = this.state.settings;
             
             this.elements.pageContent.style.fontSize = `${fontSize}px`;
+            this.elements.pageContent.style.fontFamily = this.fontFamilies[fontFamily] || this.fontFamilies['Charter'];
             this.elements.pageContent.style.lineHeight = lineHeight.toString();
             this.elements.pageContent.style.textAlign = textAlign;
         }
@@ -1277,12 +1308,18 @@ openSettings() {
     }
 
     adjustFontSize(delta) {
-        const newSize = Math.max(14, Math.min(24, this.state.settings.fontSize + delta));
+        const newSize = Math.max(14, Math.min(28, this.state.settings.fontSize + delta));
         if (newSize !== this.state.settings.fontSize) {
             this.state.settings.fontSize = newSize;
+            
+            // Обновляем отображение размера шрифта
+            if (this.elements.fontSizeValue) {
+                this.elements.fontSizeValue.textContent = newSize;
+            }
+            
             this.applyTypographySettings();
             this.saveSettings();
-                this.recreatePagesForNewMetrics();
+            this.recreatePagesPreservingPosition();
             console.log(`📏 Font size: ${newSize}px`);
         }
     }
@@ -1306,14 +1343,14 @@ openSettings() {
         this.saveSettings();
         
         // Обновляем активную кнопку
-            document.querySelectorAll('.spacing-option').forEach(btn => {
+        document.querySelectorAll('.spacing-option').forEach(btn => {
             const spacing = parseFloat(btn.dataset.spacing);
             btn.classList.toggle('active', Math.abs(spacing - lineHeight) < 0.1);
         });
         
-            this.recreatePagesForNewMetrics();
+        this.recreatePagesPreservingPosition();
         console.log(`📐 Line height: ${lineHeight}`);
-        }
+    }
 
         changeTextAlign(alignment) {
             this.state.settings.textAlign = alignment;
@@ -1325,8 +1362,30 @@ openSettings() {
                 btn.classList.toggle('active', btn.dataset.align === alignment);
             });
             
-            this.recreatePagesForNewMetrics();
+            this.recreatePagesPreservingPosition();
             console.log(`📐 Text alignment: ${alignment}`);
+        }
+        
+        /**
+         * Меняет семейство шрифтов
+         */
+        changeFontFamily(fontFamily) {
+            if (!this.fontFamilies[fontFamily]) {
+                console.warn(`⚠️ Unknown font family: ${fontFamily}`);
+                return;
+            }
+            
+            this.state.settings.fontFamily = fontFamily;
+            this.applyTypographySettings();
+            this.saveSettings();
+            
+            // Обновляем активную кнопку
+            document.querySelectorAll('.font-option').forEach(option => {
+                option.classList.toggle('active', option.dataset.font === fontFamily);
+            });
+            
+            this.recreatePagesPreservingPosition();
+            console.log(`🔤 Font family: ${fontFamily}`);
         }
 
 /** Пересоздание страниц при изменении шрифта/интервала/ширины */
@@ -1337,6 +1396,39 @@ openSettings() {
         const newIndex = Math.round(progressRatio * (this.state.totalPages - 1));
         this.state.currentPageIndex = Math.max(0, Math.min(newIndex, this.state.totalPages - 1));
         this.renderCurrentPage();
+    }
+    
+    /**
+     * Пересоздание страниц с сохранением позиции прокрутки
+     */
+    recreatePagesPreservingPosition() {
+        const viewport = this.elements.readingViewport;
+        if (!viewport) {
+            this.recreatePagesForNewMetrics();
+            return;
+        }
+        
+        // Сохраняем текущую позицию как процент от общей высоты
+        const scrollHeight = viewport.scrollHeight;
+        const scrollTop = viewport.scrollTop;
+        const scrollRatio = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+        
+        console.log(`📍 Saving scroll position: ${scrollTop}px (${Math.round(scrollRatio * 100)}%)`);
+        
+        // Пересоздаём страницы
+        this.createPages();
+        this.renderCurrentPage();
+        
+        // Восстанавливаем позицию после рендеринга
+        requestAnimationFrame(() => {
+            // Ждём пока контент отрендерится
+            setTimeout(() => {
+                const newScrollHeight = viewport.scrollHeight;
+                const newScrollTop = Math.round(scrollRatio * newScrollHeight);
+                viewport.scrollTop = newScrollTop;
+                console.log(`📍 Restored scroll position: ${newScrollTop}px`);
+            }, 150);
+        });
     }
 
     /**
