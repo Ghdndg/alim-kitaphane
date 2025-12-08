@@ -851,6 +851,7 @@ class YandexBooksReader {
         // Простая реализация свайпов и тап по центру для показа/скрытия меню
         let touchStartX = 0;
         let touchStartY = 0;
+        let touchStartTime = 0;
         
         if (this.elements.readingViewport) {
             const vp = this.elements.readingViewport;
@@ -858,6 +859,7 @@ class YandexBooksReader {
             vp.addEventListener('touchstart', (event) => {
                 touchStartX = event.touches[0].clientX;
                 touchStartY = event.touches[0].clientY;
+                touchStartTime = Date.now();
             }, { passive: true });
             
             vp.addEventListener('touchend', (event) => {
@@ -865,6 +867,7 @@ class YandexBooksReader {
                 const touchEndY = event.changedTouches[0].clientY;
                 const deltaX = touchEndX - touchStartX;
                 const deltaY = touchEndY - touchStartY;
+                const touchDuration = Date.now() - touchStartTime;
                 
                 // Горизонтальный свайп (только если несколько страниц)
                 if (this.state.totalPages > 1 && Math.abs(deltaX) > 50 && Math.abs(deltaY) < 30) {
@@ -876,25 +879,52 @@ class YandexBooksReader {
                     return;
                 }
                 
-                // Тап по центру (в пределах средней трети ширины)
-                const rect = vp.getBoundingClientRect();
-                const x = event.changedTouches[0].clientX - rect.left;
-                const ratio = x / Math.max(1, rect.width);
-                if (ratio > 0.33 && ratio < 0.66 && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
-                    this.toggleUI();
+                // Тап по центру экрана для показа меню
+                // Условия: короткое нажатие (< 300мс), небольшое смещение (< 20px)
+                const isTap = touchDuration < 300 && Math.abs(deltaX) < 20 && Math.abs(deltaY) < 20;
+                
+                if (isTap) {
+                    const rect = vp.getBoundingClientRect();
+                    const x = touchEndX - rect.left;
+                    const y = touchEndY - rect.top;
+                    const ratioX = x / Math.max(1, rect.width);
+                    const ratioY = y / Math.max(1, rect.height);
+                    
+                    // Центральная зона: 25%-75% по ширине и 20%-80% по высоте
+                    const inCenterX = ratioX > 0.25 && ratioX < 0.75;
+                    const inCenterY = ratioY > 0.20 && ratioY < 0.80;
+                    
+                    if (inCenterX && inCenterY) {
+                        console.log('📱 Touch tap detected in center zone');
+                        this.toggleUI();
+                    }
                 }
             });
             
-            // Поддержка клика мышью по центру
+            // Поддержка клика мышью по центру (для десктопа)
             vp.addEventListener('click', (event) => {
                 // Игнорируем клики по ссылкам/выделениям
-                if ((event.target && (event.target.closest('a') || window.getSelection()?.toString()))){
+                if (event.target && (event.target.closest('a') || window.getSelection()?.toString())) {
                     return;
                 }
+                
+                // Проверяем что это не touch событие (избегаем двойного срабатывания)
+                if (event.sourceCapabilities && event.sourceCapabilities.firesTouchEvents) {
+                    return;
+                }
+                
                 const rect = vp.getBoundingClientRect();
                 const x = event.clientX - rect.left;
-                const ratio = x / Math.max(1, rect.width);
-                if (ratio > 0.33 && ratio < 0.66) {
+                const y = event.clientY - rect.top;
+                const ratioX = x / Math.max(1, rect.width);
+                const ratioY = y / Math.max(1, rect.height);
+                
+                // Центральная зона
+                const inCenterX = ratioX > 0.25 && ratioX < 0.75;
+                const inCenterY = ratioY > 0.20 && ratioY < 0.80;
+                
+                if (inCenterX && inCenterY) {
+                    console.log('🖱️ Mouse click detected in center zone');
                     this.toggleUI();
                 }
             });
