@@ -1616,7 +1616,7 @@ openSettings() {
                 <div class="tutorial-zones">
                     <div class="tutorial-zone tutorial-zone-left">
                         <div class="tutorial-zone-icon">👆</div>
-                        <div class="tutorial-zone-text">Тап по центру — показать/скрыть меню</div>
+                        <div class="tutorial-zone-text">Нажатие по центру — показать/скрыть меню</div>
                     </div>
                 </div>
                 
