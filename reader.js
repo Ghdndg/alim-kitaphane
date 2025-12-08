@@ -110,6 +110,9 @@ class YandexBooksReader {
             this.loadScrollPosition();
             this.showUITemporarily();
             
+            // Показываем туториал если пользователь его не отключил
+            this.showTutorialIfNeeded();
+            
             // Обновляем отображение размера шрифта при инициализации
             const fontSizeEl = document.getElementById('fontSizeValue');
             if (fontSizeEl) {
@@ -1579,7 +1582,111 @@ openSettings() {
         }
     }
 
-
+    /**
+     * Показывает туториал если пользователь его не отключил
+     */
+    showTutorialIfNeeded() {
+        const tutorialDismissed = localStorage.getItem(`${this.storageKey}-tutorial-dismissed`);
+        if (tutorialDismissed === 'true') {
+            console.log('📚 Tutorial already dismissed');
+            return;
+        }
+        
+        // Показываем туториал с небольшой задержкой
+        setTimeout(() => {
+            this.showTutorial();
+        }, 500);
+    }
+    
+    /**
+     * Создаёт и показывает туториал
+     */
+    showTutorial() {
+        // Создаём оверлей туториала
+        const tutorialOverlay = document.createElement('div');
+        tutorialOverlay.className = 'tutorial-overlay';
+        tutorialOverlay.id = 'tutorialOverlay';
+        
+        tutorialOverlay.innerHTML = `
+            <div class="tutorial-content">
+                <div class="tutorial-header">
+                    <h2>Как пользоваться читалкой</h2>
+                </div>
+                
+                <div class="tutorial-zones">
+                    <div class="tutorial-zone tutorial-zone-left">
+                        <div class="tutorial-zone-icon">👆</div>
+                        <div class="tutorial-zone-text">Тап по центру — показать/скрыть меню</div>
+                    </div>
+                </div>
+                
+                <div class="tutorial-hints">
+                    <div class="tutorial-hint">
+                        <span class="tutorial-hint-icon">📜</span>
+                        <span>Прокручивайте текст вверх/вниз для чтения</span>
+                    </div>
+                    <div class="tutorial-hint">
+                        <span class="tutorial-hint-icon">⚙️</span>
+                        <span>Нажмите ☰ для настроек шрифта и темы</span>
+                    </div>
+                    <div class="tutorial-hint">
+                        <span class="tutorial-hint-icon">💾</span>
+                        <span>Прогресс чтения сохраняется автоматически</span>
+                    </div>
+                </div>
+                
+                <div class="tutorial-actions">
+                    <button class="tutorial-btn tutorial-btn-primary" id="tutorialGotIt">
+                        Понятно
+                    </button>
+                    <button class="tutorial-btn tutorial-btn-secondary" id="tutorialDontShow">
+                        Больше не показывать
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(tutorialOverlay);
+        
+        // Анимация появления
+        requestAnimationFrame(() => {
+            tutorialOverlay.classList.add('visible');
+        });
+        
+        // Обработчики кнопок
+        const gotItBtn = document.getElementById('tutorialGotIt');
+        const dontShowBtn = document.getElementById('tutorialDontShow');
+        
+        gotItBtn.addEventListener('click', () => {
+            this.closeTutorial();
+        });
+        
+        dontShowBtn.addEventListener('click', () => {
+            localStorage.setItem(`${this.storageKey}-tutorial-dismissed`, 'true');
+            this.closeTutorial();
+            console.log('📚 Tutorial dismissed permanently');
+        });
+        
+        // Закрытие по клику на оверлей
+        tutorialOverlay.addEventListener('click', (e) => {
+            if (e.target === tutorialOverlay) {
+                this.closeTutorial();
+            }
+        });
+    }
+    
+    /**
+     * Закрывает туториал
+     */
+    closeTutorial() {
+        const tutorialOverlay = document.getElementById('tutorialOverlay');
+        if (tutorialOverlay) {
+            tutorialOverlay.classList.remove('visible');
+            setTimeout(() => {
+                tutorialOverlay.remove();
+            }, 300);
+        }
+    }
 
     }
 
