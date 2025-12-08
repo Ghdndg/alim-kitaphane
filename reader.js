@@ -700,93 +700,102 @@ class YandexBooksReader {
     }
 
     /**
+     * Добавляет быстрый обработчик для кнопки (touchend + click)
+     * Работает мгновенно на мобильных без задержки 300мс
+     */
+    addFastClickHandler(element, handler) {
+        if (!element) return;
+        
+        let touchMoved = false;
+        
+        element.addEventListener('touchstart', () => {
+            touchMoved = false;
+        }, { passive: true });
+        
+        element.addEventListener('touchmove', () => {
+            touchMoved = true;
+        }, { passive: true });
+        
+        element.addEventListener('touchend', (e) => {
+            if (!touchMoved) {
+                e.preventDefault();
+                handler(e);
+            }
+        }, { passive: false });
+        
+        // Fallback для мыши (десктоп)
+        element.addEventListener('click', (e) => {
+            // Проверяем что это не touch событие
+            if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) {
+                return;
+            }
+            handler(e);
+        });
+    }
+    
+    /**
      * Привязывает события панели настроек
      */
     bindSettingsEvents() {
         console.log('🎮 Binding settings events...');
         
         // Закрытие панели
-        if (this.elements.closeSettingsButton) {
-            this.elements.closeSettingsButton.addEventListener('click', (e) => {
-                console.log('🔄 Close settings clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                this.closeSettings();
-            });
-        }
+        this.addFastClickHandler(this.elements.closeSettingsButton, () => {
+            console.log('🔄 Close settings');
+            this.closeSettings();
+        });
         
-        if (this.elements.settingsBackdrop) {
-            this.elements.settingsBackdrop.addEventListener('click', (e) => {
-                console.log('🔄 Settings backdrop clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                this.closeSettings();
-            });
-        }
+        this.addFastClickHandler(this.elements.settingsBackdrop, () => {
+            console.log('🔄 Settings backdrop');
+            this.closeSettings();
+        });
         
         // Яркость
         if (this.elements.brightnessSlider) {
             this.elements.brightnessSlider.addEventListener('input', (event) => {
-                console.log('🔄 Brightness changed:', event.target.value);
                 this.updateBrightness(parseInt(event.target.value));
             });
         }
         
         // Размер шрифта
-        if (this.elements.decreaseFontSize) {
-            this.elements.decreaseFontSize.addEventListener('click', (e) => {
-                console.log('🔄 Decrease font size clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                this.adjustFontSize(-2);
-            });
-        }
+        this.addFastClickHandler(this.elements.decreaseFontSize, () => {
+            console.log('🔄 Decrease font size');
+            this.adjustFontSize(-2);
+        });
         
-        if (this.elements.increaseFontSize) {
-            this.elements.increaseFontSize.addEventListener('click', (e) => {
-                console.log('🔄 Increase font size clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                this.adjustFontSize(2);
-            });
-        }
+        this.addFastClickHandler(this.elements.increaseFontSize, () => {
+            console.log('🔄 Increase font size');
+            this.adjustFontSize(2);
+        });
         
         // Темы
         document.querySelectorAll('.theme-option').forEach(button => {
-            button.addEventListener('click', (e) => {
-                console.log('🔄 Theme clicked:', button.dataset.theme);
-                e.preventDefault();
-                e.stopPropagation();
+            this.addFastClickHandler(button, () => {
+                console.log('🔄 Theme:', button.dataset.theme);
                 this.changeTheme(button.dataset.theme);
             });
         });
         
         // Межстрочный интервал
         document.querySelectorAll('.spacing-option').forEach(button => {
-            button.addEventListener('click', (e) => {
-                console.log('🔄 Spacing clicked:', button.dataset.spacing);
-                e.preventDefault();
-                e.stopPropagation();
+            this.addFastClickHandler(button, () => {
+                console.log('🔄 Spacing:', button.dataset.spacing);
                 this.changeLineHeight(parseFloat(button.dataset.spacing));
             });
         });
         
         // Выравнивание текста
         document.querySelectorAll('.align-option').forEach(button => {
-            button.addEventListener('click', (e) => {
-                console.log('🔄 Alignment clicked:', button.dataset.align);
-                e.preventDefault();
-                e.stopPropagation();
+            this.addFastClickHandler(button, () => {
+                console.log('🔄 Alignment:', button.dataset.align);
                 this.changeTextAlign(button.dataset.align);
             });
         });
         
         // Выбор шрифта
         document.querySelectorAll('.font-option').forEach(button => {
-            button.addEventListener('click', (e) => {
-                console.log('🔄 Font clicked:', button.dataset.font);
-                e.preventDefault();
-                e.stopPropagation();
+            this.addFastClickHandler(button, () => {
+                console.log('🔄 Font:', button.dataset.font);
                 this.changeFontFamily(button.dataset.font);
             });
         });
