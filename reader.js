@@ -70,6 +70,7 @@ class YandexBooksReader {
             increaseFontSize: 'increaseFontSize',
             fontSizeValue: 'fontSizeValue',
             fontOptions: 'fontOptions',
+            menuTapZone: 'menuTapZone',
         };
 
         Object.entries(elementSelectors).forEach(([key, id]) => {
@@ -848,84 +849,58 @@ class YandexBooksReader {
      * Привязывает жестовые события
      */
     bindGestureEvents() {
-        // Простая реализация свайпов и тап по центру для показа/скрытия меню
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let touchStartTime = 0;
+        // Используем невидимую кнопку в центре для надёжного открытия меню
+        if (this.elements.menuTapZone) {
+            const btn = this.elements.menuTapZone;
+            
+            // Предотвращаем любые проблемы с событиями
+            btn.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+            }, { passive: true });
+            
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('📱 Menu tap zone touched');
+                this.toggleUI();
+            }, { passive: false });
+            
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🖱️ Menu tap zone clicked');
+                this.toggleUI();
+            });
+        }
         
+        // Закрытие меню при тапе по области чтения (когда меню открыто)
         if (this.elements.readingViewport) {
             const vp = this.elements.readingViewport;
             
-            vp.addEventListener('touchstart', (event) => {
-                touchStartX = event.touches[0].clientX;
-                touchStartY = event.touches[0].clientY;
-                touchStartTime = Date.now();
+            vp.addEventListener('touchend', (e) => {
+                // Закрываем меню только если оно открыто и настройки закрыты
+                if (this.state.isUIVisible && !this.state.isSettingsOpen) {
+                    // Проверяем что тап не по кнопкам управления
+                    const target = e.target;
+                    if (!target.closest('.top-navigation') && 
+                        !target.closest('.bottom-controls') && 
+                        !target.closest('.settings-drawer')) {
+                        console.log('📱 Tap to close UI');
+                        this.hideUI();
+                    }
+                }
             }, { passive: true });
             
-            vp.addEventListener('touchend', (event) => {
-                const touchEndX = event.changedTouches[0].clientX;
-                const touchEndY = event.changedTouches[0].clientY;
-                const deltaX = touchEndX - touchStartX;
-                const deltaY = touchEndY - touchStartY;
-                const touchDuration = Date.now() - touchStartTime;
-                
-                // Горизонтальный свайп (только если несколько страниц)
-                if (this.state.totalPages > 1 && Math.abs(deltaX) > 50 && Math.abs(deltaY) < 30) {
-                    if (deltaX > 0) {
-                        this.goToPreviousPage();
-                    } else {
-                        this.goToNextPage();
+            vp.addEventListener('click', (e) => {
+                // Для мыши - тоже закрываем
+                if (this.state.isUIVisible && !this.state.isSettingsOpen) {
+                    const target = e.target;
+                    if (!target.closest('.top-navigation') && 
+                        !target.closest('.bottom-controls') && 
+                        !target.closest('.settings-drawer')) {
+                        console.log('🖱️ Click to close UI');
+                        this.hideUI();
                     }
-                    return;
-                }
-                
-                // Тап по центру экрана для показа меню
-                // Условия: короткое нажатие (< 300мс), небольшое смещение (< 20px)
-                const isTap = touchDuration < 300 && Math.abs(deltaX) < 20 && Math.abs(deltaY) < 20;
-                
-                if (isTap) {
-                    const rect = vp.getBoundingClientRect();
-                    const x = touchEndX - rect.left;
-                    const y = touchEndY - rect.top;
-                    const ratioX = x / Math.max(1, rect.width);
-                    const ratioY = y / Math.max(1, rect.height);
-                    
-                    // Центральная зона: 25%-75% по ширине и 20%-80% по высоте
-                    const inCenterX = ratioX > 0.25 && ratioX < 0.75;
-                    const inCenterY = ratioY > 0.20 && ratioY < 0.80;
-                    
-                    if (inCenterX && inCenterY) {
-                        console.log('📱 Touch tap detected in center zone');
-                        this.toggleUI();
-                    }
-                }
-            });
-            
-            // Поддержка клика мышью по центру (для десктопа)
-            vp.addEventListener('click', (event) => {
-                // Игнорируем клики по ссылкам/выделениям
-                if (event.target && (event.target.closest('a') || window.getSelection()?.toString())) {
-                    return;
-                }
-                
-                // Проверяем что это не touch событие (избегаем двойного срабатывания)
-                if (event.sourceCapabilities && event.sourceCapabilities.firesTouchEvents) {
-                    return;
-                }
-                
-                const rect = vp.getBoundingClientRect();
-                const x = event.clientX - rect.left;
-                const y = event.clientY - rect.top;
-                const ratioX = x / Math.max(1, rect.width);
-                const ratioY = y / Math.max(1, rect.height);
-                
-                // Центральная зона
-                const inCenterX = ratioX > 0.25 && ratioX < 0.75;
-                const inCenterY = ratioY > 0.20 && ratioY < 0.80;
-                
-                if (inCenterX && inCenterY) {
-                    console.log('🖱️ Mouse click detected in center zone');
-                    this.toggleUI();
                 }
             });
         }
@@ -1118,6 +1093,10 @@ class YandexBooksReader {
         if (this.elements.bottomControls) {
             this.elements.bottomControls.classList.add('visible');
         }
+        // Скрываем зону тапа когда меню видно
+        if (this.elements.menuTapZone) {
+            this.elements.menuTapZone.style.display = 'none';
+        }
         
         console.log('👁️ UI shown');
     }
@@ -1130,6 +1109,10 @@ class YandexBooksReader {
         }
         if (this.elements.bottomControls) {
             this.elements.bottomControls.classList.remove('visible');
+        }
+        // Показываем зону тапа когда меню скрыто
+        if (this.elements.menuTapZone) {
+            this.elements.menuTapZone.style.display = 'block';
         }
         
         console.log('🙈 UI hidden');
